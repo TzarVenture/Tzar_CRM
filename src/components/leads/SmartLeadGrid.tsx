@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useMemo } from "react";
+import React, { useState, useMemo, useEffect } from "react";
 import {
   Search,
   Filter,
@@ -20,6 +20,8 @@ import {
   ShoppingBag,
   Layers,
   ArrowUpDown,
+  RefreshCw,
+  Zap,
 } from "lucide-react";
 import { ILead, BusinessSlug, KanbanStage } from "@/models/Lead";
 import { LeadWorkspaceDrawer } from "./LeadWorkspaceDrawer";
@@ -55,6 +57,31 @@ export function SmartLeadGrid({ initialLeads }: SmartLeadGridProps) {
   const [selectedStageFilter, setSelectedStageFilter] = useState<string>("all");
   const [searchQuery, setSearchQuery] = useState<string>("");
   const [selectedLeadForDrawer, setSelectedLeadForDrawer] = useState<Partial<ILead> | null>(null);
+  const [isLiveSyncing, setIsLiveSyncing] = useState(false);
+
+  // 5-Second Real-Time Auto-Polling Engine
+  useEffect(() => {
+    const fetchLatestLeads = async () => {
+      try {
+        setIsLiveSyncing(true);
+        const res = await fetch(`/api/v1/leads?business=${selectedBrand}`);
+        if (res.ok) {
+          const data = await res.json();
+          if (data.leads) {
+            setLeads(data.leads);
+          }
+        }
+      } catch (err) {
+        console.error("Live Polling Error:", err);
+      } finally {
+        setTimeout(() => setIsLiveSyncing(false), 600);
+      }
+    };
+
+    // Auto-fetch every 5 seconds for instant real-time intake
+    const interval = setInterval(fetchLatestLeads, 5000);
+    return () => clearInterval(interval);
+  }, [selectedBrand]);
 
   // Filtered Leads
   const filteredLeads = useMemo(() => {
@@ -120,11 +147,17 @@ export function SmartLeadGrid({ initialLeads }: SmartLeadGridProps) {
       {/* ─── 1. BRAND SWITCHER BAR ─────────────────────────────────────── */}
       <div className="flex flex-wrap items-center justify-between gap-4 pb-2 border-b border-slate-300">
         <div>
-          <h1 className="text-2xl font-bold text-slate-900 tracking-tight">
-            Centralized Leads Data Grid
-          </h1>
+          <div className="flex items-center gap-2">
+            <h1 className="text-2xl font-bold text-slate-900 tracking-tight">
+              Centralized Leads Data Grid
+            </h1>
+            <span className="inline-flex items-center gap-1.5 text-[10px] font-extrabold px-2.5 py-1 rounded-full bg-emerald-100 text-emerald-800 border border-emerald-200 shadow-2xs">
+              <Zap className={`w-3 h-3 text-emerald-600 ${isLiveSyncing ? "animate-spin" : ""}`} />
+              Live Sync 5s
+            </span>
+          </div>
           <p className="text-xs font-semibold text-slate-600 mt-0.5">
-            Unified workspace consolidating leads across all 4 Tzar Group entities
+            Unified workspace consolidating leads across all 4 Tzar Group entities (Auto-refreshes every 5s)
           </p>
         </div>
 
