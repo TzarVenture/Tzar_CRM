@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import Image from "next/image";
 import { usePathname } from "next/navigation";
 import { signOut } from "next-auth/react";
 import { clsx } from "clsx";
@@ -74,12 +75,16 @@ export default function Sidebar() {
       style={{ boxShadow: "var(--shadow-sidebar)", width: "var(--sidebar-width)" }}
     >
       {/* Logo Header */}
-      <div className="flex items-center gap-3 px-6 py-5 border-b border-(--color-border-light)">
-        <div
-          className="flex items-center justify-center w-10 h-10 rounded-xl shadow-xs"
-          style={{ backgroundColor: "var(--color-brand-green)" }}
-        >
-          <Zap className="w-5 h-5 text-white" />
+      <div className="flex items-center gap-3 px-5 py-4 border-b border-(--color-border-light)">
+        <div className="flex items-center justify-center shrink-0">
+          <Image
+            src="/TzarLogo-09.png"
+            alt="TZAR Logo"
+            width={38}
+            height={38}
+            className="w-9 h-9 object-contain"
+            priority
+          />
         </div>
         <div>
           <p
@@ -88,7 +93,7 @@ export default function Sidebar() {
           >
             TZAR CRM
           </p>
-          <p className="text-xs font-semibold text-(--color-text-muted) tracking-wider uppercase leading-none mt-1">
+          <p className="text-[10px] font-bold text-(--color-text-muted) tracking-wider uppercase leading-none mt-1">
             Enterprise Suite
           </p>
         </div>

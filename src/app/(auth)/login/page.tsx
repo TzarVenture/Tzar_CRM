@@ -41,23 +41,15 @@ export default function LoginPage() {
         <div className="px-8 py-10">
           {/* Logo */}
           <div className="flex items-center gap-3 mb-8">
-            <div
-              className="flex items-center justify-center w-10 h-10 rounded-xl"
-              style={{ backgroundColor: "var(--color-brand-green)" }}
-            >
-              <svg
-                className="w-6 h-6 text-white"
-                fill="none"
-                viewBox="0 0 24 24"
-                stroke="currentColor"
-                strokeWidth={2}
-              >
-                <path
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                  d="M13 10V3L4 14h7v7l9-11h-7z"
-                />
-              </svg>
+            <div className="flex items-center justify-center shrink-0">
+              <Image
+                src="/TzarLogo-09.png"
+                alt="TZAR Logo"
+                width={44}
+                height={44}
+                className="w-11 h-11 object-contain"
+                priority
+              />
             </div>
             <div>
               <h1
