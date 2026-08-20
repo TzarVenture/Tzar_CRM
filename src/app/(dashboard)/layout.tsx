@@ -34,7 +34,7 @@ export default async function DashboardLayout({
 
           {/* Page Content */}
           <main
-            className="flex-1 p-6"
+            className="flex-1 p-4 sm:p-6 lg:p-8 max-w-[1920px] w-full mx-auto transition-all"
             style={{ marginTop: "var(--header-height)" }}
           >
             {children}
