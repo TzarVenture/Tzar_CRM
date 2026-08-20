@@ -120,15 +120,18 @@ export async function PATCH(
   }
 }
 
-// DELETE: Delete Lead Record
+// DELETE: Delete Lead Record (Strictly Super Admin Only)
 export async function DELETE(
   req: Request,
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
     const session = await auth();
-    if (!session) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    if (!session || session.user?.role !== "SUPER_ADMIN") {
+      return NextResponse.json(
+        { error: "Forbidden: Only Super Admin (Agency Owner) can delete leads" },
+        { status: 403 }
+      );
     }
 
     const { id } = await params;

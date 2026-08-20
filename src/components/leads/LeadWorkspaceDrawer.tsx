@@ -30,6 +30,7 @@ import {
   Copy,
   Check,
 } from "lucide-react";
+import { useSession } from "next-auth/react";
 import { ILead, BusinessSlug, KanbanStage } from "@/models/Lead";
 
 interface LeadWorkspaceDrawerProps {
@@ -57,6 +58,9 @@ export function LeadWorkspaceDrawer({
   onUpdateLead,
   onDeleteLead,
 }: LeadWorkspaceDrawerProps) {
+  const { data: session } = useSession();
+  const isSuperAdmin = session?.user?.role === "SUPER_ADMIN";
+
   const [activeTab, setActiveTab] = useState<"overview" | "chat" | "activity" | "files">("overview");
 
   // Lead Editing State
@@ -312,15 +316,17 @@ export function LeadWorkspaceDrawer({
               {lead.status === "CONVERTED" ? "Converted Client Account" : "Convert to Client"}
             </button>
 
-            {/* Delete Lead Button (Admin Power) */}
-            <button
-              onClick={handleDeleteLead}
-              disabled={isDeleting}
-              className="p-2 rounded-xl text-rose-500 hover:text-rose-700 hover:bg-rose-50 border border-slate-200 transition-colors cursor-pointer"
-              title="Delete Lead Document (Admin Power)"
-            >
-              {isDeleting ? <Loader2 className="w-4 h-4 animate-spin" /> : <Trash2 className="w-4 h-4" />}
-            </button>
+            {/* Delete Lead Button (Restricted Strictly to Super Admin / Agency Owner) */}
+            {isSuperAdmin && (
+              <button
+                onClick={handleDeleteLead}
+                disabled={isDeleting}
+                className="p-2 rounded-xl text-rose-500 hover:text-rose-700 hover:bg-rose-50 border border-slate-200 transition-colors cursor-pointer"
+                title="Delete Lead Document (Owner Privilege Only)"
+              >
+                {isDeleting ? <Loader2 className="w-4 h-4 animate-spin" /> : <Trash2 className="w-4 h-4" />}
+              </button>
+            )}
 
             <button
               onClick={onClose}

@@ -3,6 +3,7 @@
 import { useState, useEffect, useCallback } from "react";
 import axios from "axios";
 import Link from "next/link";
+import { useSession } from "next-auth/react";
 import {
   Building2,
   DollarSign,
@@ -44,6 +45,9 @@ interface ClientItem {
 }
 
 export default function ClientDirectory() {
+  const { data: session } = useSession();
+  const isSuperAdmin = session?.user?.role === "SUPER_ADMIN";
+
   const [clients, setClients] = useState<ClientItem[]>([]);
   const [searchQuery, setSearchQuery] = useState("");
   const [isLoading, setIsLoading] = useState(true);
@@ -295,13 +299,15 @@ export default function ClientDirectory() {
                         >
                           <Pencil className="w-3.5 h-3.5" />
                         </button>
-                        <button
-                          onClick={() => handleDeleteClient(client._id, client.companyName)}
-                          className="p-1 rounded text-red-600 hover:bg-red-50"
-                          title="Delete Client"
-                        >
-                          <Trash2 className="w-3.5 h-3.5" />
-                        </button>
+                        {isSuperAdmin && (
+                          <button
+                            onClick={() => handleDeleteClient(client._id, client.companyName)}
+                            className="p-1 rounded text-red-600 hover:bg-red-50 cursor-pointer"
+                            title="Delete Client Account (Super Admin Privilege)"
+                          >
+                            <Trash2 className="w-3.5 h-3.5" />
+                          </button>
+                        )}
                       </div>
                     </td>
                   </tr>
