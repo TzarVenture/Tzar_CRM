@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import {
   X,
   Building2,
@@ -21,8 +21,12 @@ import {
   ShoppingBag,
   Gift,
   Briefcase,
+  Edit2,
+  Save,
+  PlusCircle,
+  Loader2,
 } from "lucide-react";
-import { ILead, BusinessSlug } from "@/models/Lead";
+import { ILead, BusinessSlug, KanbanStage } from "@/models/Lead";
 
 interface LeadWorkspaceDrawerProps {
   lead: Partial<ILead> | null;
@@ -31,6 +35,16 @@ interface LeadWorkspaceDrawerProps {
   onUpdateLead: (updatedFields: Partial<ILead>) => void;
 }
 
+const STAGES: { id: KanbanStage; name: string }[] = [
+  { id: "new-lead", name: "New Lead" },
+  { id: "contacted", name: "Contacted" },
+  { id: "discovery-call", name: "Discovery Call" },
+  { id: "proposal-sent", name: "Proposal Sent" },
+  { id: "negotiation", name: "Negotiation" },
+  { id: "closed-won", name: "Closed Won" },
+  { id: "closed-lost", name: "Closed Lost" },
+];
+
 export function LeadWorkspaceDrawer({
   lead,
   isOpen,
@@ -38,7 +52,47 @@ export function LeadWorkspaceDrawer({
   onUpdateLead,
 }: LeadWorkspaceDrawerProps) {
   const [activeTab, setActiveTab] = useState<"overview" | "chat" | "activity" | "files">("overview");
-  const [noteText, setNoteText] = useState("");
+
+  // Lead Editing State
+  const [isEditing, setIsEditing] = useState(false);
+  const [budgetInput, setBudgetInput] = useState<number | string>(0);
+  const [companyInput, setCompanyInput] = useState("");
+  const [requirementsInput, setRequirementsInput] = useState("");
+  const [stageInput, setStageInput] = useState<KanbanStage>("new-lead");
+  const [isSavingDetails, setIsSavingDetails] = useState(false);
+
+  // Notes & Activity Stream State
+  const [notesList, setNotesList] = useState<any[]>([]);
+  const [isLoadingNotes, setIsLoadingNotes] = useState(false);
+  const [newNoteContent, setNewNoteContent] = useState("");
+  const [isSubmittingNote, setIsSubmittingNote] = useState(false);
+
+  // Load Lead Notes and Details when Drawer Opens
+  useEffect(() => {
+    if (lead?._id && isOpen) {
+      setBudgetInput(lead.estimatedBudget || 0);
+      setCompanyInput(lead.companyName || "");
+      setRequirementsInput(lead.requirementsMessage || "");
+      setStageInput((lead.stageId as KanbanStage) || "new-lead");
+
+      setIsLoadingNotes(true);
+      fetch(`/api/v1/leads/${lead._id}`)
+        .then((res) => res.json())
+        .then((data) => {
+          if (data.messages) {
+            setNotesList(data.messages);
+          }
+          if (data.lead) {
+            setBudgetInput(data.lead.estimatedBudget || 0);
+            setCompanyInput(data.lead.companyName || "");
+            setRequirementsInput(data.lead.requirementsMessage || "");
+            setStageInput(data.lead.stageId || "new-lead");
+          }
+        })
+        .catch((err) => console.error("Error fetching lead messages:", err))
+        .finally(() => setIsLoadingNotes(false));
+    }
+  }, [lead?._id, isOpen]);
 
   if (!isOpen || !lead) return null;
 
@@ -55,6 +109,65 @@ export function LeadWorkspaceDrawer({
   const BrandIcon = currentBrand.icon;
 
   const isOverdue = lead.slaDeadline ? new Date(lead.slaDeadline) < new Date() : false;
+
+  // Handle Save Lead Details & Budget
+  const handleSaveDetails = async () => {
+    if (!lead._id) return;
+    setIsSavingDetails(true);
+    try {
+      const parsedBudget = typeof budgetInput === "string" ? parseFloat(budgetInput) || 0 : budgetInput;
+
+      const res = await fetch(`/api/v1/leads/${lead._id}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          estimatedBudget: parsedBudget,
+          companyName: companyInput,
+          requirementsMessage: requirementsInput,
+          stageId: stageInput,
+        }),
+      });
+
+      const data = await res.json();
+      if (data.lead) {
+        onUpdateLead(data.lead);
+        setIsEditing(false);
+
+        // Refresh notes list to display new stage/details system log
+        const refRes = await fetch(`/api/v1/leads/${lead._id}`).then((r) => r.json());
+        if (refRes.messages) setNotesList(refRes.messages);
+      }
+    } catch (err) {
+      console.error("Failed to update lead details:", err);
+    } finally {
+      setIsSavingDetails(false);
+    }
+  };
+
+  // Handle Add Note
+  const handleAddNote = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!newNoteContent.trim() || !lead._id) return;
+    setIsSubmittingNote(true);
+
+    try {
+      const res = await fetch(`/api/v1/leads/${lead._id}/notes`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ content: newNoteContent.trim() }),
+      });
+
+      const data = await res.json();
+      if (data.note) {
+        setNotesList((prev) => [...prev, data.note]);
+        setNewNoteContent("");
+      }
+    } catch (err) {
+      console.error("Failed to add internal note:", err);
+    } finally {
+      setIsSubmittingNote(false);
+    }
+  };
 
   return (
     <div className="fixed inset-0 z-50 overflow-hidden bg-slate-900/40 backdrop-blur-xs flex justify-end animate-fade-in">
@@ -130,13 +243,13 @@ export function LeadWorkspaceDrawer({
 
           <button
             onClick={() => setActiveTab("activity")}
-            className={`py-3.5 px-4 text-xs font-bold border-b-2 transition-all cursor-pointer ${
+            className={`py-3.5 px-4 text-xs font-bold border-b-2 transition-all cursor-pointer flex items-center gap-1.5 ${
               activeTab === "activity"
                 ? "border-(--color-brand-green) text-(--color-brand-green)"
                 : "border-transparent text-slate-500 hover:text-slate-900"
             }`}
           >
-            Timeline & Activity Log
+            Timeline & Activity Log ({notesList.length})
           </button>
 
           <button
@@ -199,39 +312,142 @@ export function LeadWorkspaceDrawer({
                 </div>
               </div>
 
-              {/* Requirements & Budget Card */}
-              <div className="bg-white p-5 rounded-2xl border border-slate-200 space-y-3 shadow-2xs">
+              {/* BDE Edit & Budget Management Card */}
+              <div className="bg-white p-5 rounded-2xl border border-slate-200 space-y-4 shadow-2xs">
                 <div className="flex items-center justify-between">
-                  <h3 className="text-xs font-bold uppercase tracking-wider text-slate-600">
-                    Lead Interest & Value
+                  <h3 className="text-xs font-bold uppercase tracking-wider text-slate-600 flex items-center gap-1.5">
+                    <DollarSign className="w-4 h-4 text-emerald-600" /> Lead Interest & BDE Deal Value
                   </h3>
 
-                  {lead.estimatedBudget ? (
-                    <span className="text-sm font-extrabold text-emerald-700 bg-emerald-50 px-3 py-1 rounded-xl">
-                      ₹{lead.estimatedBudget.toLocaleString()}
-                    </span>
+                  {!isEditing ? (
+                    <button
+                      onClick={() => setIsEditing(true)}
+                      className="px-3 py-1.5 text-xs font-bold bg-slate-900 text-white rounded-xl hover:bg-slate-800 transition-all flex items-center gap-1 cursor-pointer"
+                    >
+                      <Edit2 className="w-3.5 h-3.5" /> Edit Budget & Details
+                    </button>
                   ) : (
-                    <span className="text-xs text-slate-500">Unbudgeted</span>
+                    <div className="flex items-center gap-2">
+                      <button
+                        onClick={() => setIsEditing(false)}
+                        className="px-3 py-1.5 text-xs font-bold bg-slate-200 text-slate-700 rounded-xl hover:bg-slate-300 transition-all cursor-pointer"
+                      >
+                        Cancel
+                      </button>
+                      <button
+                        onClick={handleSaveDetails}
+                        disabled={isSavingDetails}
+                        className="px-3 py-1.5 text-xs font-bold bg-emerald-600 text-white rounded-xl hover:bg-emerald-700 transition-all flex items-center gap-1 cursor-pointer"
+                      >
+                        {isSavingDetails ? (
+                          <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                        ) : (
+                          <Save className="w-3.5 h-3.5" />
+                        )}
+                        Save Changes
+                      </button>
+                    </div>
                   )}
                 </div>
 
-                {lead.interestedServices && lead.interestedServices.length > 0 && (
-                  <div className="flex flex-wrap gap-1.5">
-                    {lead.interestedServices.map((service, idx) => (
-                      <span
-                        key={idx}
-                        className="text-xs font-semibold px-2.5 py-1 rounded-lg bg-slate-100 text-slate-700 border border-slate-200"
-                      >
-                        {service}
-                      </span>
-                    ))}
-                  </div>
-                )}
+                {!isEditing ? (
+                  /* Read Mode */
+                  <div className="space-y-3">
+                    <div className="flex items-center justify-between bg-slate-50 p-3.5 rounded-xl border border-slate-200">
+                      <div>
+                        <span className="text-[11px] font-semibold text-slate-500 uppercase">Estimated Deal Budget</span>
+                        <p className="text-lg font-extrabold text-slate-900 mt-0.5">
+                          {lead.estimatedBudget ? `₹${lead.estimatedBudget.toLocaleString()}` : "Unbudgeted"}
+                        </p>
+                      </div>
+                      <div>
+                        <span className="text-[11px] font-semibold text-slate-500 uppercase">Current Stage</span>
+                        <p className="text-xs font-extrabold text-emerald-700 bg-emerald-100 px-2.5 py-1 rounded-lg mt-0.5">
+                          {lead.stageId || "new-lead"}
+                        </p>
+                      </div>
+                    </div>
 
-                {lead.requirementsMessage && (
-                  <div className="p-3.5 rounded-xl bg-slate-50 text-xs text-slate-700 space-y-1">
-                    <p className="font-bold text-slate-900">Message / Goal Description:</p>
-                    <p className="whitespace-pre-wrap leading-relaxed">{lead.requirementsMessage}</p>
+                    {lead.interestedServices && lead.interestedServices.length > 0 && (
+                      <div className="flex flex-wrap gap-1.5">
+                        {lead.interestedServices.map((service, idx) => (
+                          <span
+                            key={idx}
+                            className="text-xs font-semibold px-2.5 py-1 rounded-lg bg-slate-100 text-slate-700 border border-slate-200"
+                          >
+                            {service}
+                          </span>
+                        ))}
+                      </div>
+                    )}
+
+                    {lead.requirementsMessage && (
+                      <div className="p-3.5 rounded-xl bg-slate-50 text-xs text-slate-700 space-y-1">
+                        <p className="font-bold text-slate-900">Message / Goal Description:</p>
+                        <p className="whitespace-pre-wrap leading-relaxed">{lead.requirementsMessage}</p>
+                      </div>
+                    )}
+                  </div>
+                ) : (
+                  /* Edit Mode Form */
+                  <div className="space-y-4 pt-2">
+                    <div className="grid grid-cols-2 gap-4">
+                      <div>
+                        <label className="text-xs font-bold text-slate-700 block mb-1">
+                          Estimated Budget (₹)
+                        </label>
+                        <input
+                          type="number"
+                          value={budgetInput}
+                          onChange={(e) => setBudgetInput(e.target.value)}
+                          placeholder="e.g. 50000"
+                          className="w-full text-xs font-semibold p-2.5 rounded-xl border border-slate-300 outline-none focus:border-emerald-600 bg-white"
+                        />
+                      </div>
+
+                      <div>
+                        <label className="text-xs font-bold text-slate-700 block mb-1">
+                          Lead Stage
+                        </label>
+                        <select
+                          value={stageInput}
+                          onChange={(e) => setStageInput(e.target.value as KanbanStage)}
+                          className="w-full text-xs font-semibold p-2.5 rounded-xl border border-slate-300 outline-none focus:border-emerald-600 bg-white"
+                        >
+                          {STAGES.map((s) => (
+                            <option key={s.id} value={s.id}>
+                              {s.name}
+                            </option>
+                          ))}
+                        </select>
+                      </div>
+                    </div>
+
+                    <div>
+                      <label className="text-xs font-bold text-slate-700 block mb-1">
+                        Company Name
+                      </label>
+                      <input
+                        type="text"
+                        value={companyInput}
+                        onChange={(e) => setCompanyInput(e.target.value)}
+                        placeholder="Company / Business Name"
+                        className="w-full text-xs font-semibold p-2.5 rounded-xl border border-slate-300 outline-none focus:border-emerald-600 bg-white"
+                      />
+                    </div>
+
+                    <div>
+                      <label className="text-xs font-bold text-slate-700 block mb-1">
+                        Requirements / Deal Notes
+                      </label>
+                      <textarea
+                        rows={3}
+                        value={requirementsInput}
+                        onChange={(e) => setRequirementsInput(e.target.value)}
+                        placeholder="Detail client specifications, scope, or timeline..."
+                        className="w-full text-xs font-semibold p-2.5 rounded-xl border border-slate-300 outline-none focus:border-emerald-600 bg-white"
+                      />
+                    </div>
                   </div>
                 )}
               </div>
@@ -367,21 +583,78 @@ export function LeadWorkspaceDrawer({
           )}
 
           {activeTab === "activity" && (
-            <div className="bg-white p-5 rounded-2xl border border-slate-200 space-y-4">
-              <h3 className="text-xs font-bold uppercase tracking-wider text-slate-600">
-                Lead Activity & Note Logs
-              </h3>
+            <div className="space-y-6">
+              {/* Add Note Input Form */}
+              <form onSubmit={handleAddNote} className="bg-white p-5 rounded-2xl border border-slate-200 space-y-3 shadow-2xs">
+                <h3 className="text-xs font-bold uppercase tracking-wider text-slate-700 flex items-center gap-1.5">
+                  <PlusCircle className="w-4 h-4 text-emerald-600" /> Add BDE Activity Note / Call Log
+                </h3>
 
-              <div className="space-y-3">
-                <div className="p-3 bg-slate-50 rounded-xl text-xs space-y-1 border border-slate-200">
-                  <div className="flex items-center justify-between text-slate-500 font-medium">
-                    <span>System Ingestion</span>
-                    <span>{new Date(lead.createdAt || Date.now()).toLocaleTimeString()}</span>
-                  </div>
-                  <p className="text-slate-900 font-semibold">
-                    Lead created for [{business.toUpperCase()}] via {lead.source}
-                  </p>
+                <textarea
+                  rows={3}
+                  value={newNoteContent}
+                  onChange={(e) => setNewNoteContent(e.target.value)}
+                  placeholder="Record call discussion, client feedback, budget updates, or next step..."
+                  className="w-full text-xs font-semibold p-3 rounded-xl border border-slate-200 outline-none focus:border-emerald-600 bg-slate-50 focus:bg-white transition-all"
+                  required
+                />
+
+                <div className="flex justify-end">
+                  <button
+                    type="submit"
+                    disabled={isSubmittingNote || !newNoteContent.trim()}
+                    className="px-4 py-2 text-xs font-bold bg-emerald-700 text-white rounded-xl hover:bg-emerald-800 disabled:opacity-50 transition-all flex items-center gap-1.5 cursor-pointer"
+                  >
+                    {isSubmittingNote ? (
+                      <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                    ) : (
+                      <Send className="w-3.5 h-3.5" />
+                    )}
+                    Post Activity Note
+                  </button>
                 </div>
+              </form>
+
+              {/* Dynamic Timeline Stream */}
+              <div className="bg-white p-5 rounded-2xl border border-slate-200 space-y-4 shadow-2xs">
+                <h3 className="text-xs font-bold uppercase tracking-wider text-slate-600">
+                  Workflow Timeline & Step-by-Step Audit Logs
+                </h3>
+
+                {isLoadingNotes ? (
+                  <div className="py-8 text-center text-xs text-slate-500 flex items-center justify-center gap-2">
+                    <Loader2 className="w-4 h-4 animate-spin text-emerald-600" />
+                    Loading activity timeline...
+                  </div>
+                ) : notesList.length === 0 ? (
+                  <div className="p-4 rounded-xl bg-slate-50 text-xs text-slate-500 text-center">
+                    No activity notes recorded yet. Add your first note above!
+                  </div>
+                ) : (
+                  <div className="space-y-3 relative before:absolute before:left-3.5 before:top-3 before:bottom-3 before:w-0.5 before:bg-slate-200">
+                    {notesList.map((msg, idx) => {
+                      const isSystem = msg.channel === "SYSTEM_NOTE";
+
+                      return (
+                        <div key={msg._id || idx} className="relative pl-8 text-xs space-y-1">
+                          <div className={`absolute left-2 top-1.5 w-3 h-3 rounded-full border-2 bg-white ${isSystem ? "border-blue-500" : "border-emerald-500"}`} />
+
+                          <div className="p-3.5 rounded-xl bg-slate-50 border border-slate-200 space-y-1">
+                            <div className="flex items-center justify-between text-slate-500 font-semibold text-[11px]">
+                              <span className={`font-bold ${isSystem ? "text-blue-700" : "text-emerald-700"}`}>
+                                {isSystem ? "⚙️ System Workflow Log" : `👤 ${msg.senderInfo?.name || "BDE Note"}`}
+                              </span>
+                              <span>{new Date(msg.createdAt).toLocaleString()}</span>
+                            </div>
+                            <p className="text-slate-900 font-medium whitespace-pre-wrap leading-relaxed">
+                              {msg.content}
+                            </p>
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </div>
+                )}
               </div>
             </div>
           )}
