@@ -376,6 +376,10 @@ export function SmartLeadGrid({ initialLeads }: SmartLeadGridProps) {
             )
           );
         }}
+        onDeleteLead={(deletedId) => {
+          setLeads((prev) => prev.filter((l) => l._id?.toString() !== deletedId));
+          setSelectedLeadForDrawer(null);
+        }}
       />
     </div>
   );

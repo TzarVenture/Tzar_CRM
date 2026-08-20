@@ -25,6 +25,10 @@ import {
   Save,
   PlusCircle,
   Loader2,
+  Trash2,
+  Key,
+  Copy,
+  Check,
 } from "lucide-react";
 import { ILead, BusinessSlug, KanbanStage } from "@/models/Lead";
 
@@ -33,6 +37,7 @@ interface LeadWorkspaceDrawerProps {
   isOpen: boolean;
   onClose: () => void;
   onUpdateLead: (updatedFields: Partial<ILead>) => void;
+  onDeleteLead?: (leadId: string) => void;
 }
 
 const STAGES: { id: KanbanStage; name: string }[] = [
@@ -50,6 +55,7 @@ export function LeadWorkspaceDrawer({
   isOpen,
   onClose,
   onUpdateLead,
+  onDeleteLead,
 }: LeadWorkspaceDrawerProps) {
   const [activeTab, setActiveTab] = useState<"overview" | "chat" | "activity" | "files">("overview");
 
@@ -60,6 +66,12 @@ export function LeadWorkspaceDrawer({
   const [requirementsInput, setRequirementsInput] = useState("");
   const [stageInput, setStageInput] = useState<KanbanStage>("new-lead");
   const [isSavingDetails, setIsSavingDetails] = useState(false);
+
+  // Conversion & Deletion Action States
+  const [isConverting, setIsConverting] = useState(false);
+  const [convertedInfo, setConvertedInfo] = useState<{ portalUrl: string; passcode: string } | null>(null);
+  const [isDeleting, setIsDeleting] = useState(false);
+  const [copiedPasscode, setCopiedPasscode] = useState(false);
 
   // Notes & Activity Stream State
   const [notesList, setNotesList] = useState<any[]>([]);
@@ -74,6 +86,7 @@ export function LeadWorkspaceDrawer({
       setCompanyInput(lead.companyName || "");
       setRequirementsInput(lead.requirementsMessage || "");
       setStageInput((lead.stageId as KanbanStage) || "new-lead");
+      setConvertedInfo(null);
 
       setIsLoadingNotes(true);
       fetch(`/api/v1/leads/${lead._id}`)
@@ -109,6 +122,77 @@ export function LeadWorkspaceDrawer({
   const BrandIcon = currentBrand.icon;
 
   const isOverdue = lead.slaDeadline ? new Date(lead.slaDeadline) < new Date() : false;
+
+  // Handle Client Conversion Workflow
+  const handleConvertToClient = async () => {
+    if (!lead._id) return;
+    setIsConverting(true);
+
+    try {
+      const res = await fetch("/api/v1/clients/convert", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          leadId: lead._id.toString(),
+          companyName: companyInput || lead.companyName || lead.fullName || "Client Account",
+          monthlyRetainerBudget: typeof budgetInput === "number" ? budgetInput : parseFloat(budgetInput) || 5000,
+        }),
+      });
+
+      const data = await res.json();
+      if (data.status === "converted" || data.status === "exists") {
+        setConvertedInfo({
+          portalUrl: data.portalUrl || `/portal/${data.client._id}`,
+          passcode: data.portalPasscode || data.client?.portalPasscode || "889900",
+        });
+
+        onUpdateLead({
+          stageId: "closed-won",
+          status: "CONVERTED",
+          convertedClientId: data.client._id,
+        });
+
+        // Refresh notes timeline
+        const refRes = await fetch(`/api/v1/leads/${lead._id}`).then((r) => r.json());
+        if (refRes.messages) setNotesList(refRes.messages);
+      } else {
+        alert(data.error || "Failed to convert lead to client");
+      }
+    } catch (err) {
+      console.error("Conversion error:", err);
+    } finally {
+      setIsConverting(false);
+    }
+  };
+
+  // Handle Admin Delete Lead
+  const handleDeleteLead = async () => {
+    if (!lead._id) return;
+    const confirmDelete = window.confirm(
+      `Are you sure you want to permanently delete lead [${lead.leadCustomId} - ${lead.fullName}]? This action cannot be undone.`
+    );
+    if (!confirmDelete) return;
+
+    setIsDeleting(true);
+    try {
+      const res = await fetch(`/api/v1/leads/${lead._id}`, {
+        method: "DELETE",
+      });
+
+      if (res.ok) {
+        if (onDeleteLead) onDeleteLead(lead._id.toString());
+        onClose();
+      } else {
+        const err = await res.json();
+        alert(err.error || "Failed to delete lead document");
+      }
+    } catch (err) {
+      console.error("Delete Lead Error:", err);
+    } finally {
+      setIsDeleting(false);
+    }
+  };
+
 
   // Handle Save Lead Details & Budget
   const handleSaveDetails = async () => {
@@ -209,13 +293,81 @@ export function LeadWorkspaceDrawer({
             )}
           </div>
 
-          <button
-            onClick={onClose}
-            className="p-2 rounded-xl text-slate-400 hover:text-slate-600 hover:bg-slate-200 transition-colors"
-          >
-            <X className="w-5 h-5" />
-          </button>
+          <div className="flex items-center gap-2">
+            {/* Convert to Client Button */}
+            <button
+              onClick={handleConvertToClient}
+              disabled={isConverting || lead.status === "CONVERTED"}
+              className={`px-3 py-1.5 text-xs font-bold rounded-xl transition-all flex items-center gap-1.5 cursor-pointer ${
+                lead.status === "CONVERTED"
+                  ? "bg-emerald-100 text-emerald-800 cursor-default"
+                  : "bg-emerald-600 hover:bg-emerald-700 text-white shadow-xs"
+              }`}
+            >
+              {isConverting ? (
+                <Loader2 className="w-3.5 h-3.5 animate-spin" />
+              ) : (
+                <UserCheck className="w-3.5 h-3.5" />
+              )}
+              {lead.status === "CONVERTED" ? "Converted Client Account" : "Convert to Client"}
+            </button>
+
+            {/* Delete Lead Button (Admin Power) */}
+            <button
+              onClick={handleDeleteLead}
+              disabled={isDeleting}
+              className="p-2 rounded-xl text-rose-500 hover:text-rose-700 hover:bg-rose-50 border border-slate-200 transition-colors cursor-pointer"
+              title="Delete Lead Document (Admin Power)"
+            >
+              {isDeleting ? <Loader2 className="w-4 h-4 animate-spin" /> : <Trash2 className="w-4 h-4" />}
+            </button>
+
+            <button
+              onClick={onClose}
+              className="p-2 rounded-xl text-slate-400 hover:text-slate-600 hover:bg-slate-200 transition-colors cursor-pointer"
+            >
+              <X className="w-5 h-5" />
+            </button>
+          </div>
         </div>
+
+        {/* Client Onboarding Portal Banner (Appears on Conversion) */}
+        {convertedInfo && (
+          <div className="bg-emerald-60 text-white p-4 px-6 flex items-center justify-between animate-fade-in" style={{ backgroundColor: "#047857" }}>
+            <div className="space-y-0.5">
+              <div className="flex items-center gap-2">
+                <CheckCircle2 className="w-4 h-4 text-emerald-300" />
+                <span className="text-xs font-bold uppercase tracking-wider">Client Onboarding Active!</span>
+              </div>
+              <p className="text-xs font-semibold text-emerald-100">
+                Send passcode to client: <span className="font-mono font-extrabold text-white text-sm bg-emerald-900/60 px-2 py-0.5 rounded-md">{convertedInfo.passcode}</span>
+              </p>
+            </div>
+
+            <div className="flex items-center gap-2">
+              <button
+                onClick={() => {
+                  navigator.clipboard.writeText(convertedInfo.passcode);
+                  setCopiedPasscode(true);
+                  setTimeout(() => setCopiedPasscode(false), 2000);
+                }}
+                className="px-3 py-1.5 text-xs font-bold bg-emerald-900/60 text-white rounded-xl hover:bg-emerald-900 transition-all flex items-center gap-1 cursor-pointer"
+              >
+                {copiedPasscode ? <Check className="w-3.5 h-3.5 text-emerald-300" /> : <Copy className="w-3.5 h-3.5" />}
+                {copiedPasscode ? "Copied!" : "Copy Passcode"}
+              </button>
+
+              <a
+                href={convertedInfo.portalUrl}
+                target="_blank"
+                rel="noreferrer"
+                className="px-3 py-1.5 text-xs font-bold bg-white text-emerald-900 rounded-xl hover:bg-emerald-50 transition-all flex items-center gap-1"
+              >
+                <ExternalLink className="w-3.5 h-3.5" /> Open Portal
+              </a>
+            </div>
+          </div>
+        )}
 
         {/* Tab Navigation Header */}
         <div className="flex border-b border-slate-200 bg-white px-6">
