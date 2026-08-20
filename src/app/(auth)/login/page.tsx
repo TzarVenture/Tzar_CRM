@@ -42,13 +42,11 @@ export default function LoginPage() {
           {/* Logo */}
           <div className="flex items-center gap-3 mb-8">
             <div className="flex items-center justify-center shrink-0">
-              <Image
+              {/* eslint-disable-next-line @next/next/no-img-element */}
+              <img
                 src="/TzarLogo-09.png"
                 alt="TZAR Logo"
-                width={44}
-                height={44}
                 className="w-11 h-11 object-contain"
-                priority
               />
             </div>
             <div>

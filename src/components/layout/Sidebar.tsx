@@ -77,13 +77,11 @@ export default function Sidebar() {
       {/* Logo Header */}
       <div className="flex items-center gap-3 px-5 py-4 border-b border-(--color-border-light)">
         <div className="flex items-center justify-center shrink-0">
-          <Image
+          {/* eslint-disable-next-line @next/next/no-img-element */}
+          <img
             src="/TzarLogo-09.png"
             alt="TZAR Logo"
-            width={38}
-            height={38}
             className="w-9 h-9 object-contain"
-            priority
           />
         </div>
         <div>
