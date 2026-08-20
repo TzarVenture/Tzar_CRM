@@ -53,7 +53,7 @@ NODE_ENV=development
 NEXT_PUBLIC_APP_URL=http://localhost:3000
 
 # MongoDB Atlas Database URI
-MONGODB_URI=mongodb+srv://crownleaf_db_user:Hw51WANeY8AMSSCC@cluster0.adkzcsy.mongodb.net/tzar_crm_db?retryWrites=true&w=majority
+MONGODB_URI=mongodb+srv://<db_user>:<db_password>@cluster0.mongodb.net/tzar_crm_db?retryWrites=true&w=majority
 
 # NextAuth v5 Secret
 AUTH_SECRET=tzar_crm_dev_secret_key_8f9a2b4c6e1d3f5a7b9c1d3e5f7a9b1c
