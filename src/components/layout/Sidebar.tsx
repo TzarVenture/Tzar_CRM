@@ -17,10 +17,14 @@ import {
   Zap,
 } from "lucide-react";
 
+import { useSession } from "next-auth/react";
+import { UserRole } from "@/models/User";
+
 interface NavItem {
   label: string;
   href: string;
   icon: React.ElementType;
+  roles?: UserRole[];
 }
 
 const NAV_ITEMS: NavItem[] = [
@@ -28,14 +32,36 @@ const NAV_ITEMS: NavItem[] = [
   { label: "Pipeline", href: "/pipeline", icon: KanbanSquare },
   { label: "Clients", href: "/clients", icon: Building2 },
   { label: "Messages", href: "/messages", icon: MessageCircle },
-  { label: "Meta Ads", href: "/meta-ads", icon: BarChart3 },
+  {
+    label: "Meta Ads",
+    href: "/meta-ads",
+    icon: BarChart3,
+    roles: ["SUPER_ADMIN", "SALES_MANAGER"],
+  },
   { label: "Files", href: "/files", icon: FolderOpen },
-  { label: "Team", href: "/team", icon: Users },
-  { label: "Settings", href: "/settings", icon: Settings },
+  {
+    label: "Team",
+    href: "/team",
+    icon: Users,
+    roles: ["SUPER_ADMIN"], // Strictly Owner Only!
+  },
+  {
+    label: "Settings",
+    href: "/settings",
+    icon: Settings,
+    roles: ["SUPER_ADMIN", "SALES_MANAGER"],
+  },
 ];
 
 export default function Sidebar() {
   const pathname = usePathname();
+  const { data: session } = useSession();
+  const userRole = (session?.user?.role || "BDE") as UserRole;
+
+  const visibleNavItems = NAV_ITEMS.filter((item) => {
+    if (!item.roles) return true;
+    return item.roles.includes(userRole);
+  });
 
   const isActive = (href: string) => {
     if (href === "/") return pathname === "/";
@@ -70,7 +96,7 @@ export default function Sidebar() {
 
       {/* Navigation Links */}
       <nav className="flex-1 overflow-y-auto px-3.5 py-4 space-y-1">
-        {NAV_ITEMS.map((item) => {
+        {visibleNavItems.map((item) => {
           const Icon = item.icon;
           const active = isActive(item.href);
 

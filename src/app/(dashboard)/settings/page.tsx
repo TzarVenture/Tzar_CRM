@@ -1,11 +1,29 @@
 import type { Metadata } from "next";
+import { auth } from "@/lib/auth";
 import SettingsCenter from "@/components/settings/SettingsCenter";
+import { ShieldAlert } from "lucide-react";
 
 export const metadata: Metadata = {
   title: "Settings",
 };
 
-export default function SettingsPage() {
+export default async function SettingsPage() {
+  const session = await auth();
+
+  if (session?.user?.role === "BDE") {
+    return (
+      <div className="p-12 text-center bg-rose-50/70 border border-rose-200 rounded-3xl space-y-4 max-w-xl mx-auto my-12 shadow-xs">
+        <ShieldAlert className="w-12 h-12 text-rose-600 mx-auto" />
+        <div>
+          <h2 className="text-xl font-bold text-slate-900">403 Access Forbidden</h2>
+          <p className="text-xs font-semibold text-slate-600 mt-1">
+            System settings, API key management, and security settings are restricted to Managers and Admins.
+          </p>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className="animate-fade-in space-y-4">
       <div>
@@ -21,3 +39,4 @@ export default function SettingsPage() {
     </div>
   );
 }
+

@@ -23,8 +23,11 @@ const AddTeamMemberSchema = z.object({
 export async function GET() {
   try {
     const session = await auth();
-    if (!session) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    if (!session || session.user?.role !== "SUPER_ADMIN") {
+      return NextResponse.json(
+        { error: "Forbidden: Super Admin only" },
+        { status: 403 }
+      );
     }
 
     await dbConnect();
