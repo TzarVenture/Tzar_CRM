@@ -59,7 +59,7 @@ export async function POST(req: Request) {
 
         if (messageId && statusStr) {
           await Message.updateOne(
-            { whatsappMessageId: messageId },
+            { externalMessageId: messageId },
             { $set: { status: statusStr } }
           );
         }
@@ -125,7 +125,7 @@ export async function POST(req: Request) {
         direction: "INBOUND",
         content: textContent,
         status: "DELIVERED",
-        whatsappMessageId: message.id,
+        externalMessageId: message.id,
         senderInfo: { name: senderName, phoneOrEmail: fromPhone },
       });
 
