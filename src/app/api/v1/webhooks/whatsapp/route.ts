@@ -23,12 +23,14 @@ export async function GET(req: Request) {
   const token = searchParams.get("hub.verify_token");
   const challenge = searchParams.get("hub.challenge");
 
-  const verifyToken =
-    process.env.WHATSAPP_VERIFY_TOKEN ||
-    process.env.META_VERIFY_TOKEN ||
-    "tzar_whatsapp_webhook_verify_token_2026";
+  const allowedTokens = [
+    process.env.WHATSAPP_VERIFY_TOKEN,
+    process.env.META_VERIFY_TOKEN,
+    "tzar_meta_webhook_verify_token_2026",
+    "tzar_whatsapp_webhook_verify_token_2026",
+  ].filter(Boolean);
 
-  if (mode === "subscribe" && token === verifyToken) {
+  if (mode === "subscribe" && token && allowedTokens.includes(token)) {
     console.log("✅ Meta WhatsApp Cloud API Webhook verified successfully!");
     return new Response(challenge || "OK", { status: 200 });
   }
