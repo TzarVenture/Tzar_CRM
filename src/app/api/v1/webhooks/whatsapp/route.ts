@@ -1,11 +1,21 @@
 import { NextResponse } from "next/server";
 import dbConnect from "@/lib/db";
+import Lead, { BusinessSlug } from "@/models/Lead";
 import Message from "@/models/Message";
-import Lead from "@/models/Lead";
 import ChatbotRule from "@/models/ChatbotRule";
+import {
+  sendWhatsAppTextMessage,
+  sendWhatsAppTemplateMessage,
+  sendWhatsAppDocumentMessage,
+} from "@/lib/whatsapp";
+import {
+  getDefaultPipeline,
+  getAssignedBDE,
+  generateLeadCustomId,
+} from "@/lib/lead-utils";
 
 /**
- * 1. GET: Verification Handler for Meta Webhook Setup
+ * 1. GET: Meta WhatsApp Webhook Verification Challenge
  */
 export async function GET(req: Request) {
   const { searchParams } = new URL(req.url);
@@ -14,10 +24,12 @@ export async function GET(req: Request) {
   const challenge = searchParams.get("hub.challenge");
 
   const verifyToken =
-    process.env.WHATSAPP_VERIFY_TOKEN || "tzar_whatsapp_webhook_verify_token_2026";
+    process.env.WHATSAPP_VERIFY_TOKEN ||
+    process.env.META_VERIFY_TOKEN ||
+    "tzar_whatsapp_webhook_verify_token_2026";
 
   if (mode === "subscribe" && token === verifyToken) {
-    console.log("✅ WhatsApp Webhook verified successfully!");
+    console.log("✅ Meta WhatsApp Cloud API Webhook verified successfully!");
     return new Response(challenge || "OK", { status: 200 });
   }
 
@@ -25,120 +37,153 @@ export async function GET(req: Request) {
 }
 
 /**
- * 2. POST: Inbound Message & Status Callback Listener + ChatbotWonder Auto-Responder
+ * 2. POST: Inbound WhatsApp Messages & Status Updates Listener
  */
 export async function POST(req: Request) {
   try {
     const body = await req.json();
     await dbConnect();
 
-    const entry = body.entry?.[0]?.changes?.[0]?.value;
-    if (!entry) {
-      return NextResponse.json({ status: "ignored", reason: "no entry value" });
+    const entry = body.entry?.[0];
+    const changes = entry?.changes?.[0]?.value;
+
+    if (!changes) {
+      return NextResponse.json({ status: "ignored", reason: "no changes value" });
     }
 
-    // Handle Incoming Messages
-    if (entry.messages && entry.messages.length > 0) {
-      const msg = entry.messages[0];
-      const rawFrom = String(msg.from);
-      const fromPhone = rawFrom.startsWith("+") ? rawFrom : `+${rawFrom}`;
-      const textContent =
-        msg.text?.body || msg.caption || (msg.type ? `[${msg.type.toUpperCase()} Message]` : "[Media Message]");
-      const externalMsgId = msg.id;
+    // A. Handle Status Updates (sent, delivered, read)
+    if (changes.statuses && Array.isArray(changes.statuses)) {
+      for (const statusObj of changes.statuses) {
+        const messageId = statusObj.id;
+        const statusStr = statusObj.status?.toUpperCase();
 
-      // Find matching lead by phone number
-      const sanitizedPhone = fromPhone.replace(/[^0-9]/g, "");
-      const lead = await Lead.findOne({
-        phone: { $regex: sanitizedPhone.slice(-10), $options: "i" },
-      });
+        if (messageId && statusStr) {
+          await Message.updateOne(
+            { whatsappMessageId: messageId },
+            { $set: { status: statusStr } }
+          );
+        }
+      }
+      return NextResponse.json({ status: "processed_statuses" });
+    }
 
-      // Insert message record
-      const newMessage = await Message.create({
-        leadId: lead?._id || undefined,
-        channel: "WHATSAPP",
-        direction: "INBOUND",
-        senderInfo: {
-          name: entry.contacts?.[0]?.profile?.name || lead?.fullName || "WhatsApp Contact",
-          phoneOrEmail: fromPhone,
-        },
-        content: textContent,
-        externalMessageId: externalMsgId,
-        status: "DELIVERED",
-        isRead: false,
-      });
+    // B. Handle Inbound Message Payload
+    const message = changes.messages?.[0];
+    const contact = changes.contacts?.[0];
 
-      // Increment lead score on customer message engagement
-      if (lead) {
-        lead.score += 5;
-        await lead.save();
+    if (message) {
+      const fromPhone = message.from; // Sender phone number
+      const senderName = contact?.profile?.name || "WhatsApp Contact";
+      const messageType = message.type;
+      let textContent = "";
+
+      if (messageType === "text") {
+        textContent = message.text?.body || "";
+      } else if (messageType === "interactive") {
+        textContent =
+          message.interactive?.button_reply?.title ||
+          message.interactive?.list_reply?.title ||
+          "";
+      } else if (messageType === "button") {
+        textContent = message.button?.text || "";
+      } else {
+        textContent = `[Attachment: ${messageType}]`;
       }
 
-      // --- CHATBOTWONDER AUTO-RESPONDER ENGINE ---
-      const cleanLowerMsg = textContent.toLowerCase();
-      const activeRules = await ChatbotRule.find({ isActive: true });
+      // Find or Create Lead Record
+      let lead = await Lead.findOne({
+        phone: { $regex: fromPhone.slice(-10) },
+      });
 
-      for (const rule of activeRules) {
-        const isMatched =
-          rule.matchType === "EXACT"
-            ? cleanLowerMsg.trim() === rule.triggerKeyword.trim()
-            : cleanLowerMsg.includes(rule.triggerKeyword.trim());
+      if (!lead) {
+        const pipeline = await getDefaultPipeline();
+        const assignedTo = await getAssignedBDE();
+        const leadCustomId = await generateLeadCustomId("tzar");
+        const slaDeadline = new Date();
+        slaDeadline.setHours(slaDeadline.getHours() + 24);
 
-        if (isMatched) {
-          console.log(`🤖 ChatbotWonder Trigger Matched: "${rule.triggerKeyword}" for ${fromPhone}`);
+        lead = await Lead.create({
+          leadCustomId,
+          business: "tzar",
+          fullName: senderName,
+          email: `${fromPhone}@whatsapp.inbound`,
+          phone: `+${fromPhone}`,
+          source: "WHATSAPP_INBOUND",
+          pipelineId: pipeline._id,
+          stageId: "new-lead",
+          assignedTo,
+          status: "ACTIVE",
+          slaDeadline,
+          score: 25,
+        });
+      }
 
-          // Update Lead Score & Stage if rule mandates it
-          if (lead) {
-            if (rule.scoreBoost) lead.score += rule.scoreBoost;
-            if (rule.targetStageId) lead.stageId = rule.targetStageId as any;
-            await lead.save();
+      // Record Inbound Message in DB
+      await Message.create({
+        leadId: lead._id,
+        channel: "WHATSAPP",
+        direction: "INBOUND",
+        content: textContent,
+        status: "DELIVERED",
+        whatsappMessageId: message.id,
+        senderInfo: { name: senderName, phoneOrEmail: fromPhone },
+      });
+
+      // C. Trigger AiSensy / ChatbotWonder Automated Keyword Engine
+      if (textContent.trim()) {
+        const activeRules = await ChatbotRule.find({ isActive: true });
+        const cleanMsg = textContent.toLowerCase().trim();
+
+        for (const rule of activeRules) {
+          const kw = rule.triggerKeyword.toLowerCase().trim();
+          let isMatch = false;
+
+          if (rule.matchType === "EXACT" && cleanMsg === kw) isMatch = true;
+          if (rule.matchType === "CONTAINS" && cleanMsg.includes(kw)) isMatch = true;
+
+          if (isMatch) {
+            console.log(`🤖 Chatbot Keyword Rule Matched: "${kw}" for lead ${lead.fullName}`);
+
+            // Action 1: Reply Text
+            if (rule.actionType === "REPLY_TEXT" && rule.replyContent) {
+              await sendWhatsAppTextMessage(fromPhone, rule.replyContent);
+            }
+
+            // Action 2: Send Template Message
+            if (rule.actionType === "SEND_TEMPLATE" && rule.templateName) {
+              await sendWhatsAppTemplateMessage(
+                fromPhone,
+                rule.templateName,
+                "en_US",
+                [{ type: "body", parameters: [{ type: "text", text: lead.fullName }] }]
+              );
+            }
+
+            // Action 3: Update Lead Stage
+            if (rule.actionType === "CHANGE_STAGE" && rule.targetStageId) {
+              lead.stageId = rule.targetStageId as any;
+              await lead.save();
+            }
+
+            // Action 4: Boost Engagement Score
+            if (rule.actionType === "UPDATE_SCORE" && rule.scoreBoost) {
+              lead.score += rule.scoreBoost;
+              await lead.save();
+            }
+
+            break; // Stop at first matched rule
           }
-
-          // Dispatch Automated Outbound Bot Response
-          if (rule.replyContent) {
-            await Message.create({
-              leadId: lead?._id || undefined,
-              channel: "WHATSAPP",
-              direction: "OUTBOUND",
-              senderInfo: {
-                name: "AI Chatbot Assistant",
-                phoneOrEmail: "bot@tzar.agency",
-              },
-              content: rule.replyContent,
-              externalMessageId: `wmid.bot_${Date.now()}`,
-              status: "DELIVERED",
-              isRead: true,
-            });
-          }
-          break; // Stop after first matched rule
         }
       }
 
-      return NextResponse.json(
-        { status: "success", messageId: newMessage._id },
-        { status: 200 }
-      );
+      return NextResponse.json({ status: "processed_message", leadId: lead._id });
     }
 
-    // Handle Status Callbacks
-    if (entry.statuses && entry.statuses.length > 0) {
-      const statusObj = entry.statuses[0];
-      const statusUpper = statusObj.status?.toUpperCase();
-
-      if (["SENT", "DELIVERED", "READ", "FAILED"].includes(statusUpper)) {
-        await Message.updateOne(
-          { externalMessageId: statusObj.id },
-          { status: statusUpper }
-        );
-      }
-
-      return NextResponse.json({ status: "status_updated" }, { status: 200 });
-    }
-
-    return NextResponse.json({ status: "ignored" }, { status: 200 });
+    return NextResponse.json({ status: "ignored" });
   } catch (error) {
-    console.error("WhatsApp Webhook Error:", error);
+    console.error("❌ WhatsApp Webhook Inbound Error:", error);
     return NextResponse.json(
-      { error: "Internal Server Error in WhatsApp Webhook" },
+      { error: "Failed to process WhatsApp webhook payload" },
       { status: 500 }
     );
   }
