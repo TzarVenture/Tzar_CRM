@@ -25,6 +25,7 @@ import {
 } from "lucide-react";
 import { ILead, BusinessSlug, KanbanStage } from "@/models/Lead";
 import { LeadWorkspaceDrawer } from "./LeadWorkspaceDrawer";
+import { CreateLeadModal } from "./CreateLeadModal";
 
 interface SmartLeadGridProps {
   initialLeads: Partial<ILead>[];
@@ -57,6 +58,7 @@ export function SmartLeadGrid({ initialLeads }: SmartLeadGridProps) {
   const [selectedStageFilter, setSelectedStageFilter] = useState<string>("all");
   const [searchQuery, setSearchQuery] = useState<string>("");
   const [selectedLeadForDrawer, setSelectedLeadForDrawer] = useState<Partial<ILead> | null>(null);
+  const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
   const [isLiveSyncing, setIsLiveSyncing] = useState(false);
 
   // 5-Second Real-Time Auto-Polling Engine
@@ -159,6 +161,15 @@ export function SmartLeadGrid({ initialLeads }: SmartLeadGridProps) {
           <p className="text-xs font-semibold text-slate-600 mt-0.5">
             Unified workspace consolidating leads across all 4 Tzar Group entities (Auto-refreshes every 5s)
           </p>
+        </div>
+
+        <div className="flex items-center gap-3">
+          <button
+            onClick={() => setIsCreateModalOpen(true)}
+            className="flex items-center gap-2 px-4 py-2 text-xs font-bold text-white bg-slate-900 hover:bg-slate-800 rounded-xl shadow-xs transition-all cursor-pointer"
+          >
+            <Plus className="w-4 h-4 text-emerald-400" /> Add New Lead
+          </button>
         </div>
 
         {/* Brand Filter Pills */}
@@ -412,6 +423,17 @@ export function SmartLeadGrid({ initialLeads }: SmartLeadGridProps) {
         onDeleteLead={(deletedId) => {
           setLeads((prev) => prev.filter((l) => l._id?.toString() !== deletedId));
           setSelectedLeadForDrawer(null);
+        }}
+      />
+
+      {/* Manual Create Lead Modal */}
+      <CreateLeadModal
+        isOpen={isCreateModalOpen}
+        onClose={() => setIsCreateModalOpen(false)}
+        onLeadCreated={() => {
+          fetch(`/api/v1/leads?business=${selectedBrand}`)
+            .then((res) => res.json())
+            .then((data) => data.leads && setLeads(data.leads));
         }}
       />
     </div>

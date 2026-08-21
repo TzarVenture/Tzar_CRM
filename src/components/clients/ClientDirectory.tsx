@@ -18,9 +18,11 @@ import {
   Phone,
   Pencil,
   Trash2,
+  Plus,
   X,
   Loader2,
 } from "lucide-react";
+import { CreateClientModal } from "./CreateClientModal";
 
 interface ClientItem {
   _id: string;
@@ -52,8 +54,9 @@ export default function ClientDirectory() {
   const [searchQuery, setSearchQuery] = useState("");
   const [isLoading, setIsLoading] = useState(true);
 
-  // Edit Modal State
+  // Edit & Create Modal State
   const [isModalOpen, setIsModalOpen] = useState(false);
+  const [isCreateClientModalOpen, setIsCreateClientModalOpen] = useState(false);
   const [editingClient, setEditingClient] = useState<ClientItem | null>(null);
 
   const [companyName, setCompanyName] = useState("");
@@ -204,15 +207,24 @@ export default function ClientDirectory() {
             </h3>
           </div>
 
-          <div className="relative max-w-xs flex-1 ml-4">
-            <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
-            <input
-              type="text"
-              placeholder="Search clients, company, ID..."
-              value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
-              className="w-full pl-9 pr-3 py-1.5 text-xs font-semibold rounded-xl border border-slate-300 bg-white outline-none"
-            />
+          <div className="flex items-center gap-3 flex-1 justify-end ml-4">
+            <div className="relative max-w-xs flex-1">
+              <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
+              <input
+                type="text"
+                placeholder="Search clients, company, ID..."
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                className="w-full pl-9 pr-3 py-1.5 text-xs font-semibold rounded-xl border border-slate-300 bg-white outline-none"
+              />
+            </div>
+
+            <button
+              onClick={() => setIsCreateClientModalOpen(true)}
+              className="flex items-center gap-1.5 px-4 py-1.5 text-xs font-bold text-white bg-slate-900 hover:bg-slate-800 rounded-xl shadow-xs transition-all cursor-pointer whitespace-nowrap"
+            >
+              <Plus className="w-3.5 h-3.5 text-blue-400" /> Add New Client
+            </button>
           </div>
         </div>
 
@@ -440,6 +452,13 @@ export default function ClientDirectory() {
           </div>
         </div>
       )}
+
+      {/* Add New Client Modal */}
+      <CreateClientModal
+        isOpen={isCreateClientModalOpen}
+        onClose={() => setIsCreateClientModalOpen(false)}
+        onClientCreated={fetchClients}
+      />
     </div>
   );
 }
