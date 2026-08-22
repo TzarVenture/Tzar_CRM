@@ -74,21 +74,32 @@ export default function WhatsAppChatCenter() {
     }
   }, [selectedLead]);
 
-  // Fetch messages for selected conversation
-  const fetchConversation = useCallback(async (leadId: string) => {
+  // Fetch messages for selected conversation (silent background polling prevents screen flash)
+  const fetchConversation = useCallback(async (leadId: string, isSilent = false) => {
     try {
-      setIsLoadingMessages(true);
+      if (!isSilent) setIsLoadingMessages(true);
       const res = await axios.get(`/api/v1/leads/${leadId}`);
       const rawMessages: MessageItem[] = res.data.messages || [];
-      // Filter for WhatsApp and System Note messages
       const whatsappMessages = rawMessages.filter(
         (m) => m.channel === "WHATSAPP" || m.channel === "SYSTEM_NOTE"
       );
-      setMessages(whatsappMessages);
+
+      setMessages((prev) => {
+        // Compare message IDs to prevent unnecessary state updates & re-renders
+        if (
+          prev.length !== whatsappMessages.length ||
+          (prev.length > 0 &&
+            whatsappMessages.length > 0 &&
+            prev[prev.length - 1]._id !== whatsappMessages[whatsappMessages.length - 1]._id)
+        ) {
+          return whatsappMessages;
+        }
+        return prev;
+      });
     } catch (err) {
       console.error("Failed to fetch conversation:", err);
     } finally {
-      setIsLoadingMessages(false);
+      if (!isSilent) setIsLoadingMessages(false);
     }
   }, []);
 
@@ -96,15 +107,15 @@ export default function WhatsAppChatCenter() {
     fetchLeads();
   }, [fetchLeads]);
 
-  // 4-Second Auto-Polling for Live 2-Way Chat Inbound Updates
+  // Silent Auto-Polling for Live 2-Way Chat Inbound Updates (Zero Flickering!)
   useEffect(() => {
     if (!selectedLead) return;
 
-    fetchConversation(selectedLead._id);
+    fetchConversation(selectedLead._id, false);
 
     const interval = setInterval(() => {
-      fetchConversation(selectedLead._id);
-    }, 4000);
+      fetchConversation(selectedLead._id, true);
+    }, 3000);
 
     return () => clearInterval(interval);
   }, [selectedLead, fetchConversation]);
