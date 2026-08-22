@@ -96,10 +96,17 @@ export default function WhatsAppChatCenter() {
     fetchLeads();
   }, [fetchLeads]);
 
+  // 4-Second Auto-Polling for Live 2-Way Chat Inbound Updates
   useEffect(() => {
-    if (selectedLead) {
+    if (!selectedLead) return;
+
+    fetchConversation(selectedLead._id);
+
+    const interval = setInterval(() => {
       fetchConversation(selectedLead._id);
-    }
+    }, 4000);
+
+    return () => clearInterval(interval);
   }, [selectedLead, fetchConversation]);
 
   // Auto scroll to bottom of chat
