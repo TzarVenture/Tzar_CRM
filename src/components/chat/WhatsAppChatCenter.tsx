@@ -50,12 +50,37 @@ interface MessageItem {
   createdAt: string;
 }
 
+const CANNED_QUICK_REPLIES = [
+  {
+    shortcut: "/pricing",
+    label: "Pricing & Packages",
+    text: "Here is our standard service package breakdown. We offer performance marketing, website development, and WhatsApp automation suites tailored for your growth.",
+  },
+  {
+    shortcut: "/brochure",
+    label: "Company Profile Brochure",
+    text: "You can view and download our official company profile and service deck here: https://tzar-crm.vercel.app/docs/Tzar_Agency_Deck.pdf",
+  },
+  {
+    shortcut: "/meeting",
+    label: "Schedule Discovery Call",
+    text: "When would be a convenient time for a brief 15-minute strategy call? You can also pick a spot directly on our calendar: https://calendly.com/tzar-agency/strategy",
+  },
+  {
+    shortcut: "/address",
+    label: "Office Address & Location",
+    text: "Our headquarters: Tzar Agency Tower, Business Bay Complex, India. Call us anytime at +91 86521 99991.",
+  },
+];
+
 export default function WhatsAppChatCenter() {
   const [leads, setLeads] = useState<ContactLead[]>([]);
   const [selectedLead, setSelectedLead] = useState<ContactLead | null>(null);
   const [messages, setMessages] = useState<MessageItem[]>([]);
   const [searchQuery, setSearchQuery] = useState("");
   const [inputText, setInputText] = useState("");
+  const [activeTab, setActiveTab] = useState<"WHATSAPP" | "SYSTEM_NOTE">("WHATSAPP");
+  const [showQuickReplies, setShowQuickReplies] = useState(false);
 
   const [isLoadingLeads, setIsLoadingLeads] = useState(true);
   const [isLoadingMessages, setIsLoadingMessages] = useState(false);
@@ -555,8 +580,45 @@ export default function WhatsAppChatCenter() {
             {/* Bottom Message Input Bar */}
             <form
               onSubmit={handleSendMessage}
-              className="p-4 border-t border-slate-200 bg-white flex items-center gap-3"
+              className="p-4 border-t border-slate-200 bg-white flex items-center gap-3 relative"
             >
+              {/* Canned Quick Replies Popup Menu */}
+              {showQuickReplies && (
+                <div className="absolute bottom-16 left-4 right-4 bg-white rounded-2xl border border-slate-300 shadow-2xl p-2 z-50 max-h-60 overflow-y-auto animate-in fade-in slide-in-from-bottom-2">
+                  <div className="p-2 border-b border-slate-100 flex items-center justify-between text-[11px] font-bold text-slate-500 uppercase tracking-wider">
+                    <span>⚡ Canned Quick Replies (Click to auto-fill)</span>
+                    <button
+                      type="button"
+                      onClick={() => setShowQuickReplies(false)}
+                      className="text-slate-400 hover:text-slate-600 cursor-pointer"
+                    >
+                      Esc
+                    </button>
+                  </div>
+                  <div className="divide-y divide-slate-100">
+                    {CANNED_QUICK_REPLIES.map((reply) => (
+                      <button
+                        key={reply.shortcut}
+                        type="button"
+                        onClick={() => {
+                          setInputText(reply.text);
+                          setShowQuickReplies(false);
+                        }}
+                        className="w-full p-2.5 text-left hover:bg-emerald-50/60 rounded-xl transition-colors flex items-start gap-2.5 cursor-pointer group"
+                      >
+                        <span className="text-xs font-mono font-bold text-emerald-700 bg-emerald-100/80 px-2 py-0.5 rounded group-hover:bg-emerald-200">
+                          {reply.shortcut}
+                        </span>
+                        <div className="flex-1 min-w-0">
+                          <p className="text-xs font-bold text-slate-900">{reply.label}</p>
+                          <p className="text-[11px] text-slate-500 truncate">{reply.text}</p>
+                        </div>
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              )}
+
               <button
                 type="button"
                 onClick={() => setIsTemplateModalOpen(true)}
@@ -575,11 +637,32 @@ export default function WhatsAppChatCenter() {
                 <Paperclip className="w-4 h-4 text-blue-600" />
               </button>
 
+              <button
+                type="button"
+                onClick={() => setShowQuickReplies((prev) => !prev)}
+                className={`p-2.5 rounded-xl border transition-colors cursor-pointer text-xs font-bold font-mono ${
+                  showQuickReplies
+                    ? "bg-emerald-100 border-emerald-400 text-emerald-800"
+                    : "border-slate-300 hover:bg-slate-100 text-slate-700"
+                }`}
+                title="Canned Quick Replies (/ pricing, / brochure, / meeting)"
+              >
+                /
+              </button>
+
               <input
                 type="text"
-                placeholder={`Type WhatsApp message for ${selectedLead.fullName}...`}
+                placeholder={`Type WhatsApp message for ${selectedLead.fullName} (or type / for quick replies)...`}
                 value={inputText}
-                onChange={(e) => setInputText(e.target.value)}
+                onChange={(e) => {
+                  const val = e.target.value;
+                  setInputText(val);
+                  if (val.startsWith("/")) {
+                    setShowQuickReplies(true);
+                  } else if (!val.trim()) {
+                    setShowQuickReplies(false);
+                  }
+                }}
                 className="flex-1 px-4 py-2.5 text-xs font-semibold rounded-xl border border-slate-300 bg-slate-50 focus:bg-white focus:border-(--color-brand-green) outline-none transition-all"
               />
 
