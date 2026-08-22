@@ -53,17 +53,18 @@ export async function POST(req: Request) {
     const phoneNumberId = process.env.WHATSAPP_PHONE_NUMBER_ID;
     const accessToken =
       process.env.WHATSAPP_PERMANENT_ACCESS_TOKEN ||
-      process.env.WHATSAPP_ACCESS_TOKEN;
+      process.env.WHATSAPP_ACCESS_TOKEN ||
+      process.env.WHATSAPP_TOKEN;
 
     if (phoneNumberId && accessToken && accessToken.startsWith("EAA")) {
-      try {
-        let cleanPhone = recipientPhone.replace(/[^0-9]/g, "");
-        if (cleanPhone.length === 10) {
-          cleanPhone = `91${cleanPhone}`;
-        } else if (cleanPhone.length === 11 && cleanPhone.startsWith("0")) {
-          cleanPhone = `91${cleanPhone.substring(1)}`;
-        }
+      let cleanPhone = recipientPhone.replace(/[^0-9]/g, "");
+      if (cleanPhone.length === 10) {
+        cleanPhone = `91${cleanPhone}`;
+      } else if (cleanPhone.length === 11 && cleanPhone.startsWith("0")) {
+        cleanPhone = `91${cleanPhone.substring(1)}`;
+      }
 
+      const sendToMeta = async (langCode: string) => {
         let metaPayload: Record<string, unknown>;
 
         if (messageType === "template" && templateName) {
@@ -86,7 +87,7 @@ export async function POST(req: Request) {
             type: "template",
             template: {
               name: templateName,
-              language: { code: "en_US" },
+              language: { code: langCode },
               ...(components ? { components } : {}),
             },
           };
@@ -100,8 +101,8 @@ export async function POST(req: Request) {
           };
         }
 
-        const metaRes = await axios.post(
-          `https://graph.facebook.com/v19.0/${phoneNumberId}/messages`,
+        return axios.post(
+          `https://graph.facebook.com/v20.0/${phoneNumberId}/messages`,
           metaPayload,
           {
             headers: {
@@ -110,18 +111,31 @@ export async function POST(req: Request) {
             },
           }
         );
+      };
 
+      try {
+        const metaRes = await sendToMeta("en_US");
         if (metaRes.data?.messages?.[0]?.id) {
           externalMsgId = metaRes.data.messages[0].id;
           messageStatus = "SENT";
         }
-      } catch (metaErr: unknown) {
-        const errData = axios.isAxiosError(metaErr) ? metaErr.response?.data?.error : null;
-        console.error(
-          "Meta Cloud API Outbound Error Details:",
-          errData || metaErr
-        );
-        messageStatus = "FAILED";
+      } catch (firstErr: any) {
+        if (messageType === "template") {
+          try {
+            console.log("⚠️ Retrying template with language code 'en'...");
+            const fallbackRes = await sendToMeta("en");
+            if (fallbackRes.data?.messages?.[0]?.id) {
+              externalMsgId = fallbackRes.data.messages[0].id;
+              messageStatus = "SENT";
+            }
+          } catch (retryErr: any) {
+            console.error("❌ Meta Cloud API Outbound Template Error:", retryErr.response?.data?.error || retryErr.message);
+            messageStatus = "FAILED";
+          }
+        } else {
+          console.error("❌ Meta Cloud API Outbound Text Error:", firstErr.response?.data?.error || firstErr.message);
+          messageStatus = "FAILED";
+        }
       }
     }
 
