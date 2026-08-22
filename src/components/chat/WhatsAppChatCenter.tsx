@@ -382,15 +382,23 @@ export default function WhatsAppChatCenter() {
                         {/* Media Attachment Previews */}
                         {msg.mediaUrls && msg.mediaUrls.length > 0 && (
                           <div className="mt-2 mb-1">
-                            {msg.mediaType === "image" ? (
+                            {msg.mediaType === "image" || msg.content.includes("image") ? (
                               <a
-                                href={msg.mediaUrls[0]}
+                                href={
+                                  msg.mediaUrls[0].includes("lookaside") || msg.mediaUrls[0].includes("facebook")
+                                    ? `/api/v1/whatsapp/media-proxy?url=${encodeURIComponent(msg.mediaUrls[0])}`
+                                    : msg.mediaUrls[0]
+                                }
                                 target="_blank"
                                 rel="noreferrer"
                                 className="block group relative rounded-xl overflow-hidden border border-slate-200 shadow-2xs"
                               >
                                 <img
-                                  src={msg.mediaUrls[0]}
+                                  src={
+                                    msg.mediaUrls[0].includes("lookaside") || msg.mediaUrls[0].includes("facebook")
+                                      ? `/api/v1/whatsapp/media-proxy?url=${encodeURIComponent(msg.mediaUrls[0])}`
+                                      : msg.mediaUrls[0]
+                                  }
                                   alt="Attachment"
                                   className="max-h-60 w-auto object-cover group-hover:scale-105 transition-transform duration-300"
                                 />
@@ -400,7 +408,11 @@ export default function WhatsAppChatCenter() {
                               </a>
                             ) : (
                               <a
-                                href={msg.mediaUrls[0]}
+                                href={
+                                  msg.mediaUrls[0].includes("lookaside") || msg.mediaUrls[0].includes("facebook")
+                                    ? `/api/v1/whatsapp/media-proxy?url=${encodeURIComponent(msg.mediaUrls[0])}`
+                                    : msg.mediaUrls[0]
+                                }
                                 target="_blank"
                                 rel="noreferrer"
                                 className="flex items-center gap-3 p-3 rounded-xl bg-slate-100/90 border border-slate-300 hover:bg-slate-200/80 transition-colors group"
