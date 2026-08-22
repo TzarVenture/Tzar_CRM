@@ -44,6 +44,7 @@ export async function GET(req: Request) {
 export async function POST(req: Request) {
   try {
     const body = await req.json();
+    console.log("📩 Incoming Meta WhatsApp Webhook Payload:", JSON.stringify(body));
     await dbConnect();
 
     const entry = body.entry?.[0];

@@ -69,6 +69,9 @@ const MessageSchema: Schema<IMessage> = new Schema(
 MessageSchema.index({ leadId: 1, channel: 1, createdAt: 1 });
 MessageSchema.index({ clientId: 1, channel: 1, createdAt: 1 });
 
+// Clear cached model in dev mode to ensure updated schema & enums apply
+delete (mongoose.models as any).Message;
+
 const Message: Model<IMessage> =
   mongoose.models.Message || mongoose.model<IMessage>("Message", MessageSchema);
 
