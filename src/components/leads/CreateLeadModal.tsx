@@ -8,7 +8,7 @@ import { BusinessSlug } from "@/models/Lead";
 interface CreateLeadModalProps {
   isOpen: boolean;
   onClose: () => void;
-  onLeadCreated: () => void;
+  onLeadCreated: (newLead?: any) => void;
 }
 
 export function CreateLeadModal({ isOpen, onClose, onLeadCreated }: CreateLeadModalProps) {
@@ -63,9 +63,9 @@ export function CreateLeadModal({ isOpen, onClose, onLeadCreated }: CreateLeadMo
         payload.titepoData = { eventType: toyCategory, kidsCount: Number(quantityUnits) };
       }
 
-      await axios.post("/api/v1/leads", payload);
+      const res = await axios.post("/api/v1/leads", payload);
 
-      onLeadCreated();
+      onLeadCreated(res.data?.lead);
       onClose();
     } catch (err: any) {
       console.error("Failed to create manual lead:", err);

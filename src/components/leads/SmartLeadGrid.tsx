@@ -430,7 +430,10 @@ export function SmartLeadGrid({ initialLeads }: SmartLeadGridProps) {
       <CreateLeadModal
         isOpen={isCreateModalOpen}
         onClose={() => setIsCreateModalOpen(false)}
-        onLeadCreated={() => {
+        onLeadCreated={(newLead) => {
+          if (newLead) {
+            setLeads((prev) => [newLead, ...prev.filter((l) => l._id?.toString() !== newLead._id?.toString())]);
+          }
           fetch(`/api/v1/leads?business=${selectedBrand}`)
             .then((res) => res.json())
             .then((data) => data.leads && setLeads(data.leads));

@@ -457,7 +457,12 @@ export default function ClientDirectory() {
       <CreateClientModal
         isOpen={isCreateClientModalOpen}
         onClose={() => setIsCreateClientModalOpen(false)}
-        onClientCreated={fetchClients}
+        onClientCreated={(newClient) => {
+          if (newClient) {
+            setClients((prev) => [newClient, ...prev.filter((c) => c._id !== newClient._id)]);
+          }
+          fetchClients();
+        }}
       />
     </div>
   );

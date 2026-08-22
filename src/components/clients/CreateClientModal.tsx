@@ -8,7 +8,7 @@ import { BusinessSlug } from "@/models/Lead";
 interface CreateClientModalProps {
   isOpen: boolean;
   onClose: () => void;
-  onClientCreated: () => void;
+  onClientCreated: (newClient?: any) => void;
 }
 
 export function CreateClientModal({ isOpen, onClose, onClientCreated }: CreateClientModalProps) {
@@ -32,7 +32,7 @@ export function CreateClientModal({ isOpen, onClose, onClientCreated }: CreateCl
     setError(null);
 
     try {
-      await axios.post("/api/v1/clients", {
+      const res = await axios.post("/api/v1/clients", {
         companyName,
         business,
         primaryContact: {
@@ -45,7 +45,7 @@ export function CreateClientModal({ isOpen, onClose, onClientCreated }: CreateCl
         activeServices: [activeServices],
       });
 
-      onClientCreated();
+      onClientCreated(res.data?.client);
       onClose();
     } catch (err: any) {
       console.error("Failed to create client account:", err);
