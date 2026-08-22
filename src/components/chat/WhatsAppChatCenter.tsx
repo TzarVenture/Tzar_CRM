@@ -381,55 +381,83 @@ export default function WhatsAppChatCenter() {
 
                         {/* Media Attachment Previews */}
                         {msg.mediaUrls && msg.mediaUrls.length > 0 && (
-                          <div className="mt-2 mb-1">
+                          <div className="mt-2 mb-1 space-y-2">
                             {msg.mediaType === "image" || msg.content.includes("image") ? (
-                              <a
-                                href={
-                                  msg.mediaUrls[0].includes("lookaside") || msg.mediaUrls[0].includes("facebook")
-                                    ? `/api/v1/whatsapp/media-proxy?url=${encodeURIComponent(msg.mediaUrls[0])}`
-                                    : msg.mediaUrls[0]
-                                }
-                                target="_blank"
-                                rel="noreferrer"
-                                className="block group relative rounded-xl overflow-hidden border border-slate-200 shadow-2xs"
-                              >
-                                <img
-                                  src={
+                              <div>
+                                <a
+                                  href={
                                     msg.mediaUrls[0].includes("lookaside") || msg.mediaUrls[0].includes("facebook")
                                       ? `/api/v1/whatsapp/media-proxy?url=${encodeURIComponent(msg.mediaUrls[0])}`
                                       : msg.mediaUrls[0]
                                   }
-                                  alt="Attachment"
-                                  className="max-h-60 w-auto object-cover group-hover:scale-105 transition-transform duration-300"
-                                />
-                                <div className="absolute inset-0 bg-slate-900/20 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center text-white font-bold text-xs gap-1">
-                                  <ExternalLink className="w-4 h-4" /> View Full Image
-                                </div>
-                              </a>
+                                  target="_blank"
+                                  rel="noreferrer"
+                                  className="block group relative rounded-xl overflow-hidden border border-slate-200 shadow-2xs"
+                                >
+                                  <img
+                                    src={
+                                      msg.mediaUrls[0].includes("lookaside") || msg.mediaUrls[0].includes("facebook")
+                                        ? `/api/v1/whatsapp/media-proxy?url=${encodeURIComponent(msg.mediaUrls[0])}`
+                                        : msg.mediaUrls[0]
+                                    }
+                                    alt="Attachment"
+                                    className="max-h-60 w-auto object-cover group-hover:scale-105 transition-transform duration-300"
+                                  />
+                                  <div className="absolute inset-0 bg-slate-900/20 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center text-white font-bold text-xs gap-1">
+                                    <ExternalLink className="w-4 h-4" /> View Image
+                                  </div>
+                                </a>
+
+                                <a
+                                  href={
+                                    msg.mediaUrls[0].includes("lookaside") || msg.mediaUrls[0].includes("facebook")
+                                      ? `/api/v1/whatsapp/media-proxy?url=${encodeURIComponent(msg.mediaUrls[0])}&download=true&filename=WhatsApp_Image.jpg`
+                                      : msg.mediaUrls[0]
+                                  }
+                                  download="WhatsApp_Image.jpg"
+                                  className="inline-flex items-center gap-1.5 text-[11px] font-bold text-emerald-800 hover:text-emerald-900 mt-2 px-3 py-1.5 rounded-lg bg-emerald-100/80 border border-emerald-300 transition-colors shadow-2xs"
+                                >
+                                  <Download className="w-3.5 h-3.5 text-emerald-700" /> Download Image
+                                </a>
+                              </div>
                             ) : (
-                              <a
-                                href={
-                                  msg.mediaUrls[0].includes("lookaside") || msg.mediaUrls[0].includes("facebook")
-                                    ? `/api/v1/whatsapp/media-proxy?url=${encodeURIComponent(msg.mediaUrls[0])}`
-                                    : msg.mediaUrls[0]
-                                }
-                                target="_blank"
-                                rel="noreferrer"
-                                className="flex items-center gap-3 p-3 rounded-xl bg-slate-100/90 border border-slate-300 hover:bg-slate-200/80 transition-colors group"
-                              >
-                                <div className="p-2 rounded-lg bg-emerald-600 text-white font-bold">
-                                  <FileText className="w-5 h-5" />
-                                </div>
-                                <div className="flex-1 min-w-0">
-                                  <p className="text-xs font-bold text-slate-800 truncate group-hover:text-emerald-700">
-                                    Document Attachment
-                                  </p>
-                                  <p className="text-[10px] font-semibold text-slate-500">
-                                    Click to download / view file
-                                  </p>
-                                </div>
-                                <Download className="w-4 h-4 text-slate-500 group-hover:text-emerald-600 shrink-0" />
-                              </a>
+                              <div>
+                                <a
+                                  href={
+                                    msg.mediaUrls[0].includes("lookaside") || msg.mediaUrls[0].includes("facebook")
+                                      ? `/api/v1/whatsapp/media-proxy?url=${encodeURIComponent(msg.mediaUrls[0])}`
+                                      : msg.mediaUrls[0]
+                                  }
+                                  target="_blank"
+                                  rel="noreferrer"
+                                  className="flex items-center gap-3 p-3 rounded-xl bg-slate-100/90 border border-slate-300 hover:bg-slate-200/80 transition-colors group"
+                                >
+                                  <div className="p-2 rounded-lg bg-emerald-600 text-white font-bold">
+                                    <FileText className="w-5 h-5" />
+                                  </div>
+                                  <div className="flex-1 min-w-0">
+                                    <p className="text-xs font-bold text-slate-800 truncate group-hover:text-emerald-700">
+                                      Document Attachment
+                                    </p>
+                                    <p className="text-[10px] font-semibold text-slate-500">
+                                      Click to view file
+                                    </p>
+                                  </div>
+                                  <ExternalLink className="w-4 h-4 text-slate-500 group-hover:text-emerald-600 shrink-0" />
+                                </a>
+
+                                <a
+                                  href={
+                                    msg.mediaUrls[0].includes("lookaside") || msg.mediaUrls[0].includes("facebook")
+                                      ? `/api/v1/whatsapp/media-proxy?url=${encodeURIComponent(msg.mediaUrls[0])}&download=true&filename=WhatsApp_Document.pdf`
+                                      : msg.mediaUrls[0]
+                                  }
+                                  download="WhatsApp_Document.pdf"
+                                  className="inline-flex items-center gap-1.5 text-[11px] font-bold text-emerald-800 hover:text-emerald-900 mt-2 px-3 py-1.5 rounded-lg bg-emerald-100/80 border border-emerald-300 transition-colors shadow-2xs"
+                                >
+                                  <Download className="w-3.5 h-3.5 text-emerald-700" /> Download Document
+                                </a>
+                              </div>
                             )}
                           </div>
                         )}

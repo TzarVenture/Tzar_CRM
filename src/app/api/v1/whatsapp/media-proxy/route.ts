@@ -51,15 +51,24 @@ export async function GET(req: Request) {
       );
     }
 
+    const isDownload = searchParams.get("download") === "true";
+    const customFilename = searchParams.get("filename") || "WhatsApp_Attachment";
+
     const contentType = response.headers.get("content-type") || "application/octet-stream";
     const arrayBuffer = await response.arrayBuffer();
 
+    const responseHeaders: Record<string, string> = {
+      "Content-Type": contentType,
+      "Cache-Control": "public, max-age=86400",
+    };
+
+    if (isDownload) {
+      responseHeaders["Content-Disposition"] = `attachment; filename="${customFilename}"`;
+    }
+
     return new Response(arrayBuffer, {
       status: 200,
-      headers: {
-        "Content-Type": contentType,
-        "Cache-Control": "public, max-age=86400",
-      },
+      headers: responseHeaders,
     });
   } catch (error: any) {
     console.error("❌ Media Proxy Error:", error);
