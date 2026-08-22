@@ -19,6 +19,7 @@ import {
   Image as ImageIcon,
   ExternalLink,
   Download,
+  Trash2,
 } from "lucide-react";
 import { format } from "date-fns";
 import HsmTemplateModal, { HsmTemplate } from "./HsmTemplateModal";
@@ -63,6 +64,35 @@ export default function WhatsAppChatCenter() {
   const [isAttachmentModalOpen, setIsAttachmentModalOpen] = useState(false);
 
   const messagesEndRef = useRef<HTMLDivElement>(null);
+
+  // Delete single message
+  const handleDeleteSingleMessage = async (messageId: string) => {
+    if (!confirm("Are you sure you want to delete this message from CRM?")) return;
+    setMessages((prev) => prev.filter((m) => m._id !== messageId));
+    try {
+      await axios.delete(`/api/v1/whatsapp/messages?messageId=${messageId}`);
+    } catch (err) {
+      console.error("Failed to delete message:", err);
+    }
+  };
+
+  // Clear entire conversation history
+  const handleClearConversation = async () => {
+    if (!selectedLead) return;
+    if (
+      !confirm(
+        `Are you sure you want to clear all chat history for ${selectedLead.fullName}?`
+      )
+    )
+      return;
+
+    setMessages([]);
+    try {
+      await axios.delete(`/api/v1/whatsapp/messages?leadId=${selectedLead._id}`);
+    } catch (err) {
+      console.error("Failed to clear conversation:", err);
+    }
+  };
 
   // Fetch conversations list
   const fetchLeads = useCallback(async () => {
@@ -327,6 +357,15 @@ export default function WhatsAppChatCenter() {
               {/* Action Buttons */}
               <div className="flex items-center gap-2">
                 <button
+                  onClick={handleClearConversation}
+                  className="flex items-center gap-1.5 px-3 py-2 text-xs font-bold rounded-xl border border-rose-200 bg-rose-50 text-rose-700 hover:bg-rose-100 transition-colors cursor-pointer"
+                  title="Clear conversation history for this contact"
+                >
+                  <Trash2 className="w-3.5 h-3.5 text-rose-600" />
+                  Clear Chat
+                </button>
+
+                <button
                   onClick={() => setIsTemplateModalOpen(true)}
                   className="flex items-center gap-1.5 px-3.5 py-2 text-xs font-bold rounded-xl border border-emerald-300 bg-emerald-50 text-emerald-800 hover:bg-emerald-100 transition-colors cursor-pointer"
                 >
@@ -358,17 +397,28 @@ export default function WhatsAppChatCenter() {
                   return (
                     <div
                       key={msg._id}
-                      className={`flex flex-col ${
+                      className={`flex flex-col group relative ${
                         isOutbound ? "items-end" : "items-start"
                       }`}
                     >
                       <div
-                        className={`max-w-lg p-4 rounded-2xl text-xs leading-relaxed shadow-2xs ${
+                        className={`max-w-lg p-4 rounded-2xl text-xs leading-relaxed shadow-2xs relative ${
                           isOutbound
                             ? "bg-emerald-50 border border-emerald-200 text-slate-900 rounded-br-xs"
                             : "bg-white border border-slate-300 text-slate-900 rounded-bl-xs"
                         }`}
                       >
+                        {/* Hover Delete Single Message Button */}
+                        <button
+                          onClick={() => handleDeleteSingleMessage(msg._id)}
+                          className={`absolute top-2.5 ${
+                            isOutbound ? "-left-8" : "-right-8"
+                          } opacity-0 group-hover:opacity-100 p-1.5 rounded-lg bg-white border border-slate-200 text-slate-400 hover:text-rose-600 hover:bg-rose-50 shadow-2xs transition-all cursor-pointer`}
+                          title="Delete message"
+                        >
+                          <Trash2 className="w-3.5 h-3.5" />
+                        </button>
+
                         <div className="flex items-center justify-between gap-3 text-[11px] font-bold text-slate-500 mb-1.5 pb-1 border-b border-slate-200/60">
                           <span>
                             {msg.senderInfo?.name ||
