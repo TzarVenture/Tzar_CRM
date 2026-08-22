@@ -23,6 +23,15 @@ export const PRE_APPROVED_TEMPLATES: HsmTemplate[] = [
     variablesCount: 0,
   },
   {
+    id: "webinar_confirmation_image",
+    name: "webinar_confirmation_image",
+    displayName: "Webinar Confirmation (WABA Approved)",
+    category: "UTILITY",
+    bodyTemplate:
+      "Thank you for registering! We look forward to seeing you at the upcoming session.",
+    variablesCount: 0,
+  },
+  {
     id: "tzar_lead_welcome_v1",
     name: "tzar_lead_welcome_v1",
     displayName: "Welcome & Discovery Call",

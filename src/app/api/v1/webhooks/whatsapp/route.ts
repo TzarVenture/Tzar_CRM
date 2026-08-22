@@ -94,25 +94,25 @@ export async function POST(req: Request) {
         textContent = `[Attachment: ${messageType}]`;
       }
 
-      // Flexible Phone Match Regex (handles +91 82786 69156, 8278669156, +918278669156)
+      // Find all matching lead records for this phone number
       const flexPattern = last10.split("").join("[\\s\\-\\+\\(\\)]*");
       const flexRegex = new RegExp(flexPattern);
 
-      let lead = await Lead.findOne({
+      let matchingLeads = await Lead.find({
         $or: [
           { phone: { $regex: flexRegex } },
           { phone: { $regex: last10 } },
         ],
       });
 
-      if (!lead) {
+      if (matchingLeads.length === 0) {
         const pipeline = await getDefaultPipeline();
         const assignedTo = await getAssignedBDE();
         const leadCustomId = await generateLeadCustomId("tzar");
         const slaDeadline = new Date();
         slaDeadline.setHours(slaDeadline.getHours() + 24);
 
-        lead = await Lead.create({
+        const newLead = await Lead.create({
           leadCustomId,
           business: "tzar",
           fullName: senderName,
@@ -126,20 +126,26 @@ export async function POST(req: Request) {
           slaDeadline,
           score: 25,
         });
+
+        matchingLeads = [newLead];
       }
 
-      // Record Inbound Message in DB
-      await Message.create({
-        leadId: lead._id,
-        channel: "WHATSAPP",
-        direction: "INBOUND",
-        content: textContent,
-        status: "DELIVERED",
-        externalMessageId: message.id,
-        senderInfo: { name: senderName, phoneOrEmail: rawPhone },
-      });
+      // Record Inbound Message under all matching lead records for this phone number
+      for (const leadObj of matchingLeads) {
+        await Message.create({
+          leadId: leadObj._id,
+          channel: "WHATSAPP",
+          direction: "INBOUND",
+          content: textContent,
+          status: "DELIVERED",
+          externalMessageId: message.id,
+          senderInfo: { name: senderName, phoneOrEmail: rawPhone },
+        });
+      }
 
-      console.log(`💬 Inbound WhatsApp message received from ${lead.fullName} (${rawPhone}): "${textContent}"`);
+      const primaryLead = matchingLeads[0];
+
+      console.log(`💬 Inbound WhatsApp message received from ${primaryLead.fullName} (${rawPhone}): "${textContent}"`);
 
       // C. Trigger AiSensy / ChatbotWonder Automated Keyword Engine
       if (textContent.trim()) {
@@ -154,7 +160,7 @@ export async function POST(req: Request) {
           if (rule.matchType === "CONTAINS" && cleanMsg.includes(kw)) isMatch = true;
 
           if (isMatch) {
-            console.log(`🤖 Chatbot Keyword Rule Matched: "${kw}" for lead ${lead.fullName}`);
+            console.log(`🤖 Chatbot Keyword Rule Matched: "${kw}" for primaryLead ${primaryLead.fullName}`);
 
             // Action 1: Reply Text
             if (rule.actionType === "REPLY_TEXT" && rule.replyContent) {
@@ -167,20 +173,20 @@ export async function POST(req: Request) {
                 rawPhone,
                 rule.templateName,
                 "en_US",
-                [{ type: "body", parameters: [{ type: "text", text: lead.fullName }] }]
+                [{ type: "body", parameters: [{ type: "text", text: primaryLead.fullName }] }]
               );
             }
 
             // Action 3: Update Lead Stage
             if (rule.actionType === "CHANGE_STAGE" && rule.targetStageId) {
-              lead.stageId = rule.targetStageId as any;
-              await lead.save();
+              primaryLead.stageId = rule.targetStageId as any;
+              await primaryLead.save();
             }
 
             // Action 4: Boost Engagement Score
             if (rule.actionType === "UPDATE_SCORE" && rule.scoreBoost) {
-              lead.score += rule.scoreBoost;
-              await lead.save();
+              primaryLead.score += rule.scoreBoost;
+              await primaryLead.save();
             }
 
             break; // Stop at first matched rule
@@ -188,7 +194,7 @@ export async function POST(req: Request) {
         }
       }
 
-      return NextResponse.json({ status: "processed_message", leadId: lead._id });
+      return NextResponse.json({ status: "processed_message", leadId: primaryLead._id });
     }
 
     return NextResponse.json({ status: "processed_event" });
