@@ -68,6 +68,38 @@ export async function POST(req: Request) {
         cleanPhone = `91${cleanPhone.substring(1)}`;
       }
 
+      // Upload local base64 media file to Meta Graph API Media endpoint to get Meta media_id
+      const uploadMediaToMeta = async (dataUrl: string): Promise<string | null> => {
+        try {
+          const matches = dataUrl.match(/^data:(.+);base64,(.+)$/);
+          if (!matches) return null;
+
+          const mimeType = matches[1];
+          const base64Data = matches[2];
+          const buffer = Buffer.from(base64Data, "base64");
+
+          const formData = new FormData();
+          const blob = new Blob([buffer], { type: mimeType });
+          formData.append("file", blob, filename || (mimeType.includes("pdf") ? "document.pdf" : "image.png"));
+          formData.append("messaging_product", "whatsapp");
+
+          const uploadRes = await axios.post(
+            `https://graph.facebook.com/v20.0/${phoneNumberId}/media`,
+            formData,
+            {
+              headers: {
+                Authorization: `Bearer ${accessToken}`,
+              },
+            }
+          );
+
+          return uploadRes.data?.id || null;
+        } catch (err: any) {
+          console.error("❌ Failed to upload media buffer to Meta API:", err.response?.data || err.message);
+          return null;
+        }
+      };
+
       const sendToMeta = async (langCode: string) => {
         let metaPayload: Record<string, unknown>;
 
@@ -96,27 +128,48 @@ export async function POST(req: Request) {
             },
           };
         } else if (messageType === "document" && mediaUrl) {
+          let mediaId: string | null = null;
+          if (mediaUrl.startsWith("data:")) {
+            mediaId = await uploadMediaToMeta(mediaUrl);
+          }
+
           metaPayload = {
             messaging_product: "whatsapp",
             recipient_type: "individual",
             to: cleanPhone,
             type: "document",
-            document: {
-              link: mediaUrl,
-              filename: filename || "document.pdf",
-              caption: content || filename || "Document Attachment",
-            },
+            document: mediaId
+              ? {
+                  id: mediaId,
+                  filename: filename || "document.pdf",
+                  caption: content || filename || "Document Attachment",
+                }
+              : {
+                  link: mediaUrl,
+                  filename: filename || "document.pdf",
+                  caption: content || filename || "Document Attachment",
+                },
           };
         } else if (messageType === "image" && mediaUrl) {
+          let mediaId: string | null = null;
+          if (mediaUrl.startsWith("data:")) {
+            mediaId = await uploadMediaToMeta(mediaUrl);
+          }
+
           metaPayload = {
             messaging_product: "whatsapp",
             recipient_type: "individual",
             to: cleanPhone,
             type: "image",
-            image: {
-              link: mediaUrl,
-              caption: content || "",
-            },
+            image: mediaId
+              ? {
+                  id: mediaId,
+                  caption: content || "",
+                }
+              : {
+                  link: mediaUrl,
+                  caption: content || "",
+                },
           };
         } else {
           metaPayload = {
