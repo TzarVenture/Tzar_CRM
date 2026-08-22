@@ -84,3 +84,23 @@ export async function generateLeadCustomId(business: string = "tzar"): Promise<s
   return `${prefix}-${nextNum}`;
 }
 
+/**
+ * Generates sequential custom Client ID per business (e.g., TZ-CL-1001, AD-CL-1002)
+ */
+export async function generateClientCustomId(business: string = "tzar"): Promise<string> {
+  await dbConnect();
+  const Client = (await import("@/models/Client")).default;
+  const count = await Client.countDocuments();
+  const nextNum = 1000 + count + 1;
+
+  const prefixMap: Record<string, string> = {
+    tzar: "TZ-CL",
+    adshalaa: "AD-CL",
+    crownleaf: "CL-CL",
+    titepo: "TP-CL",
+  };
+
+  const prefix = prefixMap[business.toLowerCase()] || "TZ-CL";
+  return `${prefix}-${nextNum}`;
+}
+
