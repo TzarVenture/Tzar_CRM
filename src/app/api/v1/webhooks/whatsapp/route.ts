@@ -80,6 +80,8 @@ export async function POST(req: Request) {
       const senderName = contact?.profile?.name || "WhatsApp Contact";
       const messageType = message.type;
       let textContent = "";
+      let mediaType: "image" | "document" | undefined = undefined;
+      let mediaUrls: string[] | undefined = undefined;
 
       if (messageType === "text") {
         textContent = message.text?.body || "";
@@ -90,6 +92,40 @@ export async function POST(req: Request) {
           "";
       } else if (messageType === "button") {
         textContent = message.button?.text || "";
+      } else if (messageType === "image") {
+        mediaType = "image";
+        textContent = message.image?.caption || "[Attachment: image]";
+        const mediaId = message.image?.id;
+        const token = process.env.WHATSAPP_TOKEN || process.env.WHATSAPP_PERMANENT_ACCESS_TOKEN;
+        if (mediaId && token) {
+          try {
+            const metaMediaRes = await fetch(`https://graph.facebook.com/v20.0/${mediaId}`, {
+              headers: { Authorization: `Bearer ${token}` },
+            }).then((r) => r.json());
+            if (metaMediaRes.url) {
+              mediaUrls = [metaMediaRes.url];
+            }
+          } catch (e) {
+            console.error("Failed to fetch Meta media URL:", e);
+          }
+        }
+      } else if (messageType === "document") {
+        mediaType = "document";
+        textContent = message.document?.caption || message.document?.filename || "[Attachment: document]";
+        const mediaId = message.document?.id;
+        const token = process.env.WHATSAPP_TOKEN || process.env.WHATSAPP_PERMANENT_ACCESS_TOKEN;
+        if (mediaId && token) {
+          try {
+            const metaMediaRes = await fetch(`https://graph.facebook.com/v20.0/${mediaId}`, {
+              headers: { Authorization: `Bearer ${token}` },
+            }).then((r) => r.json());
+            if (metaMediaRes.url) {
+              mediaUrls = [metaMediaRes.url];
+            }
+          } catch (e) {
+            console.error("Failed to fetch Meta document media URL:", e);
+          }
+        }
       } else {
         textContent = `[Attachment: ${messageType}]`;
       }
@@ -137,6 +173,8 @@ export async function POST(req: Request) {
           channel: "WHATSAPP",
           direction: "INBOUND",
           content: textContent,
+          mediaUrls,
+          mediaType,
           status: "DELIVERED",
           externalMessageId: message.id,
           senderInfo: { name: senderName, phoneOrEmail: rawPhone },

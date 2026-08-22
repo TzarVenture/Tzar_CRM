@@ -159,6 +159,53 @@ export async function sendWhatsAppDocumentMessage(
 }
 
 /**
+ * Send Image Attachment (JPEG/PNG)
+ */
+export async function sendWhatsAppImageMessage(
+  recipientPhone: string,
+  imageUrl: string,
+  caption?: string
+) {
+  if (!PHONE_NUMBER_ID || !ACCESS_TOKEN) {
+    return { success: false, reason: "Credentials missing in env" };
+  }
+
+  const to = formatPhoneNumber(recipientPhone);
+  const url = `https://graph.facebook.com/${WHATSAPP_API_VERSION}/${PHONE_NUMBER_ID}/messages`;
+
+  try {
+    const response = await axios.post(
+      url,
+      {
+        messaging_product: "whatsapp",
+        recipient_type: "individual",
+        to,
+        type: "image",
+        image: {
+          link: imageUrl,
+          caption: caption || "",
+        },
+      },
+      {
+        headers: {
+          Authorization: `Bearer ${ACCESS_TOKEN}`,
+          "Content-Type": "application/json",
+        },
+      }
+    );
+
+    return {
+      success: true,
+      messageId: response.data?.messages?.[0]?.id,
+      data: response.data,
+    };
+  } catch (error: any) {
+    console.error("❌ Meta WhatsApp Send Image Error:", error.response?.data || error.message);
+    throw error;
+  }
+}
+
+/**
  * 4. Send Interactive CTA Button / Quick Reply Message (AiSensy / ChatbotWonder Style)
  */
 export async function sendWhatsAppInteractiveButtonMessage(

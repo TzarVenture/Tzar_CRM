@@ -15,9 +15,14 @@ import {
   Building,
   RefreshCw,
   Plus,
+  Paperclip,
+  Image as ImageIcon,
+  ExternalLink,
+  Download,
 } from "lucide-react";
 import { format } from "date-fns";
 import HsmTemplateModal, { HsmTemplate } from "./HsmTemplateModal";
+import SendAttachmentModal from "./SendAttachmentModal";
 
 interface ContactLead {
   _id: string;
@@ -37,6 +42,8 @@ interface MessageItem {
   channel: string;
   direction: "INBOUND" | "OUTBOUND";
   content: string;
+  mediaUrls?: string[];
+  mediaType?: "image" | "document" | "audio" | "video";
   status: "QUEUED" | "SENT" | "DELIVERED" | "READ" | "FAILED";
   senderInfo?: { name: string; phoneOrEmail?: string };
   createdAt: string;
@@ -53,6 +60,7 @@ export default function WhatsAppChatCenter() {
   const [isLoadingMessages, setIsLoadingMessages] = useState(false);
   const [isSending, setIsSending] = useState(false);
   const [isTemplateModalOpen, setIsTemplateModalOpen] = useState(false);
+  const [isAttachmentModalOpen, setIsAttachmentModalOpen] = useState(false);
 
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
@@ -371,9 +379,62 @@ export default function WhatsAppChatCenter() {
                           </span>
                         </div>
 
-                        <p className="font-medium whitespace-pre-wrap">
-                          {msg.content}
-                        </p>
+                        {/* Media Attachment Previews */}
+                        {msg.mediaUrls && msg.mediaUrls.length > 0 && (
+                          <div className="mt-2 mb-1">
+                            {msg.mediaType === "image" ? (
+                              <a
+                                href={msg.mediaUrls[0]}
+                                target="_blank"
+                                rel="noreferrer"
+                                className="block group relative rounded-xl overflow-hidden border border-slate-200 shadow-2xs"
+                              >
+                                <img
+                                  src={msg.mediaUrls[0]}
+                                  alt="Attachment"
+                                  className="max-h-60 w-auto object-cover group-hover:scale-105 transition-transform duration-300"
+                                />
+                                <div className="absolute inset-0 bg-slate-900/20 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center text-white font-bold text-xs gap-1">
+                                  <ExternalLink className="w-4 h-4" /> View Full Image
+                                </div>
+                              </a>
+                            ) : (
+                              <a
+                                href={msg.mediaUrls[0]}
+                                target="_blank"
+                                rel="noreferrer"
+                                className="flex items-center gap-3 p-3 rounded-xl bg-slate-100/90 border border-slate-300 hover:bg-slate-200/80 transition-colors group"
+                              >
+                                <div className="p-2 rounded-lg bg-emerald-600 text-white font-bold">
+                                  <FileText className="w-5 h-5" />
+                                </div>
+                                <div className="flex-1 min-w-0">
+                                  <p className="text-xs font-bold text-slate-800 truncate group-hover:text-emerald-700">
+                                    Document Attachment
+                                  </p>
+                                  <p className="text-[10px] font-semibold text-slate-500">
+                                    Click to download / view file
+                                  </p>
+                                </div>
+                                <Download className="w-4 h-4 text-slate-500 group-hover:text-emerald-600 shrink-0" />
+                              </a>
+                            )}
+                          </div>
+                        )}
+
+                        {/* Inbound Attachment Badge if content has [Attachment: ...] */}
+                        {msg.content.includes("[Attachment:") && (!msg.mediaUrls || msg.mediaUrls.length === 0) && (
+                          <div className="mt-1.5 p-2.5 rounded-xl bg-slate-100 border border-slate-200 flex items-center gap-2 text-xs font-bold text-slate-700">
+                            <ImageIcon className="w-4 h-4 text-emerald-600 shrink-0" />
+                            <span>{msg.content}</span>
+                          </div>
+                        )}
+
+                        {!msg.content.includes("[Attachment:") && (
+                          <p className="font-medium whitespace-pre-wrap">
+                            {msg.content}
+                          </p>
+                        )}
 
                         {/* Outbound Status Indicator */}
                         {isOutbound && (
@@ -410,9 +471,18 @@ export default function WhatsAppChatCenter() {
                 type="button"
                 onClick={() => setIsTemplateModalOpen(true)}
                 className="p-2.5 rounded-xl border border-slate-300 hover:bg-slate-100 text-slate-700 transition-colors cursor-pointer"
-                title="Insert Verified Template"
+                title="Insert Verified Meta HSM Template"
               >
                 <FileText className="w-4 h-4 text-emerald-600" />
+              </button>
+
+              <button
+                type="button"
+                onClick={() => setIsAttachmentModalOpen(true)}
+                className="p-2.5 rounded-xl border border-slate-300 hover:bg-slate-100 text-slate-700 transition-colors cursor-pointer"
+                title="Send File Attachment (PDF Brochure / Image)"
+              >
+                <Paperclip className="w-4 h-4 text-blue-600" />
               </button>
 
               <input
@@ -452,7 +522,38 @@ export default function WhatsAppChatCenter() {
           isOpen={isTemplateModalOpen}
           onClose={() => setIsTemplateModalOpen(false)}
           leadName={selectedLead.fullName}
-          onSelectTemplate={handleInsertTemplate}
+          onSelectTemplate={(template, compiledText, params) => {
+            setIsTemplateModalOpen(false);
+            axios
+              .post("/api/v1/whatsapp/send", {
+                leadId: selectedLead._id,
+                recipientPhone: selectedLead.phone,
+                messageType: "template",
+                content: compiledText,
+                templateName: template.name,
+                templateParams: params,
+              })
+              .then(() => {
+                fetchConversation(selectedLead._id, true);
+              })
+              .catch((err) => {
+                console.error("Failed to dispatch HSM template:", err);
+              });
+          }}
+        />
+      )}
+
+      {/* Media Attachment Modal */}
+      {selectedLead && (
+        <SendAttachmentModal
+          isOpen={isAttachmentModalOpen}
+          onClose={() => setIsAttachmentModalOpen(false)}
+          leadId={selectedLead._id}
+          recipientPhone={selectedLead.phone}
+          recipientName={selectedLead.fullName}
+          onAttachmentSent={() => {
+            fetchConversation(selectedLead._id, true);
+          }}
         />
       )}
     </div>

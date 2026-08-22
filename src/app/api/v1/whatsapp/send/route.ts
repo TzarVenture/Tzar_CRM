@@ -9,8 +9,10 @@ import { auth } from "@/lib/auth";
 const SendWhatsAppSchema = z.object({
   leadId: z.string().optional(),
   recipientPhone: z.string().min(5, "Recipient phone is required"),
-  messageType: z.enum(["text", "template"]).default("text"),
+  messageType: z.enum(["text", "template", "document", "image"]).default("text"),
   content: z.string().min(1, "Message content cannot be empty"),
+  mediaUrl: z.string().optional(),
+  filename: z.string().optional(),
   templateName: z.string().optional(),
   templateParams: z.array(z.string()).optional(),
 });
@@ -37,6 +39,8 @@ export async function POST(req: Request) {
       recipientPhone,
       messageType,
       content,
+      mediaUrl,
+      filename,
       templateName,
       templateParams,
     } = parseResult.data;
@@ -91,6 +95,29 @@ export async function POST(req: Request) {
               ...(components ? { components } : {}),
             },
           };
+        } else if (messageType === "document" && mediaUrl) {
+          metaPayload = {
+            messaging_product: "whatsapp",
+            recipient_type: "individual",
+            to: cleanPhone,
+            type: "document",
+            document: {
+              link: mediaUrl,
+              filename: filename || "document.pdf",
+              caption: content || filename || "Document Attachment",
+            },
+          };
+        } else if (messageType === "image" && mediaUrl) {
+          metaPayload = {
+            messaging_product: "whatsapp",
+            recipient_type: "individual",
+            to: cleanPhone,
+            type: "image",
+            image: {
+              link: mediaUrl,
+              caption: content || "",
+            },
+          };
         } else {
           metaPayload = {
             messaging_product: "whatsapp",
@@ -133,7 +160,7 @@ export async function POST(req: Request) {
             messageStatus = "FAILED";
           }
         } else {
-          console.error("❌ Meta Cloud API Outbound Text Error:", firstErr.response?.data?.error || firstErr.message);
+          console.error("❌ Meta Cloud API Outbound Text/Media Error:", firstErr.response?.data?.error || firstErr.message);
           messageStatus = "FAILED";
         }
       }
@@ -150,6 +177,8 @@ export async function POST(req: Request) {
         phoneOrEmail: session.user.email || undefined,
       },
       content: content,
+      mediaUrls: mediaUrl ? [mediaUrl] : undefined,
+      mediaType: messageType === "image" ? "image" : messageType === "document" ? "document" : undefined,
       externalMessageId: externalMsgId,
       status: messageStatus,
       isRead: true,
