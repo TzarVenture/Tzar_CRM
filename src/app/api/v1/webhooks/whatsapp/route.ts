@@ -66,7 +66,6 @@ export async function POST(req: Request) {
           );
         }
       }
-      return NextResponse.json({ status: "processed_statuses" });
     }
 
     // B. Handle Inbound Message Payload
@@ -74,7 +73,9 @@ export async function POST(req: Request) {
     const contact = changes.contacts?.[0];
 
     if (message) {
-      const fromPhone = message.from; // Sender phone number
+      const rawPhone = message.from || ""; // e.g. "918278669156"
+      const digitsOnly = rawPhone.replace(/\D/g, "");
+      const last10 = digitsOnly.slice(-10);
       const senderName = contact?.profile?.name || "WhatsApp Contact";
       const messageType = message.type;
       let textContent = "";
@@ -92,9 +93,15 @@ export async function POST(req: Request) {
         textContent = `[Attachment: ${messageType}]`;
       }
 
-      // Find or Create Lead Record
+      // Flexible Phone Match Regex (handles +91 82786 69156, 8278669156, +918278669156)
+      const flexPattern = last10.split("").join("[\\s\\-\\+\\(\\)]*");
+      const flexRegex = new RegExp(flexPattern);
+
       let lead = await Lead.findOne({
-        phone: { $regex: fromPhone.slice(-10) },
+        $or: [
+          { phone: { $regex: flexRegex } },
+          { phone: { $regex: last10 } },
+        ],
       });
 
       if (!lead) {
@@ -108,8 +115,8 @@ export async function POST(req: Request) {
           leadCustomId,
           business: "tzar",
           fullName: senderName,
-          email: `${fromPhone}@whatsapp.inbound`,
-          phone: `+${fromPhone}`,
+          email: `${digitsOnly}@whatsapp.inbound`,
+          phone: `+${digitsOnly}`,
           source: "WHATSAPP_INBOUND",
           pipelineId: pipeline._id,
           stageId: "new-lead",
@@ -128,8 +135,10 @@ export async function POST(req: Request) {
         content: textContent,
         status: "DELIVERED",
         externalMessageId: message.id,
-        senderInfo: { name: senderName, phoneOrEmail: fromPhone },
+        senderInfo: { name: senderName, phoneOrEmail: rawPhone },
       });
+
+      console.log(`💬 Inbound WhatsApp message received from ${lead.fullName} (${rawPhone}): "${textContent}"`);
 
       // C. Trigger AiSensy / ChatbotWonder Automated Keyword Engine
       if (textContent.trim()) {
@@ -148,13 +157,13 @@ export async function POST(req: Request) {
 
             // Action 1: Reply Text
             if (rule.actionType === "REPLY_TEXT" && rule.replyContent) {
-              await sendWhatsAppTextMessage(fromPhone, rule.replyContent);
+              await sendWhatsAppTextMessage(rawPhone, rule.replyContent);
             }
 
             // Action 2: Send Template Message
             if (rule.actionType === "SEND_TEMPLATE" && rule.templateName) {
               await sendWhatsAppTemplateMessage(
-                fromPhone,
+                rawPhone,
                 rule.templateName,
                 "en_US",
                 [{ type: "body", parameters: [{ type: "text", text: lead.fullName }] }]
@@ -181,7 +190,7 @@ export async function POST(req: Request) {
       return NextResponse.json({ status: "processed_message", leadId: lead._id });
     }
 
-    return NextResponse.json({ status: "ignored" });
+    return NextResponse.json({ status: "processed_event" });
   } catch (error) {
     console.error("❌ WhatsApp Webhook Inbound Error:", error);
     return NextResponse.json(
