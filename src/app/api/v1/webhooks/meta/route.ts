@@ -80,7 +80,7 @@ export async function POST(req: Request) {
     const pageAccessToken = process.env.META_PAGE_ACCESS_TOKEN || process.env.META_SYSTEM_USER_TOKEN;
 
     // Fetch full field data from Meta Graph API if Access Token configured
-    if (leadgenId && pageAccessToken && pageAccessToken.startsWith("EAAB")) {
+    if (leadgenId && pageAccessToken && pageAccessToken.startsWith("EAA")) {
       try {
         const metaRes = await axios.get(
           `https://graph.facebook.com/v20.0/${leadgenId}?access_token=${pageAccessToken}`
