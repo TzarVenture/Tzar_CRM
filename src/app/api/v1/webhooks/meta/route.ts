@@ -40,12 +40,13 @@ export async function GET(req: Request) {
 export async function POST(req: Request) {
   try {
     const body = await req.json();
+    console.log("📩 Incoming Meta Lead Ad Payload:", JSON.stringify(body));
     await dbConnect();
 
     const entry = body.entry?.[0];
     const change = entry?.changes?.[0]?.value;
     if (!change) {
-      return NextResponse.json({ status: "ignored", reason: "no leadgen change payload" });
+      return NextResponse.json({ status: "ignored", reason: "no leadgen change payload" }, { status: 200 });
     }
 
     const pageId = entry?.id || change?.page_id || "";
@@ -53,31 +54,26 @@ export async function POST(req: Request) {
     const adId = change?.ad_id || "meta_ad_direct";
     const formId = change?.form_id || "meta_form_direct";
 
-    // Page ID to Business Entity Mapping
-    // (Update Page IDs when you connect real Facebook Pages)
-    const pageToBusinessMap: Record<string, BusinessSlug> = {
-      // "123456789": "crownleaf",
-      // "987654321": "titepo",
-      // "112233445": "adshalaa",
-      // "556677889": "tzar",
-    };
+    let business: BusinessSlug = "tzar";
 
-    let business: BusinessSlug = pageToBusinessMap[pageId] || "tzar";
+    // Detect Business Entity from Form ID or Page ID
+    const formStr = (formId || "").toLowerCase();
+    if (formStr.includes("adshala") || formStr.includes("dmcp") || body.business === "adshalaa") business = "adshalaa";
+    if (formStr.includes("titepo") || body.business === "titepo") business = "titepo";
+    if (formStr.includes("crown") || body.business === "crownleaf") business = "crownleaf";
 
-    // If form details indicate specific brand
-    if (formId.toLowerCase().includes("titepo") || body.business === "titepo") business = "titepo";
-    if (formId.toLowerCase().includes("crown") || body.business === "crownleaf") business = "crownleaf";
-    if (formId.toLowerCase().includes("adshala") || body.business === "adshalaa") business = "adshalaa";
-
-    let fullName = "Meta Lead Ad Contact";
+    let fullName = "Meta Lead Contact";
     let email = `lead_${Date.now()}@meta-campaign.com`;
-    let phone = "+91 98765 00000";
+    let phone = `+9198765${Math.floor(10000 + Math.random() * 90000)}`;
     let companyName = "";
     let city = "";
     let campaignName = "Meta Lead Ads Campaign 2026";
     let adName = "Lead Gen Form Ad";
 
-    const pageAccessToken = process.env.META_PAGE_ACCESS_TOKEN || process.env.META_SYSTEM_USER_TOKEN;
+    const pageAccessToken =
+      process.env.META_PAGE_ACCESS_TOKEN ||
+      process.env.META_SYSTEM_USER_TOKEN ||
+      process.env.WHATSAPP_TOKEN;
 
     // Fetch full field data from Meta Graph API if Access Token configured
     if (leadgenId && pageAccessToken && pageAccessToken.startsWith("EAA")) {
@@ -89,8 +85,9 @@ export async function POST(req: Request) {
         if (metaRes.data?.field_data) {
           // eslint-disable-next-line @typescript-eslint/no-explicit-any
           metaRes.data.field_data.forEach((field: any) => {
-            const name = field.name?.toLowerCase();
+            const name = field.name?.toLowerCase() || "";
             const val = field.values?.[0];
+            if (!val) return;
             if (name.includes("full_name") || name.includes("name")) fullName = val;
             if (name.includes("email")) email = val;
             if (name.includes("phone")) phone = val;
@@ -104,8 +101,9 @@ export async function POST(req: Request) {
     } else if (change.field_data) {
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
       change.field_data.forEach((field: any) => {
-        const name = field.name?.toLowerCase();
+        const name = field.name?.toLowerCase() || "";
         const val = field.values?.[0];
+        if (!val) return;
         if (name.includes("full_name") || name.includes("name")) fullName = val;
         if (name.includes("email")) email = val;
         if (name.includes("phone")) phone = val;
@@ -114,16 +112,26 @@ export async function POST(req: Request) {
       });
     }
 
-    // 30-day deduplication check
-    const thirtyDaysAgo = new Date();
-    thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
+    // Deduplication check
+    const dedupeQuery: any[] = [];
+    if (email && email.includes("@")) dedupeQuery.push({ email: email.toLowerCase() });
+    if (phone && phone.replace(/\D/g, "").length >= 10) {
+      const cleanDigits = phone.replace(/\D/g, "").slice(-10);
+      dedupeQuery.push({ phone: { $regex: cleanDigits } });
+    }
 
-    const existingLead = await Lead.findOne({
-      business,
-      status: "ACTIVE",
-      createdAt: { $gte: thirtyDaysAgo },
-      $or: [{ email: email.toLowerCase() }, { phone: phone.trim() }],
-    });
+    let existingLead = null;
+    if (dedupeQuery.length > 0) {
+      const thirtyDaysAgo = new Date();
+      thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
+
+      existingLead = await Lead.findOne({
+        business,
+        status: "ACTIVE",
+        createdAt: { $gte: thirtyDaysAgo },
+        $or: dedupeQuery,
+      });
+    }
 
     if (existingLead) {
       existingLead.score += 15;
@@ -186,7 +194,7 @@ export async function POST(req: Request) {
       leadId: newLead._id,
       channel: "SYSTEM_NOTE",
       direction: "INBOUND",
-      content: `Instant Meta Lead Ad Ingestion for brand [${business.toUpperCase()}] from campaign "${campaignName}" (Page ID: ${pageId || "Default"})`,
+      content: `Instant Meta Lead Ad Ingestion for brand [${business.toUpperCase()}] from campaign "${campaignName}" (Form ID: ${formId})`,
       status: "DELIVERED",
     });
 
@@ -199,14 +207,13 @@ export async function POST(req: Request) {
         leadId: newLead._id.toString(),
         leadCustomId: newLead.leadCustomId,
       },
-      { status: 201 }
+      { status: 200 }
     );
-  } catch (error) {
-    console.error("Meta Lead Ads Webhook Error:", error);
+  } catch (error: any) {
+    console.error("❌ Meta Lead Ads Webhook Error:", error);
     return NextResponse.json(
-      { error: "Internal Error in Meta Lead Ads Webhook", details: String(error) },
-      { status: 500 }
+      { status: "error", message: error.message || "Processed with internal fallback" },
+      { status: 200 }
     );
   }
 }
-
