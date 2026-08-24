@@ -134,7 +134,7 @@ const LeadSchema: Schema<ILead> = new Schema(
       index: true,
     },
     fullName: { type: String, required: true, trim: true },
-    email: { type: String, required: true, lowercase: true, index: true },
+    email: { type: String, required: false, lowercase: true, index: true, default: "" },
     phone: { type: String, required: true, index: true },
     companyName: { type: String, trim: true },
     city: { type: String },
@@ -266,7 +266,7 @@ LeadSchema.index({ phone: 1, createdAt: -1 });
 // Clear cached model in dev mode to ensure updated schema & enums apply
 delete (mongoose.models as any).Lead;
 
-const Lead: Model<ILead> = mongoose.model<ILead>("Lead", LeadSchema);
+const Lead: Model<ILead> = mongoose.models.Lead || mongoose.model<ILead>("Lead", LeadSchema);
 
 export default Lead;
 
