@@ -70,9 +70,6 @@ export function calculateLeadScore(data: {
  */
 export async function generateLeadCustomId(business: string = "tzar"): Promise<string> {
   await dbConnect();
-  const count = await Lead.countDocuments({ business } as any);
-  const nextNum = 1000 + count + 1;
-
   const prefixMap: Record<string, string> = {
     tzar: "TZ-LD",
     adshalaa: "AD-LD",
@@ -81,7 +78,15 @@ export async function generateLeadCustomId(business: string = "tzar"): Promise<s
   };
 
   const prefix = prefixMap[business.toLowerCase()] || "TZ-LD";
-  return `${prefix}-${nextNum}`;
+  let count = await Lead.countDocuments({ business } as any);
+  let customId = `${prefix}-${1000 + count + 1}`;
+
+  while (await Lead.exists({ leadCustomId: customId })) {
+    count++;
+    customId = `${prefix}-${1000 + count + 1}`;
+  }
+
+  return customId;
 }
 
 /**
@@ -90,9 +95,6 @@ export async function generateLeadCustomId(business: string = "tzar"): Promise<s
 export async function generateClientCustomId(business: string = "tzar"): Promise<string> {
   await dbConnect();
   const Client = (await import("@/models/Client")).default;
-  const count = await Client.countDocuments();
-  const nextNum = 1000 + count + 1;
-
   const prefixMap: Record<string, string> = {
     tzar: "TZ-CL",
     adshalaa: "AD-CL",
@@ -101,6 +103,14 @@ export async function generateClientCustomId(business: string = "tzar"): Promise
   };
 
   const prefix = prefixMap[business.toLowerCase()] || "TZ-CL";
-  return `${prefix}-${nextNum}`;
+  let count = await Client.countDocuments();
+  let customId = `${prefix}-${1000 + count + 1}`;
+
+  while (await Client.exists({ clientCustomId: customId })) {
+    count++;
+    customId = `${prefix}-${1000 + count + 1}`;
+  }
+
+  return customId;
 }
 
