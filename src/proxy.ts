@@ -15,6 +15,7 @@ export default auth(function proxy(req: NextRequest & { auth: { user?: { role?: 
   if (
     pathname.startsWith("/api/v1/ingest") ||
     pathname.startsWith("/api/v1/webhooks") ||
+    pathname.startsWith("/api/v1/meta") ||
     pathname.startsWith("/api/auth") ||
     pathname.startsWith("/api/seed")
   ) {
