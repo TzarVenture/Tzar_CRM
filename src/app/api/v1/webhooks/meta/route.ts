@@ -77,7 +77,7 @@ export async function POST(req: Request) {
     const pageAccessToken =
       process.env.META_PAGE_ACCESS_TOKEN ||
       process.env.META_SYSTEM_USER_TOKEN ||
-      process.env.WHATSAPP_TOKEN;
+      "EAATfTEmIXrMBSUCucnF3ZCEzW3n88qgn1Tg3x5IqaY9E6l869wUXIfKThUX59OYm3I3uGmElxvZBwANhhuyZAwZBYtPIDgvP5zYyFZAcaOaGtT1SaEFC1znEo3cjtcPBx9gcXJhYNHJNXkZAFOasKRK0TiUJaYKzv7ci9JYVaLNPPfdWyu5amwz6Ia5rZC4dfODH08KRfFYuGobWK49zUDOKne1cUavN0ZCF4eoIWxWafaxxsGZCWYoCOHrZA6j4zXNrfKJDwuoeqshkn7o2xFtmykl8ve";
 
     // Fetch full field data from Meta Graph API if Access Token configured
     if (leadgenId && pageAccessToken && pageAccessToken.startsWith("EAA")) {
