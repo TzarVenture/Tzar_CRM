@@ -54,13 +54,14 @@ export async function POST(req: Request) {
     const adId = change?.ad_id || "meta_ad_direct";
     const formId = change?.form_id || "meta_form_direct";
 
-    let business: BusinessSlug = "tzar";
+    let business: BusinessSlug = "adshalaa"; // Default to adshalaa for leadgen campaigns if ambiguous
 
-    // Detect Business Entity from Form ID or Page ID
+    // Detect Business Entity from Form ID or Page ID or payload
     const formStr = (formId || "").toLowerCase();
     if (formStr.includes("adshala") || formStr.includes("dmcp") || body.business === "adshalaa") business = "adshalaa";
     if (formStr.includes("titepo") || body.business === "titepo") business = "titepo";
     if (formStr.includes("crown") || body.business === "crownleaf") business = "crownleaf";
+    if (formStr.includes("tzar") || body.business === "tzar") business = "tzar";
 
     let fullName = "Meta Lead Contact";
     let email = `lead_${Date.now()}@meta-campaign.com`;
@@ -82,18 +83,29 @@ export async function POST(req: Request) {
           `https://graph.facebook.com/v20.0/${leadgenId}?access_token=${pageAccessToken}`
         );
 
-        if (metaRes.data?.field_data) {
-          // eslint-disable-next-line @typescript-eslint/no-explicit-any
-          metaRes.data.field_data.forEach((field: any) => {
-            const name = field.name?.toLowerCase() || "";
-            const val = field.values?.[0];
-            if (!val) return;
-            if (name.includes("full_name") || name.includes("name")) fullName = val;
-            if (name.includes("email")) email = val;
-            if (name.includes("phone")) phone = val;
-            if (name.includes("company")) companyName = val;
-            if (name.includes("city")) city = val;
-          });
+        if (metaRes.data) {
+          const metaStr = `${metaRes.data.campaign_name || ""} ${metaRes.data.form_name || ""} ${metaRes.data.page_name || ""} ${formId}`.toLowerCase();
+          if (metaStr.includes("adshala") || metaStr.includes("dmcp") || metaStr.includes("digital marketing")) business = "adshalaa";
+          else if (metaStr.includes("titepo") || metaStr.includes("toy")) business = "titepo";
+          else if (metaStr.includes("crown") || metaStr.includes("gifting")) business = "crownleaf";
+          else if (metaStr.includes("tzar")) business = "tzar";
+
+          if (metaRes.data.campaign_name) campaignName = metaRes.data.campaign_name;
+          if (metaRes.data.ad_name) adName = metaRes.data.ad_name;
+
+          if (metaRes.data.field_data) {
+            // eslint-disable-next-line @typescript-eslint/no-explicit-any
+            metaRes.data.field_data.forEach((field: any) => {
+              const name = field.name?.toLowerCase() || "";
+              const val = field.values?.[0];
+              if (!val) return;
+              if (name.includes("full_name") || name.includes("name")) fullName = val;
+              if (name.includes("email")) email = val;
+              if (name.includes("phone")) phone = val;
+              if (name.includes("company")) companyName = val;
+              if (name.includes("city")) city = val;
+            });
+          }
         }
       } catch (graphErr: unknown) {
         console.error("Meta Graph API Lead Fetch Warning (Using payload fallbacks):", graphErr);
