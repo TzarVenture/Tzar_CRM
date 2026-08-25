@@ -54,7 +54,7 @@ export async function POST(req: Request) {
     const adId = change?.ad_id || "meta_ad_direct";
     const formId = change?.form_id || "meta_form_direct";
 
-    let business: BusinessSlug = "adshalaa"; // Default to adshalaa for leadgen campaigns if ambiguous
+    let business: BusinessSlug = "adshalaa"; // Default to adshalaa for leadgen campaigns
 
     // Detect Business Entity from Form ID or Page ID or payload
     const formStr = (formId || "").toLowerCase();
@@ -63,13 +63,16 @@ export async function POST(req: Request) {
     if (formStr.includes("crown") || body.business === "crownleaf") business = "crownleaf";
     if (formStr.includes("tzar") || body.business === "tzar") business = "tzar";
 
-    let fullName = "Meta Lead Contact";
-    let email = `lead_${Date.now()}@meta-campaign.com`;
-    let phone = `+9198765${Math.floor(10000 + Math.random() * 90000)}`;
+    // Unique contact details for test lead fallbacks
+    const uniqueSuffix = Date.now().toString().slice(-6);
+    let fullName = `Meta Lead Ad User ${uniqueSuffix}`;
+    let email = `lead_${uniqueSuffix}@adshalaa.com`;
+    let phone = `+91987${uniqueSuffix}${Math.floor(10 + Math.random() * 89)}`;
     let companyName = "";
     let city = "";
     let campaignName = "Meta Lead Ads Campaign 2026";
     let adName = "Lead Gen Form Ad";
+    let isRealData = false;
 
     const pageAccessToken =
       process.env.META_PAGE_ACCESS_TOKEN ||
@@ -99,9 +102,9 @@ export async function POST(req: Request) {
               const name = field.name?.toLowerCase() || "";
               const val = field.values?.[0];
               if (!val) return;
-              if (name.includes("full_name") || name.includes("name")) fullName = val;
-              if (name.includes("email")) email = val;
-              if (name.includes("phone")) phone = val;
+              if (name.includes("full_name") || name.includes("name")) { fullName = val; isRealData = true; }
+              if (name.includes("email")) { email = val; isRealData = true; }
+              if (name.includes("phone")) { phone = val; isRealData = true; }
               if (name.includes("company")) companyName = val;
               if (name.includes("city")) city = val;
             });
@@ -116,33 +119,35 @@ export async function POST(req: Request) {
         const name = field.name?.toLowerCase() || "";
         const val = field.values?.[0];
         if (!val) return;
-        if (name.includes("full_name") || name.includes("name")) fullName = val;
-        if (name.includes("email")) email = val;
-        if (name.includes("phone")) phone = val;
+        if (name.includes("full_name") || name.includes("name")) { fullName = val; isRealData = true; }
+        if (name.includes("email")) { email = val; isRealData = true; }
+        if (name.includes("phone")) { phone = val; isRealData = true; }
         if (name.includes("company")) companyName = val;
         if (name.includes("city")) city = val;
       });
     }
 
-    // Deduplication check
-    const dedupeQuery: any[] = [];
-    if (email && email.includes("@")) dedupeQuery.push({ email: email.toLowerCase() });
-    if (phone && phone.replace(/\D/g, "").length >= 10) {
-      const cleanDigits = phone.replace(/\D/g, "").slice(-10);
-      dedupeQuery.push({ phone: { $regex: cleanDigits } });
-    }
-
+    // Deduplication check for real leads (only deduplicate if real email or real phone matched)
     let existingLead = null;
-    if (dedupeQuery.length > 0) {
-      const thirtyDaysAgo = new Date();
-      thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
+    if (isRealData) {
+      const dedupeQuery: any[] = [];
+      if (email && email.includes("@")) dedupeQuery.push({ email: email.toLowerCase() });
+      if (phone && phone.replace(/\D/g, "").length >= 10) {
+        const cleanDigits = phone.replace(/\D/g, "").slice(-10);
+        dedupeQuery.push({ phone: { $regex: cleanDigits } });
+      }
 
-      existingLead = await Lead.findOne({
-        business,
-        status: "ACTIVE",
-        createdAt: { $gte: thirtyDaysAgo },
-        $or: dedupeQuery,
-      });
+      if (dedupeQuery.length > 0) {
+        const thirtyDaysAgo = new Date();
+        thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
+
+        existingLead = await Lead.findOne({
+          business,
+          status: "ACTIVE",
+          createdAt: { $gte: thirtyDaysAgo },
+          $or: dedupeQuery,
+        });
+      }
     }
 
     if (existingLead) {
