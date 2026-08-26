@@ -49,38 +49,54 @@ export async function POST(req: Request) {
       return NextResponse.json({ status: "ignored", reason: "no leadgen change payload" }, { status: 200 });
     }
 
-    const pageId = entry?.id || change?.page_id || "";
-    const leadgenId = change?.leadgen_id;
-    const adId = change?.ad_id || "meta_ad_direct";
-    const formId = change?.form_id || "meta_form_direct";
+    const pageId = String(entry?.id || change?.page_id || "");
+    const leadgenId = String(change?.leadgen_id || "");
+    const adId = String(change?.ad_id || "meta_ad_direct");
+    const formId = String(change?.form_id || "meta_form_direct");
 
-    let business: BusinessSlug = "adshalaa"; // Default to adshalaa for leadgen campaigns
+    // Brand Page & Form ID environment variables or fallback detection
+    const pageTzar = process.env.META_PAGE_ID_TZAR || "";
+    const pageAdshalaa = process.env.META_PAGE_ID_ADSHALAA || "";
+    const pageCrownleaf = process.env.META_PAGE_ID_CROWNLEAF || "";
+    const pageTitepo = process.env.META_PAGE_ID_TITEPO || "";
 
-    // Detect Business Entity from Form ID or Page ID or payload
-    const formStr = (formId || "").toLowerCase();
-    if (formStr.includes("adshala") || formStr.includes("dmcp") || body.business === "adshalaa") business = "adshalaa";
-    if (formStr.includes("titepo") || body.business === "titepo") business = "titepo";
-    if (formStr.includes("crown") || body.business === "crownleaf") business = "crownleaf";
-    if (formStr.includes("tzar") || body.business === "tzar") business = "tzar";
+    let business: BusinessSlug = "tzar"; // Default to Tzar Agency if unspecified
+
+    // 1. Precise Page ID Matching
+    if (pageId && pageTzar && pageId === pageTzar) business = "tzar";
+    else if (pageId && pageAdshalaa && pageId === pageAdshalaa) business = "adshalaa";
+    else if (pageId && pageCrownleaf && pageId === pageCrownleaf) business = "crownleaf";
+    else if (pageId && pageTitepo && pageId === pageTitepo) business = "titepo";
+    else {
+      // 2. String Match Fallback from payload or form string
+      const formStr = `${formId} ${pageId} ${JSON.stringify(body)}`.toLowerCase();
+      if (formStr.includes("titepo") || body.business === "titepo") business = "titepo";
+      else if (formStr.includes("crown") || body.business === "crownleaf") business = "crownleaf";
+      else if (formStr.includes("adshala") || formStr.includes("dmcp") || body.business === "adshalaa") business = "adshalaa";
+      else business = "tzar";
+    }
 
     // Unique contact details for test lead fallbacks
     const uniqueSuffix = Date.now().toString().slice(-6);
-    let fullName = `Meta Lead Ad User ${uniqueSuffix}`;
-    let email = `lead_${uniqueSuffix}@adshalaa.com`;
+    let fullName = `Meta Test Lead (${business.toUpperCase()}) ${uniqueSuffix}`;
+    let email = `test_lead_${uniqueSuffix}@${business}.com`;
     let phone = `+91987${uniqueSuffix}${Math.floor(10 + Math.random() * 89)}`;
     let companyName = "";
     let city = "";
-    let campaignName = "Meta Lead Ads Campaign 2026";
+    let campaignName = `Meta Lead Ad Campaign (${business.toUpperCase()})`;
     let adName = "Lead Gen Form Ad";
     let isRealData = false;
 
     const pageAccessToken =
       process.env.META_PAGE_ACCESS_TOKEN ||
       process.env.META_SYSTEM_USER_TOKEN ||
-      "EAATfTEmIXrMBSUCucnF3ZCEzW3n88qgn1Tg3x5IqaY9E6l869wUXIfKThUX59OYm3I3uGmElxvZBwANhhuyZAwZBYtPIDgvP5zYyFZAcaOaGtT1SaEFC1znEo3cjtcPBx9gcXJhYNHJNXkZAFOasKRK0TiUJaYKzv7ci9JYVaLNPPfdWyu5amwz6Ia5rZC4dfODH08KRfFYuGobWK49zUDOKne1cUavN0ZCF4eoIWxWafaxxsGZCWYoCOHrZA6j4zXNrfKJDwuoeqshkn7o2xFtmykl8ve";
+      "";
 
-    // Fetch full field data from Meta Graph API if Access Token configured
-    if (leadgenId && pageAccessToken && pageAccessToken.startsWith("EAA")) {
+    // Detect if this is Meta Lead Ads Testing Tool (leadgen_id is 444444444 or dummy)
+    const isTestTool = leadgenId === "444444444" || leadgenId.startsWith("test_");
+
+    // Fetch full field data from Meta Graph API if Access Token & real leadgenId present
+    if (!isTestTool && leadgenId && pageAccessToken && pageAccessToken.startsWith("EAA")) {
       try {
         const metaRes = await axios.get(
           `https://graph.facebook.com/v20.0/${leadgenId}?access_token=${pageAccessToken}`
@@ -88,9 +104,9 @@ export async function POST(req: Request) {
 
         if (metaRes.data) {
           const metaStr = `${metaRes.data.campaign_name || ""} ${metaRes.data.form_name || ""} ${metaRes.data.page_name || ""} ${formId}`.toLowerCase();
-          if (metaStr.includes("adshala") || metaStr.includes("dmcp") || metaStr.includes("digital marketing")) business = "adshalaa";
-          else if (metaStr.includes("titepo") || metaStr.includes("toy")) business = "titepo";
+          if (metaStr.includes("titepo") || metaStr.includes("toy")) business = "titepo";
           else if (metaStr.includes("crown") || metaStr.includes("gifting")) business = "crownleaf";
+          else if (metaStr.includes("adshala") || metaStr.includes("dmcp") || metaStr.includes("digital marketing")) business = "adshalaa";
           else if (metaStr.includes("tzar")) business = "tzar";
 
           if (metaRes.data.campaign_name) campaignName = metaRes.data.campaign_name;
@@ -125,6 +141,10 @@ export async function POST(req: Request) {
         if (name.includes("company")) companyName = val;
         if (name.includes("city")) city = val;
       });
+    }
+
+    if (isTestTool) {
+      console.log(`⚡ Meta Lead Ads Testing Tool event received for Page ID: ${pageId}. Created test lead for brand: ${business.toUpperCase()}`);
     }
 
     // Deduplication check for real leads (only deduplicate if real email or real phone matched)
