@@ -29,6 +29,7 @@ import {
   Key,
   Copy,
   Check,
+  Facebook,
 } from "lucide-react";
 import { useSession } from "next-auth/react";
 import { ILead, BusinessSlug, KanbanStage } from "@/models/Lead";
@@ -462,10 +463,16 @@ export function LeadWorkspaceDrawer({
                   </div>
 
                   <div>
-                    <p className="text-slate-500 font-medium">Lead Source</p>
-                    <p className="font-semibold text-slate-900 mt-0.5">
-                      {lead.source || "WEBSITE_CONTACT"}
-                    </p>
+                    <p className="text-slate-500 font-medium mb-1">Lead Source</p>
+                    {lead.source === "META_LEAD_AD" ? (
+                      <span className="inline-flex items-center gap-1.5 text-[11px] font-extrabold px-2.5 py-1 rounded-lg bg-[#1877F2] text-white shadow-2xs border border-blue-700">
+                        <Facebook className="w-3.5 h-3.5 fill-white text-white" /> META_LEAD_AD
+                      </span>
+                    ) : (
+                      <span className="font-semibold text-slate-900">
+                        {lead.source || "WEBSITE_CONTACT"}
+                      </span>
+                    )}
                   </div>
                 </div>
               </div>

@@ -22,6 +22,7 @@ import {
   ArrowUpDown,
   RefreshCw,
   Zap,
+  Facebook,
 } from "lucide-react";
 import { ILead, BusinessSlug, KanbanStage } from "@/models/Lead";
 import { LeadWorkspaceDrawer } from "./LeadWorkspaceDrawer";
@@ -336,9 +337,15 @@ export function SmartLeadGrid({ initialLeads }: SmartLeadGridProps) {
 
                       {/* Source */}
                       <td className="py-3.5 px-4">
-                        <span className="text-[11px] font-bold px-2 py-0.5 rounded-md bg-slate-100 text-slate-700 border border-slate-200">
-                          {lead.source}
-                        </span>
+                        {lead.source === "META_LEAD_AD" ? (
+                          <span className="inline-flex items-center gap-1.5 text-[11px] font-extrabold px-2.5 py-1 rounded-lg bg-[#1877F2] text-white shadow-2xs border border-blue-700">
+                            <Facebook className="w-3.5 h-3.5 fill-white text-white" /> META_LEAD_AD
+                          </span>
+                        ) : (
+                          <span className="text-[11px] font-bold px-2 py-0.5 rounded-md bg-slate-100 text-slate-700 border border-slate-200">
+                            {lead.source}
+                          </span>
+                        )}
                       </td>
 
                       {/* SLA Status */}
