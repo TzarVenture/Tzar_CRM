@@ -165,13 +165,17 @@ export async function POST(req: Request) {
       message: `Successfully imported ${syncedCount} historical leads for ${business.toUpperCase()}! (${skippedCount} duplicates skipped)`,
     });
   } catch (error: any) {
+    const metaError = error.response?.data?.error;
+    const errorMsg = metaError?.message || error.message || "Failed to fetch historical leads from Meta Graph API.";
+
     console.error("Historical Meta Leads Sync Error:", error.response?.data || error.message);
+
     return NextResponse.json(
       {
-        error: "Failed to sync historical Meta leads",
-        details: error.response?.data || error.message,
+        error: errorMsg,
+        details: metaError || error.message,
       },
-      { status: 500 }
+      { status: 400 }
     );
   }
 }
