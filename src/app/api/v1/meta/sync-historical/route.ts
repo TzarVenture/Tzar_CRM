@@ -32,6 +32,7 @@ export async function POST(req: Request) {
 
       token =
         token ||
+        process.env.META_PAGE_ACCESS_TOKEN_TZAR ||
         process.env.META_PAGE_ACCESS_TOKEN ||
         process.env.META_SYSTEM_USER_TOKEN ||
         process.env.WHATSAPP_PERMANENT_ACCESS_TOKEN ||
