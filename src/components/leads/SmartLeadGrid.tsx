@@ -22,6 +22,9 @@ import {
   ArrowUpDown,
   RefreshCw,
   Zap,
+  Download,
+  Loader2,
+  X,
 } from "lucide-react";
 import { ILead, BusinessSlug, KanbanStage } from "@/models/Lead";
 import { LeadWorkspaceDrawer } from "./LeadWorkspaceDrawer";
@@ -68,6 +71,89 @@ export function SmartLeadGrid({ initialLeads }: SmartLeadGridProps) {
   const [selectedLeadForDrawer, setSelectedLeadForDrawer] = useState<Partial<ILead> | null>(null);
   const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
   const [isLiveSyncing, setIsLiveSyncing] = useState(false);
+
+  // CSV Import Modal State
+  const [isCsvModalOpen, setIsCsvModalOpen] = useState(false);
+  const [csvBusiness, setCsvBusiness] = useState<BusinessSlug>("tzar");
+  const [isUploadingCsv, setIsUploadingCsv] = useState(false);
+  const [csvResultMsg, setCsvResultMsg] = useState<string | null>(null);
+
+  const handleCsvUploadGrid = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    setIsUploadingCsv(true);
+    setCsvResultMsg(null);
+
+    const reader = new FileReader();
+    reader.onload = async (event) => {
+      try {
+        const text = event.target?.result as string;
+        const lines = text.split("\n").filter((l) => l.trim().length > 0);
+        if (lines.length < 2) {
+          setCsvResultMsg("Error: CSV file appears to be empty.");
+          setIsUploadingCsv(false);
+          return;
+        }
+
+        const parseLine = (line: string): string[] => {
+          const result: string[] = [];
+          let current = "";
+          let inQuotes = false;
+          for (let k = 0; k < line.length; k++) {
+            const char = line[k];
+            if (char === '"') {
+              inQuotes = !inQuotes;
+            } else if (char === ',' && !inQuotes) {
+              result.push(current.trim().replace(/^"|"$/g, ""));
+              current = "";
+            } else {
+              current += char;
+            }
+          }
+          result.push(current.trim().replace(/^"|"$/g, ""));
+          return result;
+        };
+
+        const headers = parseLine(lines[0]);
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        const records: any[] = [];
+
+        for (let i = 1; i < lines.length; i++) {
+          const values = parseLine(lines[i]);
+          // eslint-disable-next-line @typescript-eslint/no-explicit-any
+          const record: any = {};
+          headers.forEach((header, index) => {
+            record[header] = values[index] || "";
+          });
+          records.push(record);
+        }
+
+        const res = await fetch("/api/v1/meta/import-csv", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            leads: records,
+            business: csvBusiness,
+          }),
+        }).then((r) => r.json());
+
+        if (res.message) {
+          setCsvResultMsg(res.message);
+          const updated = await fetch(`/api/v1/leads?business=${selectedBrand}`).then((r) => r.json());
+          if (updated.leads) setLeads(updated.leads);
+        } else {
+          setCsvResultMsg(`Error: ${res.error || "Failed to import CSV leads"}`);
+        }
+      } catch (err: any) {
+        console.error("CSV Import error:", err);
+        setCsvResultMsg(`Error: ${err.message}`);
+      } finally {
+        setIsUploadingCsv(false);
+      }
+    };
+
+    reader.readAsText(file);
+  };
 
   // 5-Second Real-Time Auto-Polling Engine
   useEffect(() => {
@@ -171,7 +257,17 @@ export function SmartLeadGrid({ initialLeads }: SmartLeadGridProps) {
           </p>
         </div>
 
-        <div className="flex items-center gap-3">
+        <div className="flex items-center gap-2 flex-wrap">
+          <button
+            onClick={() => {
+              setCsvResultMsg(null);
+              setIsCsvModalOpen(true);
+            }}
+            className="flex items-center gap-1.5 px-3.5 py-2 text-xs font-bold text-slate-800 bg-slate-100 hover:bg-slate-200 border border-slate-300 rounded-xl transition-all cursor-pointer shadow-2xs"
+          >
+            <Download className="w-4 h-4 text-emerald-600" /> Import Meta CSV Leads
+          </button>
+
           <button
             onClick={() => setIsCreateModalOpen(true)}
             className="flex items-center gap-2 px-4 py-2 text-xs font-bold text-white bg-slate-900 hover:bg-slate-800 rounded-xl shadow-xs transition-all cursor-pointer"
@@ -453,6 +549,94 @@ export function SmartLeadGrid({ initialLeads }: SmartLeadGridProps) {
             .then((data) => data.leads && setLeads(data.leads));
         }}
       />
+
+      {/* ─── CSV LEAD IMPORT MODAL ────────────────────────────────────── */}
+      {isCsvModalOpen && (
+        <div className="fixed inset-0 z-50 bg-slate-900/60 backdrop-blur-xs flex items-center justify-center p-4">
+          <div className="bg-white rounded-3xl p-6 max-w-md w-full border border-slate-300 shadow-2xl space-y-5 animate-fade-in">
+            <div className="flex items-center justify-between pb-3 border-b border-slate-200">
+              <div className="flex items-center gap-2">
+                <Download className="w-5 h-5 text-emerald-600" />
+                <h3 className="text-base font-bold text-slate-900">
+                  Import Meta Lead Ads CSV
+                </h3>
+              </div>
+              <button
+                onClick={() => setIsCsvModalOpen(false)}
+                className="p-1.5 text-slate-400 hover:text-slate-600 rounded-xl cursor-pointer"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+
+            <div className="space-y-4 text-xs">
+              <div>
+                <label className="block font-bold text-slate-700 mb-1">
+                  Target Business Entity <span className="text-rose-500">*</span>
+                </label>
+                <select
+                  value={csvBusiness}
+                  onChange={(e) => setCsvBusiness(e.target.value as BusinessSlug)}
+                  className="w-full px-3.5 py-2.5 border border-slate-300 rounded-xl font-bold text-slate-900 outline-none bg-slate-50 cursor-pointer"
+                >
+                  <option value="tzar">Tzar Agency (Digital Marketing & WebDev)</option>
+                  <option value="adshalaa">Adshalaa EdTech (Course Registrations)</option>
+                  <option value="crownleaf">CrownLeaf Gifting (B2B Merchandise)</option>
+                  <option value="titepo">Titepo Toys (Kids Educational Kits)</option>
+                </select>
+              </div>
+
+              <div className="space-y-2">
+                <label className="block font-bold text-slate-700">
+                  Select Downloaded Facebook CSV File
+                </label>
+                <label className="flex items-center justify-center p-4 border-2 border-dashed border-emerald-300 rounded-2xl bg-emerald-50/50 hover:bg-emerald-100/50 transition-colors cursor-pointer text-center">
+                  <span className="text-xs font-bold text-emerald-800 flex items-center gap-2">
+                    {isUploadingCsv ? (
+                      <>
+                        <Loader2 className="w-4 h-4 animate-spin text-emerald-600" /> Importing CSV Leads...
+                      </>
+                    ) : (
+                      <>
+                        <Download className="w-4 h-4 text-emerald-600" /> Choose Facebook Leads .csv File
+                      </>
+                    )}
+                  </span>
+                  <input
+                    type="file"
+                    accept=".csv"
+                    onChange={handleCsvUploadGrid}
+                    className="hidden"
+                    disabled={isUploadingCsv}
+                  />
+                </label>
+              </div>
+
+              {csvResultMsg && (
+                <div
+                  className={`p-3.5 rounded-xl border text-xs font-bold ${
+                    csvResultMsg.startsWith("Error")
+                      ? "bg-rose-50 border-rose-200 text-rose-800"
+                      : "bg-emerald-50 border-emerald-200 text-emerald-800"
+                  }`}
+                >
+                  {csvResultMsg}
+                </div>
+              )}
+
+              <div className="flex items-center justify-end pt-2">
+                <button
+                  type="button"
+                  onClick={() => setIsCsvModalOpen(false)}
+                  className="px-5 py-2 text-xs font-bold text-slate-700 bg-slate-100 hover:bg-slate-200 rounded-xl cursor-pointer"
+                >
+                  Close
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

@@ -34,39 +34,35 @@ export async function POST(req: Request) {
 
     let importedCount = 0;
     let skippedCount = 0;
+    let emptyCount = 0;
 
     for (const rawRecord of leads) {
-      // Extract normalized fields from CSV row
+      // Find key matching case-insensitively
+      const getKey = (...possibleKeys: string[]): string => {
+        for (const pKey of possibleKeys) {
+          const lowerP = pKey.toLowerCase();
+          for (const actualKey of Object.keys(rawRecord)) {
+            if (actualKey.toLowerCase().replace(/[^a-z0-9]/g, "") === lowerP.replace(/[^a-z0-9]/g, "")) {
+              if (rawRecord[actualKey] && String(rawRecord[actualKey]).trim()) {
+                return String(rawRecord[actualKey]).trim();
+              }
+            }
+          }
+        }
+        return "";
+      };
+
       const fullName =
-        rawRecord["full_name"] ||
-        rawRecord["fullName"] ||
-        rawRecord["Full Name"] ||
-        rawRecord["name"] ||
-        rawRecord["Name"] ||
-        "Meta Lead";
+        getKey("full_name", "fullname", "full name", "name", "first_name") || "Meta Lead";
 
-      const email = (
-        rawRecord["email"] ||
-        rawRecord["Email"] ||
-        rawRecord["email_address"] ||
-        ""
-      ).toLowerCase().trim();
+      const email = getKey("email", "email_address", "mail").toLowerCase();
+      const phone = getKey("phone_number", "phone", "mobile", "contact_number", "number", "phonenumber");
+      const city = getKey("city", "location", "state", "address");
+      const companyName = getKey("company_name", "company", "organization");
 
-      const phone = (
-        rawRecord["phone_number"] ||
-        rawRecord["phone"] ||
-        rawRecord["Phone"] ||
-        rawRecord["Phone Number"] ||
-        ""
-      ).trim();
-
-      const city =
-        rawRecord["city"] || rawRecord["City"] || rawRecord["location"] || "";
-      const companyName =
-        rawRecord["company_name"] || rawRecord["company"] || rawRecord["Company"] || "";
-
+      // If record is missing both email & phone, skip
       if (!phone && !email) {
-        skippedCount++;
+        emptyCount++;
         continue;
       }
 
@@ -74,7 +70,7 @@ export async function POST(req: Request) {
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
       const dedupeQuery: any[] = [];
       if (email && email.includes("@")) dedupeQuery.push({ email });
-      if (phone && phone.replace(/\D/g, "").length >= 10) {
+      if (phone && phone.replace(/\D/g, "").length >= 7) {
         const cleanDigits = phone.replace(/\D/g, "").slice(-10);
         dedupeQuery.push({ phone: { $regex: cleanDigits } });
       }
@@ -131,8 +127,9 @@ export async function POST(req: Request) {
       status: "success",
       importedCount,
       skippedCount,
+      emptyCount,
       totalRecords: leads.length,
-      message: `Successfully imported ${importedCount} Meta leads for ${business.toUpperCase()}! (${skippedCount} duplicates skipped)`,
+      message: `Successfully imported ${importedCount} Meta leads for ${business.toUpperCase()}! (${skippedCount} duplicates skipped, ${emptyCount} empty skipped)`,
     });
   } catch (error: any) {
     console.error("CSV Lead Import Error:", error);

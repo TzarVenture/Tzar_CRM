@@ -12,67 +12,8 @@ export async function GET() {
 
     await dbConnect();
 
-    // Check if campaign insights exist, if empty seed initial data
-    let insights = await MetaInsight.find().sort({ spend: -1 });
-
-    if (insights.length === 0) {
-      const sampleCampaigns = [
-        {
-          campaignId: "cmp_web_revamp_2026",
-          campaignName: "Web Development Lead Generation Q1",
-          adAccountId: "act_10987654321",
-          status: "ACTIVE",
-          spend: 3450,
-          impressions: 124500,
-          clicks: 3820,
-          ctr: 3.07,
-          cpl: 28.75,
-          leadsCaptured: 120,
-          wonDeals: 14,
-          revenueGenerated: 42000,
-          roas: 12.17,
-          datePreset: "this_month",
-          lastSyncedAt: new Date(),
-        },
-        {
-          campaignId: "cmp_seo_retainer_2026",
-          campaignName: "SEO Monthly Retainer Campaign",
-          adAccountId: "act_10987654321",
-          status: "ACTIVE",
-          spend: 2100,
-          impressions: 89000,
-          clicks: 2450,
-          ctr: 2.75,
-          cpl: 31.81,
-          leadsCaptured: 66,
-          wonDeals: 8,
-          revenueGenerated: 24000,
-          roas: 11.42,
-          datePreset: "this_month",
-          lastSyncedAt: new Date(),
-        },
-        {
-          campaignId: "cmp_branding_promo_2026",
-          campaignName: "Branding & Creative Identity Ads",
-          adAccountId: "act_10987654321",
-          status: "ACTIVE",
-          spend: 1450,
-          impressions: 64200,
-          clicks: 1890,
-          ctr: 2.94,
-          cpl: 34.52,
-          leadsCaptured: 42,
-          wonDeals: 5,
-          revenueGenerated: 17500,
-          roas: 12.06,
-          datePreset: "this_month",
-          lastSyncedAt: new Date(),
-        },
-      ];
-
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      insights = (await MetaInsight.insertMany(sampleCampaigns as any)) as any;
-    }
+    // Fetch real campaigns managed in MongoDB
+    const insights = await MetaInsight.find().sort({ spend: -1 });
 
     // Compute aggregate KPIs
     const totalAdSpend = insights.reduce((sum, c) => sum + (c.spend || 0), 0);

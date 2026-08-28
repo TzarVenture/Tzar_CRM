@@ -151,12 +151,31 @@ export default function MetaAdsDashboard() {
           return;
         }
 
-        const headers = lines[0].split(",").map((h) => h.trim().replace(/^"|"$/g, ""));
+        const parseLine = (line: string): string[] => {
+          const result: string[] = [];
+          let current = "";
+          let inQuotes = false;
+          for (let k = 0; k < line.length; k++) {
+            const char = line[k];
+            if (char === '"') {
+              inQuotes = !inQuotes;
+            } else if (char === ',' && !inQuotes) {
+              result.push(current.trim().replace(/^"|"$/g, ""));
+              current = "";
+            } else {
+              current += char;
+            }
+          }
+          result.push(current.trim().replace(/^"|"$/g, ""));
+          return result;
+        };
+
+        const headers = parseLine(lines[0]);
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
         const records: any[] = [];
 
         for (let i = 1; i < lines.length; i++) {
-          const values = lines[i].split(",").map((v) => v.trim().replace(/^"|"$/g, ""));
+          const values = parseLine(lines[i]);
           // eslint-disable-next-line @typescript-eslint/no-explicit-any
           const record: any = {};
           headers.forEach((header, index) => {
