@@ -133,6 +133,56 @@ export default function MetaAdsDashboard() {
     }
   };
 
+  // Handle Meta CSV Export File Upload
+  const handleCsvFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    setIsImporting(true);
+    setSyncResultMsg(null);
+
+    const reader = new FileReader();
+    reader.onload = async (event) => {
+      try {
+        const text = event.target?.result as string;
+        const lines = text.split("\n").filter((l) => l.trim().length > 0);
+        if (lines.length < 2) {
+          setSyncResultMsg("Error: CSV file appears to be empty.");
+          setIsImporting(false);
+          return;
+        }
+
+        const headers = lines[0].split(",").map((h) => h.trim().replace(/^"|"$/g, ""));
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        const records: any[] = [];
+
+        for (let i = 1; i < lines.length; i++) {
+          const values = lines[i].split(",").map((v) => v.trim().replace(/^"|"$/g, ""));
+          // eslint-disable-next-line @typescript-eslint/no-explicit-any
+          const record: any = {};
+          headers.forEach((header, index) => {
+            record[header] = values[index] || "";
+          });
+          records.push(record);
+        }
+
+        const res = await axios.post("/api/v1/meta/import-csv", {
+          leads: records,
+          business: syncBusiness,
+        });
+
+        setSyncResultMsg(res.data.message || "CSV leads imported successfully!");
+        fetchMetaInsights();
+      } catch (err: any) {
+        console.error("CSV Parse error:", err);
+        setSyncResultMsg(`Error: ${err.response?.data?.error || err.message}`);
+      } finally {
+        setIsImporting(false);
+      }
+    };
+
+    reader.readAsText(file);
+  };
+
   // Submit Ad Spend Data
   const handleSaveAdSpend = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -434,6 +484,26 @@ export default function MetaAdsDashboard() {
                   onChange={(e) => setSyncToken(e.target.value)}
                   className="w-full px-3.5 py-2.5 border border-slate-300 rounded-xl font-mono text-slate-900 outline-none bg-slate-50"
                 />
+              </div>
+
+              {/* OR Instant Upload Meta CSV Export File */}
+              <div className="pt-3 border-t border-slate-200 space-y-2">
+                <label className="block font-bold text-slate-700">
+                  ⚡ OR Upload Facebook CSV File (Instant 1-Click Import)
+                </label>
+                <label className="flex items-center justify-center p-3.5 border-2 border-dashed border-emerald-300 rounded-2xl bg-emerald-50/50 hover:bg-emerald-100/50 transition-colors cursor-pointer text-center">
+                  <span className="text-xs font-bold text-emerald-800 flex items-center gap-2">
+                    <Download className="w-4 h-4 text-emerald-600" />
+                    {isImporting ? "Importing CSV Leads..." : "Select downloaded Facebook CSV file"}
+                  </span>
+                  <input
+                    type="file"
+                    accept=".csv"
+                    onChange={handleCsvFileUpload}
+                    className="hidden"
+                    disabled={isImporting}
+                  />
+                </label>
               </div>
 
               {syncResultMsg && (
