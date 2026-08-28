@@ -107,8 +107,11 @@ export interface ILead extends Document {
     campaignId?: string;
     campaignName?: string;
     formId?: string;
+    formName?: string;
     pageId?: string;
   };
+
+  metaFormFields?: { label: string; value: string }[];
 
   utmData?: {
     utmSource?: string;
@@ -249,8 +252,16 @@ const LeadSchema: Schema<ILead> = new Schema(
       campaignId: String,
       campaignName: String,
       formId: String,
+      formName: String,
       pageId: String,
     },
+
+    metaFormFields: [
+      {
+        label: String,
+        value: String,
+      },
+    ],
 
     utmData: {
       utmSource: String,

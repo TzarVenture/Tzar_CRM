@@ -28,7 +28,9 @@ import {
   Trash2,
   CheckSquare,
   Square,
+  Calendar,
 } from "lucide-react";
+import { useRouter } from "next/navigation";
 import { ILead, BusinessSlug, KanbanStage } from "@/models/Lead";
 import { LeadWorkspaceDrawer } from "./LeadWorkspaceDrawer";
 import { CreateLeadModal } from "./CreateLeadModal";
@@ -47,13 +49,13 @@ interface SmartLeadGridProps {
 
 const BRAND_CONFIG: Record<
   "all" | BusinessSlug,
-  { label: string; bg: string; text: string; border: string; icon: any }
+  { label: string; bg: string; text: string; border: string; icon: any; logo: string }
 > = {
-  all: { label: "All Businesses", bg: "bg-slate-900", text: "text-white", border: "border-slate-800", icon: Layers },
-  tzar: { label: "Tzar Agency", bg: "bg-emerald-700", text: "text-white", border: "border-emerald-800", icon: Briefcase },
-  adshalaa: { label: "Adshalaa EdTech", bg: "bg-blue-700", text: "text-white", border: "border-blue-800", icon: BookOpen },
-  crownleaf: { label: "CrownLeaf Gifting", bg: "bg-amber-600", text: "text-white", border: "border-amber-700", icon: Gift },
-  titepo: { label: "Titepo Toys", bg: "bg-pink-600", text: "text-white", border: "border-pink-700", icon: ShoppingBag },
+  all: { label: "All Businesses", bg: "bg-slate-900", text: "text-white", border: "border-slate-800", icon: Layers, logo: "" },
+  tzar: { label: "Tzar Agency", bg: "bg-emerald-700", text: "text-white", border: "border-emerald-800", icon: Briefcase, logo: "/tzar-logo.png" },
+  adshalaa: { label: "Adshalaa EdTech", bg: "bg-blue-700", text: "text-white", border: "border-blue-800", icon: BookOpen, logo: "/adshalaa-logo.png" },
+  crownleaf: { label: "CrownLeaf Gifting", bg: "bg-amber-600", text: "text-white", border: "border-amber-700", icon: Gift, logo: "/Crownleaf-logo.png" },
+  titepo: { label: "Titepo Toys", bg: "bg-pink-600", text: "text-white", border: "border-pink-700", icon: ShoppingBag, logo: "/titepo-logo.png" },
 };
 
 const STAGES: { id: KanbanStage; name: string; color: string }[] = [
@@ -67,6 +69,7 @@ const STAGES: { id: KanbanStage; name: string; color: string }[] = [
 ];
 
 export function SmartLeadGrid({ initialLeads }: SmartLeadGridProps) {
+  const router = useRouter();
   const [leads, setLeads] = useState<Partial<ILead>[]>(initialLeads);
   const [selectedBrand, setSelectedBrand] = useState<"all" | BusinessSlug>("all");
   const [selectedStageFilter, setSelectedStageFilter] = useState<string>("all");
@@ -74,6 +77,14 @@ export function SmartLeadGrid({ initialLeads }: SmartLeadGridProps) {
   const [selectedLeadForDrawer, setSelectedLeadForDrawer] = useState<Partial<ILead> | null>(null);
   const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
   const [isLiveSyncing, setIsLiveSyncing] = useState(false);
+
+  // Pro-Level Filtering States
+  const [dateFilter, setDateFilter] = useState<"all" | "today" | "7days" | "30days" | "custom">("all");
+  const [customStartDate, setCustomStartDate] = useState("");
+  const [customEndDate, setCustomEndDate] = useState("");
+  const [sourceFilter, setSourceFilter] = useState<string>("all");
+  const [slaFilter, setSlaFilter] = useState<string>("all");
+  const [isFilterPanelOpen, setIsFilterPanelOpen] = useState(false);
 
   // Bulk Selection & Deletion State
   const [selectedLeadIds, setSelectedLeadIds] = useState<string[]>([]);
@@ -191,16 +202,57 @@ export function SmartLeadGrid({ initialLeads }: SmartLeadGridProps) {
     return () => clearInterval(interval);
   }, [selectedBrand]);
 
-  // Filtered Leads
+  // Pro Multi-Level Filtered Leads
   const filteredLeads = useMemo(() => {
+    const now = new Date();
+
     return leads.filter((lead) => {
-      // 1. Business Filter
+      // 1. Business Brand Filter
       if (selectedBrand !== "all" && lead.business !== selectedBrand) return false;
 
-      // 2. Stage Filter
+      // 2. Stage Status Filter
       if (selectedStageFilter !== "all" && lead.stageId !== selectedStageFilter) return false;
 
-      // 3. Search Filter
+      // 3. Lead Source Filter
+      if (sourceFilter !== "all" && (lead.source || "").toUpperCase() !== sourceFilter.toUpperCase()) return false;
+
+      // 4. SLA Status Filter
+      if (slaFilter === "overdue") {
+        if (!lead.slaDeadline || new Date(lead.slaDeadline) >= now) return false;
+      } else if (slaFilter === "within_sla") {
+        if (!lead.slaDeadline || new Date(lead.slaDeadline) < now) return false;
+      }
+
+      // 5. Date Range Filter
+      if (dateFilter !== "all") {
+        const leadDate = new Date(lead.createdAt || Date.now());
+        if (dateFilter === "today") {
+          const startOfDay = new Date();
+          startOfDay.setHours(0, 0, 0, 0);
+          if (leadDate < startOfDay) return false;
+        } else if (dateFilter === "7days") {
+          const sevenDaysAgo = new Date();
+          sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7);
+          if (leadDate < sevenDaysAgo) return false;
+        } else if (dateFilter === "30days") {
+          const thirtyDaysAgo = new Date();
+          thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
+          if (leadDate < thirtyDaysAgo) return false;
+        } else if (dateFilter === "custom") {
+          if (customStartDate) {
+            const start = new Date(customStartDate);
+            start.setHours(0, 0, 0, 0);
+            if (leadDate < start) return false;
+          }
+          if (customEndDate) {
+            const end = new Date(customEndDate);
+            end.setHours(23, 59, 59, 999);
+            if (leadDate > end) return false;
+          }
+        }
+      }
+
+      // 6. Global Text Search Filter
       if (searchQuery.trim()) {
         const q = searchQuery.toLowerCase();
         const nameMatch = (lead.fullName || "").toLowerCase().includes(q);
@@ -208,12 +260,76 @@ export function SmartLeadGrid({ initialLeads }: SmartLeadGridProps) {
         const phoneMatch = (lead.phone || "").toLowerCase().includes(q);
         const customIdMatch = (lead.leadCustomId || "").toLowerCase().includes(q);
         const companyMatch = (lead.companyName || "").toLowerCase().includes(q);
-        return nameMatch || emailMatch || phoneMatch || customIdMatch || companyMatch;
+        const cityMatch = (lead.city || "").toLowerCase().includes(q);
+        return nameMatch || emailMatch || phoneMatch || customIdMatch || companyMatch || cityMatch;
       }
 
       return true;
     });
-  }, [leads, selectedBrand, selectedStageFilter, searchQuery]);
+  }, [leads, selectedBrand, selectedStageFilter, sourceFilter, slaFilter, dateFilter, customStartDate, customEndDate, searchQuery]);
+
+  // Pro Excel Export Handler (.csv / .xlsx compatible with UTF-8 BOM)
+  const handleExportExcel = () => {
+    if (filteredLeads.length === 0) {
+      alert("No leads found matching current filter criteria to export.");
+      return;
+    }
+
+    const headers = [
+      "Lead ID",
+      "Brand Entity",
+      "Full Name",
+      "Email Address",
+      "Phone Number",
+      "Company Name",
+      "City",
+      "Source",
+      "Stage Status",
+      "Score",
+      "Estimated Budget (INR)",
+      "SLA Deadline",
+      "Occasion / Event Type",
+      "Kids Quantity",
+      "Budget Per Gift",
+      "Age Group",
+      "Event Date",
+      "Special Requirements",
+      "Created Date",
+    ];
+
+    const rows = filteredLeads.map((l) => [
+      `"${l.leadCustomId || ""}"`,
+      `"${(l.business || "").toUpperCase()}"`,
+      `"${(l.fullName || "").replace(/"/g, '""')}"`,
+      `"${l.email || ""}"`,
+      `"${l.phone || ""}"`,
+      `"${(l.companyName || "").replace(/"/g, '""')}"`,
+      `"${(l.city || "").replace(/"/g, '""')}"`,
+      `"${l.source || ""}"`,
+      `"${l.stageId || ""}"`,
+      l.score || 0,
+      l.estimatedBudget || 0,
+      `"${l.slaDeadline ? new Date(l.slaDeadline).toLocaleString() : ""}"`,
+      `"${l.titepoData?.eventType || ""}"`,
+      `"${l.titepoData?.kidsCount || ""}"`,
+      `"${l.titepoData?.budgetPerGift || ""}"`,
+      `"${l.titepoData?.childAgeGroup || ""}"`,
+      `"${l.titepoData?.eventDate || ""}"`,
+      `"${(l.titepoData?.specialRequirements || "").replace(/"/g, '""')}"`,
+      `"${l.createdAt ? new Date(l.createdAt).toLocaleString() : ""}"`,
+    ]);
+
+    const csvContent = "\uFEFF" + [headers.join(","), ...rows.map((r) => r.join(","))].join("\n");
+    const blob = new Blob([csvContent], { type: "text/csv;charset=utf-8;" });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement("a");
+    link.href = url;
+    const timestamp = new Date().toISOString().slice(0, 10);
+    link.setAttribute("download", `Tzar_CRM_Leads_Export_${selectedBrand}_${timestamp}.csv`);
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+  };
 
   // Bulk Selection Handlers
   const toggleSelectLead = (leadId: string) => {
@@ -401,14 +517,20 @@ export function SmartLeadGrid({ initialLeads }: SmartLeadGridProps) {
               <button
                 key={bSlug}
                 onClick={() => setSelectedBrand(bSlug)}
-                className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-bold transition-all cursor-pointer ${
+                className={`inline-flex items-center gap-1.5 px-3.5 py-2 rounded-xl text-xs font-bold transition-all cursor-pointer ${
                   isSelected
                     ? `${config.bg} ${config.text} shadow-xs`
                     : "text-slate-700 hover:bg-slate-300/60"
                 }`}
               >
-                <Icon className="w-3.5 h-3.5" />
-                {config.label}
+                {config.logo ? (
+                  <img src={config.logo} alt={config.label} className="h-4.5 w-auto object-contain max-h-5" />
+                ) : (
+                  <>
+                    <Icon className="w-3.5 h-3.5" />
+                    <span>{config.label}</span>
+                  </>
+                )}
               </button>
             );
           })}
@@ -448,34 +570,151 @@ export function SmartLeadGrid({ initialLeads }: SmartLeadGridProps) {
       </div>
 
       {/* ─── 3. SEARCH & CONTROLS TOOLBAR ───────────────────────────────── */}
-      <div className="flex flex-wrap items-center justify-between gap-4 p-4 bg-white rounded-2xl border border-slate-300 shadow-2xs">
-        <div className="flex items-center gap-3 flex-1 min-w-[280px]">
-          <div className="relative flex-1">
-            <Search className="w-4 h-4 text-slate-400 absolute left-3.5 top-1/2 -translate-y-1/2" />
-            <input
-              type="text"
-              placeholder="Search by lead name, phone, email, company, custom ID..."
-              value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
-              className="w-full pl-9 pr-4 py-2 text-xs font-semibold text-slate-900 bg-slate-50 border border-slate-200 rounded-xl outline-hidden focus:border-(--color-brand-green) focus:bg-white transition-all"
-            />
+      <div className="bg-white rounded-2xl border border-slate-300 shadow-2xs overflow-hidden">
+        <div className="flex flex-wrap items-center justify-between gap-3 p-4">
+          <div className="flex items-center gap-3 flex-1 min-w-[280px]">
+            <div className="relative flex-1">
+              <Search className="w-4 h-4 text-slate-400 absolute left-3.5 top-1/2 -translate-y-1/2" />
+              <input
+                type="text"
+                placeholder="Search by lead name, phone, email, company, custom ID, city..."
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                className="w-full pl-9 pr-4 py-2 text-xs font-semibold text-slate-900 bg-slate-50 border border-slate-200 rounded-xl outline-hidden focus:border-(--color-brand-green) focus:bg-white transition-all"
+              />
+            </div>
+          </div>
+
+          <div className="flex items-center gap-2 flex-wrap">
+            {/* Filter Drawer Toggle */}
+            <button
+              onClick={() => setIsFilterPanelOpen((prev) => !prev)}
+              className={`flex items-center gap-1.5 px-3.5 py-2 text-xs font-bold rounded-xl transition-all cursor-pointer border ${
+                isFilterPanelOpen || dateFilter !== "all" || sourceFilter !== "all" || slaFilter !== "all"
+                  ? "bg-slate-900 text-white border-slate-900 shadow-xs"
+                  : "bg-slate-100 text-slate-800 border-slate-300 hover:bg-slate-200"
+              }`}
+            >
+              <Filter className="w-3.5 h-3.5 text-emerald-400" />
+              <span>Advanced Filters</span>
+              {(dateFilter !== "all" || sourceFilter !== "all" || slaFilter !== "all") && (
+                <span className="w-2 h-2 rounded-full bg-emerald-400 animate-ping" />
+              )}
+            </button>
+
+            {/* Excel Export Button */}
+            <button
+              onClick={handleExportExcel}
+              className="flex items-center gap-1.5 px-3.5 py-2 text-xs font-bold text-emerald-900 bg-emerald-100 hover:bg-emerald-200 border border-emerald-300 rounded-xl transition-all cursor-pointer shadow-2xs"
+              title="Export filtered leads dataset to Excel (.csv format)"
+            >
+              <Download className="w-3.5 h-3.5 text-emerald-700" /> Export Excel
+            </button>
+
+            {selectedStageFilter !== "all" && (
+              <button
+                onClick={() => setSelectedStageFilter("all")}
+                className="px-3 py-1.5 text-xs font-bold text-rose-700 bg-rose-50 border border-rose-200 rounded-xl hover:bg-rose-100 transition-all cursor-pointer"
+              >
+                Clear Stage
+              </button>
+            )}
+
+            <span className="text-xs font-bold text-slate-600 bg-slate-100 px-3 py-1.5 rounded-xl border border-slate-200">
+              Showing {filteredLeads.length} leads
+            </span>
           </div>
         </div>
 
-        <div className="flex items-center gap-2">
-          {selectedStageFilter !== "all" && (
-            <button
-              onClick={() => setSelectedStageFilter("all")}
-              className="px-3 py-1.5 text-xs font-bold text-rose-700 bg-rose-50 border border-rose-200 rounded-xl hover:bg-rose-100 transition-all cursor-pointer"
-            >
-              Clear Stage Filter
-            </button>
-          )}
+        {/* Multi-Level Filter Panel (Collapsible) */}
+        {isFilterPanelOpen && (
+          <div className="p-4 bg-slate-50 border-t border-slate-200 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 text-xs font-semibold animate-fade-in">
+            {/* Date Range Filter */}
+            <div>
+              <label className="block text-[11px] font-bold uppercase text-slate-600 mb-1">
+                Date Range
+              </label>
+              <select
+                value={dateFilter}
+                onChange={(e) => setDateFilter(e.target.value as any)}
+                className="w-full p-2 border border-slate-300 rounded-xl bg-white outline-none font-bold text-slate-900 cursor-pointer"
+              >
+                <option value="all">All Dates (Lifetime)</option>
+                <option value="today">Today</option>
+                <option value="7days">Last 7 Days</option>
+                <option value="30days">Last 30 Days</option>
+                <option value="custom">Custom Date Range</option>
+              </select>
+            </div>
 
-          <span className="text-xs font-bold text-slate-600 bg-slate-100 px-3 py-1.5 rounded-xl border border-slate-200">
-            Showing {filteredLeads.length} leads
-          </span>
-        </div>
+            {/* Lead Source Filter */}
+            <div>
+              <label className="block text-[11px] font-bold uppercase text-slate-600 mb-1">
+                Lead Source
+              </label>
+              <select
+                value={sourceFilter}
+                onChange={(e) => setSourceFilter(e.target.value)}
+                className="w-full p-2 border border-slate-300 rounded-xl bg-white outline-none font-bold text-slate-900 cursor-pointer"
+              >
+                <option value="all">All Lead Sources</option>
+                <option value="META_LEAD_AD">Meta Lead Ads</option>
+                <option value="WEBSITE">Website Contact Form</option>
+                <option value="WHATSAPP">WhatsApp Direct</option>
+                <option value="DIRECT_INBOUND">Direct Phone Call</option>
+                <option value="MANUAL">Manual Entry</option>
+              </select>
+            </div>
+
+            {/* SLA Status Filter */}
+            <div>
+              <label className="block text-[11px] font-bold uppercase text-slate-600 mb-1">
+                SLA Compliance
+              </label>
+              <select
+                value={slaFilter}
+                onChange={(e) => setSlaFilter(e.target.value)}
+                className="w-full p-2 border border-slate-300 rounded-xl bg-white outline-none font-bold text-slate-900 cursor-pointer"
+              >
+                <option value="all">All SLA Statuses</option>
+                <option value="within_sla">Within SLA (Active)</option>
+                <option value="overdue">⚠️ SLA Overdue</option>
+              </select>
+            </div>
+
+            {/* Reset Filters CTA */}
+            <div className="flex items-end justify-between gap-2">
+              {dateFilter === "custom" && (
+                <div className="flex gap-2 flex-1">
+                  <input
+                    type="date"
+                    value={customStartDate}
+                    onChange={(e) => setCustomStartDate(e.target.value)}
+                    className="w-1/2 p-1.5 border border-slate-300 rounded-lg bg-white text-[11px]"
+                  />
+                  <input
+                    type="date"
+                    value={customEndDate}
+                    onChange={(e) => setCustomEndDate(e.target.value)}
+                    className="w-1/2 p-1.5 border border-slate-300 rounded-lg bg-white text-[11px]"
+                  />
+                </div>
+              )}
+              <button
+                onClick={() => {
+                  setDateFilter("all");
+                  setSourceFilter("all");
+                  setSlaFilter("all");
+                  setCustomStartDate("");
+                  setCustomEndDate("");
+                }}
+                className="px-3 py-2 text-xs font-bold text-rose-700 bg-rose-50 border border-rose-200 rounded-xl hover:bg-rose-100 transition-all cursor-pointer whitespace-nowrap"
+              >
+                Reset All Filters
+              </button>
+            </div>
+          </div>
+        )}
       </div>
 
       {/* ─── BULK ACTIONS BAR (Appears when leads are selected) ────────── */}
@@ -544,6 +783,7 @@ export function SmartLeadGrid({ initialLeads }: SmartLeadGridProps) {
                 </th>
                 <th className="py-3.5 px-4">Lead ID</th>
                 <th className="py-3.5 px-4">Brand Entity</th>
+                <th className="py-3.5 px-4">Submitted Date</th>
                 <th className="py-3.5 px-4">Contact Info</th>
                 <th className="py-3.5 px-4">Interest / Program</th>
                 <th className="py-3.5 px-4">Source</th>
@@ -556,7 +796,7 @@ export function SmartLeadGrid({ initialLeads }: SmartLeadGridProps) {
             <tbody className="divide-y divide-slate-200">
               {filteredLeads.length === 0 ? (
                 <tr>
-                  <td colSpan={10} className="py-12 text-center text-slate-500 font-semibold">
+                  <td colSpan={11} className="py-12 text-center text-slate-500 font-semibold">
                     No leads found matching current search or filters.
                   </td>
                 </tr>
@@ -575,7 +815,7 @@ export function SmartLeadGrid({ initialLeads }: SmartLeadGridProps) {
                       className={`hover:bg-slate-50/80 transition-colors cursor-pointer group ${
                         isSelected ? "bg-emerald-50/50" : ""
                       }`}
-                      onClick={() => setSelectedLeadForDrawer(lead)}
+                      onClick={() => router.push(`/pipeline/${lead._id}`)}
                     >
                       {/* Checkbox Cell */}
                       <td className="py-3.5 px-4 w-10" onClick={(e) => e.stopPropagation()}>
@@ -596,11 +836,26 @@ export function SmartLeadGrid({ initialLeads }: SmartLeadGridProps) {
                         {lead.leadCustomId}
                       </td>
 
-                      {/* Brand Entity Badge */}
+                      {/* Brand Entity Badge with Image Logo */}
                       <td className="py-3.5 px-4">
-                        <span className={`inline-flex items-center gap-1 text-[11px] font-bold px-2.5 py-0.5 rounded-full ${bConfig.bg} ${bConfig.text}`}>
-                          <BIcon className="w-3 h-3" />
-                          {bConfig.label}
+                        {bConfig.logo ? (
+                          <img src={bConfig.logo} alt={bConfig.label} className="h-5 w-auto object-contain max-h-5" />
+                        ) : (
+                          <span className={`inline-flex items-center gap-1.5 text-[11px] font-bold px-2.5 py-1 rounded-xl ${bConfig.bg} ${bConfig.text}`}>
+                            <BIcon className="w-3.5 h-3.5" />
+                            <span>{bConfig.label}</span>
+                          </span>
+                        )}
+                      </td>
+
+                      {/* Facebook Lead Submitted Date */}
+                      <td className="py-3.5 px-4 font-medium text-slate-700 text-[11px] whitespace-nowrap">
+                        <div className="flex items-center gap-1 font-bold text-slate-800">
+                          <Calendar className="w-3.5 h-3.5 text-slate-400" />
+                          {lead.createdAt ? new Date(lead.createdAt).toLocaleDateString("en-GB", { day: "2-digit", month: "short", year: "numeric" }) : "N/A"}
+                        </div>
+                        <span className="text-[10px] text-slate-400 font-mono">
+                          {lead.createdAt ? new Date(lead.createdAt).toLocaleTimeString("en-US", { hour: "2-digit", minute: "2-digit" }) : ""}
                         </span>
                       </td>
 

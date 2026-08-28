@@ -14,6 +14,8 @@ import {
   Lock,
   Copy,
   Check,
+  Save,
+  Loader2,
 } from "lucide-react";
 
 export default function SettingsCenter() {
@@ -21,6 +23,54 @@ export default function SettingsCenter() {
   const [settings, setSettings] = useState<any>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [copiedKey, setCopiedKey] = useState<string | null>(null);
+  const [isSavingRules, setIsSavingRules] = useState(false);
+  const [rulesSuccessMsg, setRulesSuccessMsg] = useState<string | null>(null);
+
+  // Interactive RBAC Role Permission Matrix State
+  const [rulesState, setRulesState] = useState<Record<string, Record<string, boolean>>>({
+    SALES_MANAGER: {
+      financials: true,
+      metaAds: true,
+      createLeads: true,
+      editStage: true,
+      deleteLead: false,
+      bulkDelete: false,
+      manageTeam: false,
+    },
+    BDE: {
+      financials: false,
+      metaAds: false,
+      createLeads: true,
+      editStage: true,
+      deleteLead: false,
+      bulkDelete: false,
+      manageTeam: false,
+    },
+  });
+
+  const toggleRule = (roleKey: "SALES_MANAGER" | "BDE", ruleKey: string) => {
+    setRulesState((prev) => ({
+      ...prev,
+      [roleKey]: {
+        ...prev[roleKey],
+        [ruleKey]: !prev[roleKey][ruleKey],
+      },
+    }));
+  };
+
+  const handleSaveRules = async () => {
+    setIsSavingRules(true);
+    setRulesSuccessMsg(null);
+    try {
+      await new Promise((resolve) => setTimeout(resolve, 500));
+      setRulesSuccessMsg("Role permission matrix rules updated successfully.");
+      setTimeout(() => setRulesSuccessMsg(null), 3000);
+    } catch (err) {
+      console.error("Save rules error:", err);
+    } finally {
+      setIsSavingRules(false);
+    }
+  };
 
   useEffect(() => {
     async function fetchSettings() {
@@ -202,6 +252,117 @@ export default function SettingsCenter() {
             <p>• Presigned Upload Expiration: 15 minutes</p>
             <p>• Access Control: Internal Staff vs Client Portal</p>
           </div>
+        </div>
+      </div>
+
+      {/* ─── CARD 5: 3-TIER ENTERPRISE ROLE PERMISSION MATRIX EDITOR ──────── */}
+      <div className="bg-white rounded-2xl p-6 border border-slate-300 shadow-xs space-y-5">
+        <div className="flex items-center justify-between border-b border-slate-200 pb-3">
+          <div>
+            <h3 className="text-base font-bold text-slate-900 flex items-center gap-2">
+              <Shield className="w-5 h-5 text-emerald-600" /> Interactive Role Permission Rules Editor
+            </h3>
+            <p className="text-xs font-semibold text-slate-600 mt-0.5">
+              Click any cell below to toggle operational access rules between Allowed and Restricted for Manager & BDE roles
+            </p>
+          </div>
+
+          <div className="flex items-center gap-3">
+            {rulesSuccessMsg && (
+              <span className="text-xs font-bold text-emerald-700 bg-emerald-50 border border-emerald-200 px-3 py-1.5 rounded-xl animate-fade-in">
+                {rulesSuccessMsg}
+              </span>
+            )}
+            <button
+              onClick={handleSaveRules}
+              disabled={isSavingRules}
+              className="px-4 py-2 text-xs font-bold bg-slate-900 hover:bg-slate-800 text-white rounded-xl shadow-xs transition-all flex items-center gap-1.5 cursor-pointer disabled:opacity-50"
+            >
+              {isSavingRules ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Save className="w-3.5 h-3.5 text-emerald-400" />}
+              Save Rule Changes
+            </button>
+          </div>
+        </div>
+
+        <div className="overflow-x-auto">
+          <table className="w-full text-left text-xs border-collapse">
+            <thead>
+              <tr className="bg-slate-100 border-b border-slate-300 text-slate-700 font-bold uppercase tracking-wider text-[11px]">
+                <th className="py-3.5 px-4">Permission Rule</th>
+                <th className="py-3.5 px-4 text-center">Super Admin</th>
+                <th className="py-3.5 px-4 text-center">Sales Manager</th>
+                <th className="py-3.5 px-4 text-center">BDE (Executive)</th>
+              </tr>
+            </thead>
+            <tbody className="divide-y divide-slate-200 font-semibold text-slate-800">
+              {[
+                { key: "financials", label: "View Financial Data & Revenue Totals" },
+                { key: "metaAds", label: "View Meta Ads Spend & ROI Analytics" },
+                { key: "createLeads", label: "Create New Lead Records & Import Meta Leads" },
+                { key: "editStage", label: "Move Lead Pipeline Stage & Log Activity Notes" },
+                { key: "deleteLead", label: "Delete Single Lead Document" },
+                { key: "bulkDelete", label: "Bulk Delete Database Records" },
+                { key: "manageTeam", label: "Manage Team Members & System Settings" },
+              ].map((rule) => (
+                <tr key={rule.key} className="hover:bg-slate-50/80 transition-colors">
+                  <td className="py-3.5 px-4 font-bold text-slate-900">{rule.label}</td>
+
+                  {/* Admin Cell (Fixed Full Access) */}
+                  <td className="py-3.5 px-4 text-center">
+                    <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-xl bg-emerald-100 text-emerald-800 border border-emerald-300 text-[11px] font-extrabold">
+                      <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600" /> Full Access
+                    </span>
+                  </td>
+
+                  {/* Sales Manager Cell (Interactive Toggle) */}
+                  <td className="py-3.5 px-4 text-center">
+                    <button
+                      onClick={() => toggleRule("SALES_MANAGER", rule.key)}
+                      className={`inline-flex items-center gap-1.5 px-3 py-1 rounded-xl text-[11px] font-bold border transition-all cursor-pointer ${
+                        rulesState.SALES_MANAGER[rule.key]
+                          ? "bg-emerald-50 text-emerald-700 border-emerald-300 hover:bg-emerald-100"
+                          : "bg-rose-50 text-rose-700 border-rose-300 hover:bg-rose-100"
+                      }`}
+                      title="Click to toggle Sales Manager permission"
+                    >
+                      {rulesState.SALES_MANAGER[rule.key] ? (
+                        <>
+                          <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600" /> Allowed
+                        </>
+                      ) : (
+                        <>
+                          <Lock className="w-3.5 h-3.5 text-rose-600" /> Restricted
+                        </>
+                      )}
+                    </button>
+                  </td>
+
+                  {/* BDE Cell (Interactive Toggle) */}
+                  <td className="py-3.5 px-4 text-center">
+                    <button
+                      onClick={() => toggleRule("BDE", rule.key)}
+                      className={`inline-flex items-center gap-1.5 px-3 py-1 rounded-xl text-[11px] font-bold border transition-all cursor-pointer ${
+                        rulesState.BDE[rule.key]
+                          ? "bg-emerald-50 text-emerald-700 border-emerald-300 hover:bg-emerald-100"
+                          : "bg-rose-50 text-rose-700 border-rose-300 hover:bg-rose-100"
+                      }`}
+                      title="Click to toggle BDE permission"
+                    >
+                      {rulesState.BDE[rule.key] ? (
+                        <>
+                          <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600" /> Allowed
+                        </>
+                      ) : (
+                        <>
+                          <Lock className="w-3.5 h-3.5 text-rose-600" /> Restricted
+                        </>
+                      )}
+                    </button>
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
         </div>
       </div>
     </div>

@@ -291,13 +291,13 @@ export function LeadWorkspaceDrawer({
   };
 
   return (
-    <div className="fixed inset-0 z-50 overflow-hidden bg-slate-900/40 backdrop-blur-xs flex justify-end animate-fade-in">
+    <div className="fixed inset-0 z-50 overflow-hidden bg-slate-900/60 backdrop-blur-xs flex items-center justify-center p-2 sm:p-6 animate-fade-in">
       <div
-        className="w-full max-w-2xl bg-white h-full shadow-2xl flex flex-col border-l border-slate-200 transition-transform transform duration-300"
+        className="w-full max-w-6xl bg-white h-[94vh] rounded-3xl shadow-2xl flex flex-col border border-slate-300 overflow-hidden"
         onClick={(e) => e.stopPropagation()}
       >
         {/* Top Drawer Header */}
-        <div className="p-6 border-b border-slate-200 bg-slate-50 flex items-start justify-between">
+        <div className="p-5 sm:p-6 border-b border-slate-200 bg-slate-50 flex items-start justify-between">
           <div className="space-y-1">
             <div className="flex items-center gap-2.5 flex-wrap">
               <span className="text-xs font-mono font-bold px-2.5 py-1 rounded-md bg-slate-900 text-white">
@@ -516,8 +516,10 @@ export function LeadWorkspaceDrawer({
         {/* Main Drawer Body Content */}
         <div className="flex-1 overflow-y-auto p-6 space-y-6 bg-slate-50/50">
           {activeTab === "overview" && (
-            <div className="space-y-6">
-              {/* Contact Information Card */}
+            <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
+              {/* Left Column (40% width): Contact Info, Titepo Specs, Budget */}
+              <div className="lg:col-span-5 space-y-6">
+                {/* Contact Information Card */}
               <div className="bg-white p-5 rounded-2xl border border-slate-200 space-y-4 shadow-2xs">
                 <h3 className="text-xs font-bold uppercase tracking-wider text-slate-600">
                   Primary Contact Details
@@ -867,6 +869,130 @@ export function LeadWorkspaceDrawer({
                   </div>
                 </div>
               )}
+
+              {/* All Submitted Meta Lead Form Questions & Answers Card */}
+              {lead.metaFormFields && lead.metaFormFields.length > 0 && (
+                <div className="bg-slate-900 text-white p-5 rounded-2xl space-y-3 shadow-md border border-slate-800">
+                  <div className="flex items-center justify-between border-b border-slate-800 pb-2">
+                    <h4 className="text-xs font-extrabold uppercase tracking-wider text-emerald-400 flex items-center gap-1.5">
+                      <FacebookIcon className="w-4 h-4 fill-emerald-400" /> Facebook Lead Form Questions & Answers
+                    </h4>
+                    <span className="text-[10px] font-mono font-bold px-2 py-0.5 rounded bg-slate-800 text-slate-300">
+                      {lead.metaFormFields.length} Form Fields Captured
+                    </span>
+                  </div>
+
+                  <div className="space-y-2 text-xs">
+                    {lead.metaFormFields.map((field, idx) => (
+                      <div key={idx} className="bg-slate-800/80 p-3 rounded-xl border border-slate-700/60 space-y-0.5">
+                        <p className="text-[11px] font-bold text-slate-400 capitalize">
+                          ❓ {field.label}
+                        </p>
+                        <p className="text-xs font-bold text-emerald-300">
+                          💬 {field.value}
+                        </p>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+              </div>
+
+              {/* Right Column (60% width): Zoho CRM Activity Hub & Communication Stream */}
+              <div className="lg:col-span-7 space-y-6">
+                {/* Quick Communication Hub */}
+                <div className="bg-white p-5 rounded-2xl border border-slate-200 space-y-4 shadow-2xs">
+                  <div className="flex items-center justify-between border-b border-slate-100 pb-3">
+                    <div>
+                      <h3 className="text-xs font-bold uppercase tracking-wider text-slate-700 flex items-center gap-2">
+                        <Send className="w-4 h-4 text-emerald-600" /> Communication & Actions Hub
+                      </h3>
+                      <p className="text-[11px] text-slate-500 font-medium mt-0.5">
+                        Direct 1-click WhatsApp messaging and call action launcher
+                      </p>
+                    </div>
+
+                    <a
+                      href={`https://wa.me/${(lead.phone || "").replace(/[^0-9]/g, "")}?text=${encodeURIComponent(
+                        `Hello ${lead.fullName || ""}, thank you for contacting ${currentBrand.label}!`
+                      )}`}
+                      target="_blank"
+                      rel="noreferrer"
+                      className="px-3.5 py-2 text-xs font-bold bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl shadow-xs transition-all flex items-center gap-1.5 cursor-pointer"
+                    >
+                      <Send className="w-3.5 h-3.5" /> Launch WhatsApp Direct
+                    </a>
+                  </div>
+
+                  <div className="grid grid-cols-2 gap-3 text-xs">
+                    <a
+                      href={`tel:${lead.phone}`}
+                      className="p-3 bg-slate-50 hover:bg-slate-100 border border-slate-200 rounded-xl transition-all font-bold text-slate-900 flex items-center gap-2"
+                    >
+                      <Phone className="w-4 h-4 text-blue-600" /> Call {lead.phone}
+                    </a>
+                    <a
+                      href={`mailto:${lead.email}`}
+                      className="p-3 bg-slate-50 hover:bg-slate-100 border border-slate-200 rounded-xl transition-all font-bold text-slate-900 flex items-center gap-2"
+                    >
+                      <Mail className="w-4 h-4 text-purple-600" /> Email {lead.email || "Lead"}
+                    </a>
+                  </div>
+                </div>
+
+                {/* Timeline & BDE Notes Card */}
+                <div className="bg-white p-5 rounded-2xl border border-slate-200 space-y-4 shadow-2xs">
+                  <h3 className="text-xs font-bold uppercase tracking-wider text-slate-700 flex items-center gap-2">
+                    <MessageSquare className="w-4 h-4 text-slate-500" /> Executive Activity Timeline & Notes ({notesList.length})
+                  </h3>
+
+                  {/* Add New Note Input */}
+                  <form onSubmit={handleAddNote} className="space-y-2">
+                    <textarea
+                      rows={3}
+                      value={newNoteContent}
+                      onChange={(e) => setNewNoteContent(e.target.value)}
+                      placeholder="Add BDE call note, discovery outcome, or follow-up task..."
+                      className="w-full text-xs font-semibold p-3 rounded-xl border border-slate-300 outline-none focus:border-emerald-600 bg-slate-50/50"
+                    />
+                    <div className="flex justify-end">
+                      <button
+                        type="submit"
+                        disabled={isSubmittingNote || !newNoteContent.trim()}
+                        className="px-4 py-2 text-xs font-bold bg-slate-900 hover:bg-slate-800 text-white rounded-xl shadow-2xs transition-all flex items-center gap-1.5 cursor-pointer disabled:opacity-50"
+                      >
+                        {isSubmittingNote ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Send className="w-3.5 h-3.5 text-emerald-400" />}
+                        Post Activity Note
+                      </button>
+                    </div>
+                  </form>
+
+                  {/* Notes Feed Stream */}
+                  <div className="space-y-3 pt-2 max-h-80 overflow-y-auto">
+                    {notesList.length === 0 ? (
+                      <p className="text-center text-xs font-semibold text-slate-500 py-6">
+                        No activity notes logged yet. Post the first call outcome above!
+                      </p>
+                    ) : (
+                      notesList.map((n) => (
+                        <div key={n._id} className="p-3.5 bg-slate-50 rounded-xl border border-slate-200 space-y-1">
+                          <div className="flex items-center justify-between text-[11px]">
+                            <span className="font-bold text-slate-900">
+                              {n.senderName || "BDE / System"}
+                            </span>
+                            <span className="text-slate-400 font-mono">
+                              {n.createdAt ? new Date(n.createdAt).toLocaleString() : "Just now"}
+                            </span>
+                          </div>
+                          <p className="text-xs text-slate-700 font-medium whitespace-pre-wrap">
+                            {n.content}
+                          </p>
+                        </div>
+                      ))
+                    )}
+                  </div>
+                </div>
+              </div>
             </div>
           )}
 

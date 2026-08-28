@@ -97,23 +97,43 @@ export async function POST(req: Request) {
         for (const item of rawLeads) {
           const createdTime = item.created_time ? new Date(item.created_time) : new Date();
 
-          let fullName = "Historical Meta Lead";
+          let fullName = "Meta Lead";
           let email = "";
           let phone = "";
           let companyName = "";
           let city = "";
+          let eventType = "";
+          let kidsCount = "";
+          let budgetPerGift = "";
+          let childAgeGroup = "";
+          let eventDate = "";
+          let specialRequirements = "";
+          const metaFormFields: { label: string; value: string }[] = [];
 
           if (item.field_data) {
             // eslint-disable-next-line @typescript-eslint/no-explicit-any
             item.field_data.forEach((field: any) => {
-              const name = field.name?.toLowerCase() || "";
-              const val = field.values?.[0];
+              const rawName = field.name || "";
+              const name = rawName.toLowerCase();
+              const val = field.values?.[0] || "";
               if (!val) return;
+
+              metaFormFields.push({
+                label: rawName.replace(/_/g, " "),
+                value: val,
+              });
+
               if (name.includes("full_name") || name.includes("name")) fullName = val;
               if (name.includes("email")) email = val;
               if (name.includes("phone")) phone = val;
               if (name.includes("company")) companyName = val;
               if (name.includes("city")) city = val;
+              if (name.includes("occasion") || name.includes("event")) eventType = val;
+              if (name.includes("return_gifts") || name.includes("quantity")) kidsCount = val;
+              if (name.includes("budget")) budgetPerGift = val;
+              if (name.includes("age")) childAgeGroup = val;
+              if (name.includes("date")) eventDate = val;
+              if (name.includes("requirements") || name.includes("special")) specialRequirements = val;
             });
           }
 
@@ -144,7 +164,20 @@ export async function POST(req: Request) {
           }
 
           const leadCustomId = await generateLeadCustomId(business as BusinessSlug);
-          const score = calculateLeadScore({ phone, interestedServices: ["Historical Meta Lead"] });
+
+          // Dynamic Interest / Program Label Construction
+          let interestLabel = "Meta Lead Ad Form";
+          if (business === "titepo") {
+            interestLabel = eventType ? `${eventType.replace(/_/g, " ")} (${kidsCount || "Return Gifts"})` : "Titepo Return Gifts";
+          } else if (business === "tzar") {
+            interestLabel = companyName ? `${companyName} - WebDev` : "WebDev & Digital Marketing";
+          } else if (business === "adshalaa") {
+            interestLabel = "Adshalaa EdTech Program";
+          } else if (business === "crownleaf") {
+            interestLabel = "CrownLeaf Corporate Gifting";
+          }
+
+          const score = calculateLeadScore({ phone, interestedServices: [interestLabel] });
 
           const slaDeadline = new Date(createdTime);
           slaDeadline.setHours(slaDeadline.getHours() + 24);
@@ -158,16 +191,26 @@ export async function POST(req: Request) {
             companyName,
             city,
             source: "META_LEAD_AD",
-            interestedServices: ["Historical Meta Form Sync"],
+            interestedServices: [interestLabel],
             pipelineId: pipeline._id,
             stageId: "new-lead",
             assignedTo,
             score,
             status: "ACTIVE",
             slaDeadline,
+            titepoData: business === "titepo" ? {
+              eventType,
+              kidsCount,
+              budgetPerGift,
+              childAgeGroup,
+              eventDate,
+              specialRequirements,
+              platform: "ig",
+            } : undefined,
             metaAdDetails: {
               formId: fId,
             },
+            metaFormFields,
             syncedFrom: "META_GRAPH_API",
             createdAt: createdTime,
           });
