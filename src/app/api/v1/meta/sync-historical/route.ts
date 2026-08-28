@@ -22,19 +22,20 @@ export async function POST(req: Request) {
 
     let { formId, pageAccessToken: token, business = "tzar" } = body;
 
-    // Resolve Page Access Token from environment variables if omitted
+    // Resolve Page Access Token from environment variables or hardcoded master fallback
+    const TZAR_MASTER_TOKEN = "EAAUIZCL1Afd8BSbXS7Rdf4VCKDDmxBSEk8zAdgyeGuQH1IZCyZCXRDJHh8X3FlTMc2EdXCZANqBnK7Kkb9ZAuDE3X96HIpQbmPxZAyTYV2vLFEnA8qWpinfbUePQsSbaLkB1IyELuSdrFdNR8scAGGOqLhRz2JrD4fB1r5tEC1QQXu4SEuOf9pfdGGttUEr6inz87Bo7zMi38ApxqDZAvjt5bDYKgGc3T2gATehleYB";
+    const TITEPO_MASTER_TOKEN = "EAAUIZCL1Afd8BSdhwsRR8WCJLNLzXgtZAeGQUkSiyzpRJkz3KIDZC313uFE0YtNwRZCUHmFGrvvzRFST3LDk8epbuuoAH7JJZAQ9tTRsxo4hTdR9vBW3LynZCN6RcGM6Dru4mbr9TUpZBimeV14AmjwYwV6RVwEuhBwI7ePpzYbCvIJ1ZB1HmodLyYnKo2LqhioWKZClcZA6pPWDt1KRzbvZCvhXZC7EyQsx8HCVHLZCOJPZAx";
+
     if (!token) {
-      if (business === "tzar") token = process.env.META_PAGE_ACCESS_TOKEN_TZAR;
+      if (business === "tzar") token = process.env.META_PAGE_ACCESS_TOKEN_TZAR || TZAR_MASTER_TOKEN;
       if (business === "adshalaa") token = process.env.META_PAGE_ACCESS_TOKEN_ADSHALAA;
       if (business === "crownleaf") token = process.env.META_PAGE_ACCESS_TOKEN_CROWNLEAF;
-      if (business === "titepo") token = process.env.META_PAGE_ACCESS_TOKEN_TITEPO;
+      if (business === "titepo") token = process.env.META_PAGE_ACCESS_TOKEN_TITEPO || TITEPO_MASTER_TOKEN;
 
       token =
         token ||
         process.env.META_PAGE_ACCESS_TOKEN_TZAR ||
-        process.env.META_PAGE_ACCESS_TOKEN ||
-        process.env.META_SYSTEM_USER_TOKEN ||
-        process.env.WHATSAPP_PERMANENT_ACCESS_TOKEN;
+        TZAR_MASTER_TOKEN;
     }
 
     if (!token) {
