@@ -68,6 +68,23 @@ export async function POST(req: Request) {
       const city = getKey("city", "location", "state", "address").replace(/^"|"$/g, "").trim();
       const companyName = getKey("company_name", "company", "organization").replace(/^"|"$/g, "").trim();
 
+      // Extract Titepo Custom Form Fields
+      const eventType = getKey("what_is_the_occasion?", "occasion", "event_type", "event");
+      const kidsCount = getKey("how_many_return_gifts_do_you_need?", "return_gifts", "quantity", "kids_count");
+      const budgetPerGift = getKey("what_is_your_budget_per_return_gift?", "budget", "budget_per_gift");
+      const childAgeGroup = getKey("child's_age_group?", "child_age", "age_group", "age");
+      const eventDate = getKey("date", "event_date");
+      const specialRequirements = getKey("any_special_requirements?_(eg._need_personalized_names,_gift_wrapping,_urgent_delivery,_specific_colors,_etc.)", "special_requirements", "requirements");
+      const platform = getKey("platform");
+
+      // Extract Meta Campaign Attribution Details
+      const adId = getKey("ad_id");
+      const adName = getKey("ad_name");
+      const campaignId = getKey("campaign_id");
+      const campaignName = getKey("campaign_name");
+      const formId = getKey("form_id");
+      const formName = getKey("form_name");
+
       // If record is missing both email & phone, skip
       if (!phone && !email) {
         emptyCount++;
@@ -101,6 +118,16 @@ export async function POST(req: Request) {
       const slaDeadline = new Date();
       slaDeadline.setHours(slaDeadline.getHours() + 24);
 
+      const titepoData = business === "titepo" ? {
+        eventType,
+        kidsCount,
+        budgetPerGift,
+        childAgeGroup,
+        eventDate,
+        specialRequirements,
+        platform,
+      } : undefined;
+
       const newLead = await Lead.create({
         leadCustomId,
         business: business as BusinessSlug,
@@ -110,13 +137,22 @@ export async function POST(req: Request) {
         companyName,
         city,
         source: "META_LEAD_AD",
-        interestedServices: ["Meta Lead Ad CSV Import"],
+        interestedServices: [eventType ? `Titepo ${eventType}` : "Meta Lead Ad CSV Import"],
+        requirementsMessage: specialRequirements || undefined,
         pipelineId: pipeline._id,
         stageId: "new-lead",
         assignedTo,
         score,
         status: "ACTIVE",
         slaDeadline,
+        titepoData,
+        metaAdDetails: {
+          adId,
+          adName,
+          campaignId,
+          campaignName,
+          formId,
+        },
         syncedFrom: "META_CSV_IMPORT",
       });
 

@@ -84,7 +84,12 @@ export interface ILead extends Document {
   // 4. Titepo Kids Toys Sub-Schema
   titepoData?: {
     eventType?: string;
-    kidsCount?: number;
+    kidsCount?: string | number;
+    budgetPerGift?: string;
+    childAgeGroup?: string;
+    eventDate?: string;
+    specialRequirements?: string;
+    platform?: string;
   };
 
   // Payment Tracking
@@ -223,7 +228,12 @@ const LeadSchema: Schema<ILead> = new Schema(
 
     titepoData: {
       eventType: String,
-      kidsCount: Number,
+      kidsCount: Schema.Types.Mixed,
+      budgetPerGift: String,
+      childAgeGroup: String,
+      eventDate: String,
+      specialRequirements: String,
+      platform: String,
     },
 
     paymentData: {

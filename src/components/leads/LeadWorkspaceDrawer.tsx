@@ -206,6 +206,31 @@ export function LeadWorkspaceDrawer({
   };
 
 
+  const handleSaveDetailsWithStage = async (targetStageId: KanbanStage) => {
+    if (!lead._id) return;
+    setStageInput(targetStageId);
+    try {
+      const res = await fetch(`/api/v1/leads/${lead._id}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          stageId: targetStageId,
+        }),
+      });
+
+      const data = await res.json();
+      if (data.lead) {
+        onUpdateLead(data.lead);
+
+        // Refresh notes timeline
+        const refRes = await fetch(`/api/v1/leads/${lead._id}`).then((r) => r.json());
+        if (refRes.messages) setNotesList(refRes.messages);
+      }
+    } catch (err) {
+      console.error("Failed to update stage:", err);
+    }
+  };
+
   // Handle Save Lead Details & Budget
   const handleSaveDetails = async () => {
     if (!lead._id) return;
@@ -383,6 +408,64 @@ export function LeadWorkspaceDrawer({
           </div>
         )}
 
+        {/* Salesforce / Zoho Style Stage Stepper & Quick Action Bar */}
+        <div className="bg-slate-900 text-white p-4 px-6 space-y-3">
+          <div className="flex items-center justify-between">
+            <span className="text-[11px] font-bold uppercase tracking-wider text-slate-400">
+              Pipeline Stage Progression
+            </span>
+
+            {/* Quick Action Buttons */}
+            <div className="flex items-center gap-2">
+              <a
+                href={`https://wa.me/${(lead.phone || "").replace(/\D/g, "")}?text=${encodeURIComponent(
+                  `Hi ${lead.fullName || ""}! Thank you for inquiring with ${currentBrand.label}. How can our team assist you today?`
+                )}`}
+                target="_blank"
+                rel="noreferrer"
+                className="px-2.5 py-1 text-xs font-bold bg-emerald-500 hover:bg-emerald-600 text-white rounded-lg transition-all flex items-center gap-1.5 shadow-xs"
+                title="Send 1-Click WhatsApp Message"
+              >
+                <Send className="w-3.5 h-3.5" /> WhatsApp
+              </a>
+
+              <a
+                href={`tel:${lead.phone}`}
+                className="px-2.5 py-1 text-xs font-bold bg-slate-800 hover:bg-slate-700 text-slate-200 rounded-lg transition-all flex items-center gap-1.5 border border-slate-700"
+              >
+                <Phone className="w-3.5 h-3.5" /> Call
+              </a>
+            </div>
+          </div>
+
+          {/* Interactive Stepper */}
+          <div className="grid grid-cols-7 gap-1 bg-slate-800/80 p-1 rounded-xl">
+            {STAGES.map((stg, idx) => {
+              const isCurrent = lead.stageId === stg.id;
+              const isPast = STAGES.findIndex((s) => s.id === lead.stageId) > idx;
+
+              return (
+                <button
+                  key={stg.id}
+                  onClick={() => {
+                    handleSaveDetailsWithStage(stg.id);
+                  }}
+                  className={`py-1.5 px-1 text-[10px] font-bold rounded-lg transition-all text-center truncate cursor-pointer ${
+                    isCurrent
+                      ? "bg-emerald-500 text-white shadow-xs font-extrabold"
+                      : isPast
+                      ? "bg-slate-700 text-emerald-400 hover:bg-slate-600"
+                      : "bg-slate-800/60 text-slate-400 hover:text-slate-200"
+                  }`}
+                  title={`Move lead stage to ${stg.name}`}
+                >
+                  {stg.name}
+                </button>
+              );
+            })}
+          </div>
+        </div>
+
         {/* Tab Navigation Header */}
         <div className="flex border-b border-slate-200 bg-white px-6">
           <button
@@ -483,6 +566,73 @@ export function LeadWorkspaceDrawer({
                   </div>
                 </div>
               </div>
+
+              {/* Dedicated Titepo Toys Event Specifications Card */}
+              {lead.business === "titepo" && (
+                <div className="bg-gradient-to-br from-pink-50/80 via-purple-50/40 to-white p-5 rounded-2xl border border-pink-200/90 space-y-4 shadow-2xs">
+                  <div className="flex items-center justify-between pb-2 border-b border-pink-200/70">
+                    <h3 className="text-xs font-extrabold uppercase tracking-wider text-pink-900 flex items-center gap-2">
+                      <ShoppingBag className="w-4 h-4 text-pink-600" /> Titepo Event & Return Gift Specifications
+                    </h3>
+                    <span className="text-[10px] font-extrabold px-2.5 py-0.5 rounded-full bg-pink-100 text-pink-800 border border-pink-200">
+                      Educational Kits Inquiry
+                    </span>
+                  </div>
+
+                  <div className="grid grid-cols-2 gap-4 text-xs">
+                    <div className="bg-white/80 p-3 rounded-xl border border-pink-100">
+                      <p className="text-slate-500 font-medium">Occasion / Event</p>
+                      <p className="font-extrabold text-slate-900 mt-1 flex items-center gap-1.5">
+                        🎂 {lead.titepoData?.eventType || "Birthday Party"}
+                      </p>
+                    </div>
+
+                    <div className="bg-white/80 p-3 rounded-xl border border-pink-100">
+                      <p className="text-slate-500 font-medium">Return Gifts Quantity</p>
+                      <p className="font-extrabold text-pink-700 mt-1 flex items-center gap-1.5">
+                        🎁 {lead.titepoData?.kidsCount || "20 - 50 Gifts"}
+                      </p>
+                    </div>
+
+                    <div className="bg-white/80 p-3 rounded-xl border border-pink-100">
+                      <p className="text-slate-500 font-medium">Budget Per Gift</p>
+                      <p className="font-extrabold text-emerald-700 mt-1 flex items-center gap-1.5">
+                        💰 {lead.titepoData?.budgetPerGift || "₹501 - ₹1,000"}
+                      </p>
+                    </div>
+
+                    <div className="bg-white/80 p-3 rounded-xl border border-pink-100">
+                      <p className="text-slate-500 font-medium">Child Age Group</p>
+                      <p className="font-extrabold text-purple-700 mt-1 flex items-center gap-1.5">
+                        👶 {lead.titepoData?.childAgeGroup || "4 - 6 Years"}
+                      </p>
+                    </div>
+
+                    <div className="bg-white/80 p-3 rounded-xl border border-pink-100">
+                      <p className="text-slate-500 font-medium">Event Date</p>
+                      <p className="font-extrabold text-slate-900 mt-1 flex items-center gap-1.5">
+                        📅 {lead.titepoData?.eventDate || "Upcoming"}
+                      </p>
+                    </div>
+
+                    <div className="bg-white/80 p-3 rounded-xl border border-pink-100">
+                      <p className="text-slate-500 font-medium">Ad Platform</p>
+                      <p className="font-extrabold text-blue-700 mt-1 uppercase flex items-center gap-1.5">
+                        📱 {lead.titepoData?.platform || "Instagram / Facebook Ad"}
+                      </p>
+                    </div>
+                  </div>
+
+                  {lead.titepoData?.specialRequirements && (
+                    <div className="pt-2">
+                      <p className="text-slate-500 font-medium text-[11px]">Special Customizations & Requirements:</p>
+                      <p className="text-xs font-semibold text-slate-900 bg-white p-3 rounded-xl border border-pink-200 mt-1">
+                        📝 "{lead.titepoData.specialRequirements}"
+                      </p>
+                    </div>
+                  )}
+                </div>
+              )}
 
               {/* BDE Edit & Budget Management Card */}
               <div className="bg-white p-5 rounded-2xl border border-slate-200 space-y-4 shadow-2xs">
