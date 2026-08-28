@@ -21,10 +21,23 @@ export async function POST(req: Request) {
     const body = await req.json();
     const { formId, pageAccessToken, business = "tzar" } = body;
 
-    const token =
-      pageAccessToken ||
-      process.env.META_PAGE_ACCESS_TOKEN ||
-      process.env.META_SYSTEM_USER_TOKEN;
+    // Resolve brand specific or generic access token
+    let token = pageAccessToken;
+
+    if (!token) {
+      if (business === "tzar") token = process.env.META_PAGE_ACCESS_TOKEN_TZAR;
+      if (business === "adshalaa") token = process.env.META_PAGE_ACCESS_TOKEN_ADSHALAA;
+      if (business === "crownleaf") token = process.env.META_PAGE_ACCESS_TOKEN_CROWNLEAF;
+      if (business === "titepo") token = process.env.META_PAGE_ACCESS_TOKEN_TITEPO;
+
+      token =
+        token ||
+        process.env.META_PAGE_ACCESS_TOKEN ||
+        process.env.META_SYSTEM_USER_TOKEN ||
+        process.env.WHATSAPP_PERMANENT_ACCESS_TOKEN ||
+        process.env.WHATSAPP_ACCESS_TOKEN ||
+        process.env.WHATSAPP_TOKEN;
+    }
 
     if (!formId) {
       return NextResponse.json(
