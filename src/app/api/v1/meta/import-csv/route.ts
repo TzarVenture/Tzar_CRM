@@ -37,14 +37,17 @@ export async function POST(req: Request) {
     let emptyCount = 0;
 
     for (const rawRecord of leads) {
-      // Find key matching case-insensitively
+      // Find key matching case-insensitively & cleaning null bytes
       const getKey = (...possibleKeys: string[]): string => {
         for (const pKey of possibleKeys) {
-          const lowerP = pKey.toLowerCase();
+          const lowerP = pKey.toLowerCase().replace(/[^a-z0-9]/g, "");
           for (const actualKey of Object.keys(rawRecord)) {
-            if (actualKey.toLowerCase().replace(/[^a-z0-9]/g, "") === lowerP.replace(/[^a-z0-9]/g, "")) {
-              if (rawRecord[actualKey] && String(rawRecord[actualKey]).trim()) {
-                return String(rawRecord[actualKey]).trim();
+            const cleanActual = actualKey.replace(/\0/g, "").toLowerCase().replace(/[^a-z0-9]/g, "");
+            if (cleanActual === lowerP) {
+              const val = rawRecord[actualKey];
+              if (val !== undefined && val !== null) {
+                const strVal = String(val).replace(/\0/g, "").trim();
+                if (strVal) return strVal;
               }
             }
           }
@@ -52,13 +55,18 @@ export async function POST(req: Request) {
         return "";
       };
 
-      const fullName =
+      let fullName =
         getKey("full_name", "fullname", "full name", "name", "first_name") || "Meta Lead";
+      fullName = fullName.replace(/^"|"$/g, "").trim();
 
-      const email = getKey("email", "email_address", "mail").toLowerCase();
-      const phone = getKey("phone_number", "phone", "mobile", "contact_number", "number", "phonenumber");
-      const city = getKey("city", "location", "state", "address");
-      const companyName = getKey("company_name", "company", "organization");
+      let email = getKey("email", "email_address", "mail").toLowerCase();
+      email = email.replace(/^"|"$/g, "").trim();
+
+      let phone = getKey("phone_number", "phone", "mobile", "contact_number", "number", "phonenumber");
+      phone = phone.replace(/^p:/i, "").replace(/^"|"$/g, "").trim();
+
+      const city = getKey("city", "location", "state", "address").replace(/^"|"$/g, "").trim();
+      const companyName = getKey("company_name", "company", "organization").replace(/^"|"$/g, "").trim();
 
       // If record is missing both email & phone, skip
       if (!phone && !email) {

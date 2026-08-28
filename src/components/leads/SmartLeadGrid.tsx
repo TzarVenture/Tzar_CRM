@@ -87,13 +87,18 @@ export function SmartLeadGrid({ initialLeads }: SmartLeadGridProps) {
     const reader = new FileReader();
     reader.onload = async (event) => {
       try {
-        const text = event.target?.result as string;
-        const lines = text.split("\n").filter((l) => l.trim().length > 0);
+        const rawText = event.target?.result as string;
+        const cleanedText = rawText.replace(/\0/g, "").replace(/\r\n/g, "\n").replace(/\r/g, "\n");
+        const lines = cleanedText.split("\n").filter((l) => l.trim().length > 0);
+
         if (lines.length < 2) {
           setCsvResultMsg("Error: CSV file appears to be empty.");
           setIsUploadingCsv(false);
           return;
         }
+
+        // Auto-detect delimiter (Tab vs Comma)
+        const delimiter = lines[0].includes("\t") ? "\t" : ",";
 
         const parseLine = (line: string): string[] => {
           const result: string[] = [];
@@ -103,7 +108,7 @@ export function SmartLeadGrid({ initialLeads }: SmartLeadGridProps) {
             const char = line[k];
             if (char === '"') {
               inQuotes = !inQuotes;
-            } else if (char === ',' && !inQuotes) {
+            } else if (char === delimiter && !inQuotes) {
               result.push(current.trim().replace(/^"|"$/g, ""));
               current = "";
             } else {
