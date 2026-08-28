@@ -25,6 +25,9 @@ import {
   Download,
   Loader2,
   X,
+  Trash2,
+  CheckSquare,
+  Square,
 } from "lucide-react";
 import { ILead, BusinessSlug, KanbanStage } from "@/models/Lead";
 import { LeadWorkspaceDrawer } from "./LeadWorkspaceDrawer";
@@ -71,6 +74,10 @@ export function SmartLeadGrid({ initialLeads }: SmartLeadGridProps) {
   const [selectedLeadForDrawer, setSelectedLeadForDrawer] = useState<Partial<ILead> | null>(null);
   const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
   const [isLiveSyncing, setIsLiveSyncing] = useState(false);
+
+  // Bulk Selection & Deletion State
+  const [selectedLeadIds, setSelectedLeadIds] = useState<string[]>([]);
+  const [isDeletingBulk, setIsDeletingBulk] = useState(false);
 
   // CSV Import Modal State
   const [isCsvModalOpen, setIsCsvModalOpen] = useState(false);
@@ -207,6 +214,52 @@ export function SmartLeadGrid({ initialLeads }: SmartLeadGridProps) {
       return true;
     });
   }, [leads, selectedBrand, selectedStageFilter, searchQuery]);
+
+  // Bulk Selection Handlers
+  const toggleSelectLead = (leadId: string) => {
+    setSelectedLeadIds((prev) =>
+      prev.includes(leadId) ? prev.filter((id) => id !== leadId) : [...prev, leadId]
+    );
+  };
+
+  const toggleSelectAll = () => {
+    const visibleIds = filteredLeads.map((l) => l._id?.toString()).filter(Boolean) as string[];
+    const allSelected = visibleIds.length > 0 && visibleIds.every((id) => selectedLeadIds.includes(id));
+
+    if (allSelected) {
+      setSelectedLeadIds((prev) => prev.filter((id) => !visibleIds.includes(id)));
+    } else {
+      setSelectedLeadIds((prev) => Array.from(new Set([...prev, ...visibleIds])));
+    }
+  };
+
+  const handleBulkDelete = async () => {
+    if (selectedLeadIds.length === 0) return;
+    if (!confirm(`Are you sure you want to permanently delete ${selectedLeadIds.length} selected leads? This action cannot be undone.`)) {
+      return;
+    }
+
+    setIsDeletingBulk(true);
+    try {
+      const res = await fetch("/api/v1/leads/bulk", {
+        method: "DELETE",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ leadIds: selectedLeadIds }),
+      }).then((r) => r.json());
+
+      if (res.deletedCount !== undefined) {
+        setLeads((prev) => prev.filter((l) => !selectedLeadIds.includes(l._id?.toString() || "")));
+        setSelectedLeadIds([]);
+      } else {
+        alert(`Error: ${res.error || "Failed to bulk delete leads"}`);
+      }
+    } catch (err: any) {
+      console.error("Bulk Delete error:", err);
+      alert(`Error: ${err.message}`);
+    } finally {
+      setIsDeletingBulk(false);
+    }
+  };
 
   // Stage Metrics Calculations
   const stageMetrics = useMemo(() => {
@@ -369,12 +422,70 @@ export function SmartLeadGrid({ initialLeads }: SmartLeadGridProps) {
         </div>
       </div>
 
+      {/* ─── BULK ACTIONS BAR (Appears when leads are selected) ────────── */}
+      {selectedLeadIds.length > 0 && (
+        <div className="bg-slate-900 text-white p-3.5 px-5 rounded-2xl flex items-center justify-between shadow-lg border border-slate-800 animate-fade-in">
+          <div className="flex items-center gap-3">
+            <span className="text-xs font-extrabold bg-emerald-500 text-white px-2.5 py-1 rounded-lg">
+              {selectedLeadIds.length} Selected
+            </span>
+            <p className="text-xs font-medium text-slate-300">
+              Bulk actions for selected leads across entity pipelines
+            </p>
+          </div>
+
+          <div className="flex items-center gap-2">
+            <button
+              onClick={toggleSelectAll}
+              className="px-3 py-1.5 text-xs font-bold bg-slate-800 hover:bg-slate-700 text-slate-200 rounded-xl transition-all cursor-pointer"
+            >
+              {filteredLeads.length > 0 && filteredLeads.every((l) => selectedLeadIds.includes(l._id?.toString() || ""))
+                ? "Deselect All Visible"
+                : "Select All Visible"}
+            </button>
+
+            <button
+              onClick={() => setSelectedLeadIds([])}
+              className="px-3 py-1.5 text-xs font-bold bg-slate-800 hover:bg-slate-700 text-slate-300 rounded-xl transition-all cursor-pointer"
+            >
+              Clear Selection
+            </button>
+
+            <button
+              onClick={handleBulkDelete}
+              disabled={isDeletingBulk}
+              className="px-4 py-1.5 text-xs font-bold bg-rose-600 hover:bg-rose-700 text-white rounded-xl shadow-xs transition-all flex items-center gap-1.5 cursor-pointer"
+            >
+              {isDeletingBulk ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Trash2 className="w-3.5 h-3.5" />}
+              Delete Selected ({selectedLeadIds.length})
+            </button>
+          </div>
+        </div>
+      )}
+
       {/* ─── 4. HIGH-DENSITY SMART DATA GRID ─────────────────────────────── */}
       <div className="bg-white rounded-2xl border border-slate-300 shadow-xs overflow-hidden">
         <div className="overflow-x-auto">
           <table className="w-full text-left text-xs border-collapse">
             <thead>
               <tr className="bg-slate-100/80 border-b border-slate-300 text-slate-700 font-bold uppercase tracking-wider text-[11px]">
+                <th className="py-3.5 px-4 w-10">
+                  <button
+                    type="button"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      toggleSelectAll();
+                    }}
+                    className="text-slate-500 hover:text-slate-900 cursor-pointer flex items-center"
+                    title="Select/Deselect All Visible Leads"
+                  >
+                    {filteredLeads.length > 0 && filteredLeads.every((l) => selectedLeadIds.includes(l._id?.toString() || "")) ? (
+                      <CheckSquare className="w-4 h-4 text-emerald-600" />
+                    ) : (
+                      <Square className="w-4 h-4 text-slate-400" />
+                    )}
+                  </button>
+                </th>
                 <th className="py-3.5 px-4">Lead ID</th>
                 <th className="py-3.5 px-4">Brand Entity</th>
                 <th className="py-3.5 px-4">Contact Info</th>
@@ -389,7 +500,7 @@ export function SmartLeadGrid({ initialLeads }: SmartLeadGridProps) {
             <tbody className="divide-y divide-slate-200">
               {filteredLeads.length === 0 ? (
                 <tr>
-                  <td colSpan={9} className="py-12 text-center text-slate-500 font-semibold">
+                  <td colSpan={10} className="py-12 text-center text-slate-500 font-semibold">
                     No leads found matching current search or filters.
                   </td>
                 </tr>
@@ -400,13 +511,30 @@ export function SmartLeadGrid({ initialLeads }: SmartLeadGridProps) {
                   const BIcon = bConfig.icon;
                   const isOverdue = lead.slaDeadline ? new Date(lead.slaDeadline) < new Date() : false;
                   const currentStageObj = STAGES.find((s) => s.id === lead.stageId) || STAGES[0];
+                  const isSelected = selectedLeadIds.includes(lead._id?.toString() || "");
 
                   return (
                     <tr
                       key={lead._id?.toString() || lead.leadCustomId}
-                      className="hover:bg-slate-50/80 transition-colors cursor-pointer group"
+                      className={`hover:bg-slate-50/80 transition-colors cursor-pointer group ${
+                        isSelected ? "bg-emerald-50/50" : ""
+                      }`}
                       onClick={() => setSelectedLeadForDrawer(lead)}
                     >
+                      {/* Checkbox Cell */}
+                      <td className="py-3.5 px-4 w-10" onClick={(e) => e.stopPropagation()}>
+                        <button
+                          type="button"
+                          onClick={() => toggleSelectLead(lead._id?.toString() || "")}
+                          className="text-slate-500 hover:text-slate-900 cursor-pointer flex items-center"
+                        >
+                          {isSelected ? (
+                            <CheckSquare className="w-4 h-4 text-emerald-600" />
+                          ) : (
+                            <Square className="w-4 h-4 text-slate-300" />
+                          )}
+                        </button>
+                      </td>
                       {/* Lead Custom ID */}
                       <td className="py-3.5 px-4 font-mono font-bold text-slate-900">
                         {lead.leadCustomId}
