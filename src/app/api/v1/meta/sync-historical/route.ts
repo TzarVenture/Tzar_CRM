@@ -53,20 +53,16 @@ export async function POST(req: Request) {
     if (formId && formId.trim()) {
       targetFormIds.push(formId.trim());
     } else {
-      // Auto-discover forms from Page Access Token via GET /me/leadgen_forms or GET /me?fields=leadgen_forms
+      // Auto-discover forms by resolving Page ID first, then querying /{PAGE_ID}/leadgen_forms
       try {
-        const pageFormsRes = await axios.get(
-          `https://graph.facebook.com/v20.0/me?fields=id,name,leadgen_forms{id,name}&access_token=${token}`
+        const pageInfoRes = await axios.get(
+          `https://graph.facebook.com/v20.0/me?fields=id,name&access_token=${token}`
         );
+        const resolvedPageId = pageInfoRes.data?.id;
 
-        const discovered = pageFormsRes.data?.leadgen_forms?.data || [];
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        targetFormIds = discovered.map((f: any) => f.id);
-
-        if (targetFormIds.length === 0) {
-          // Try direct /me/leadgen_forms endpoint
+        if (resolvedPageId) {
           const directFormsRes = await axios.get(
-            `https://graph.facebook.com/v20.0/me/leadgen_forms?access_token=${token}`
+            `https://graph.facebook.com/v20.0/${resolvedPageId}/leadgen_forms?access_token=${token}`
           );
           // eslint-disable-next-line @typescript-eslint/no-explicit-any
           targetFormIds = (directFormsRes.data?.data || []).map((f: any) => f.id);
