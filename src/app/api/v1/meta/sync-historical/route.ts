@@ -19,11 +19,10 @@ export async function POST(req: Request) {
     }
 
     const body = await req.json();
-    const { formId, pageAccessToken, business = "tzar" } = body;
 
-    // Resolve brand specific or generic access token
-    let token = pageAccessToken;
+    let { formId, pageAccessToken: token, business = "tzar" } = body;
 
+    // Resolve Page Access Token from environment variables if omitted
     if (!token) {
       if (business === "tzar") token = process.env.META_PAGE_ACCESS_TOKEN_TZAR;
       if (business === "adshalaa") token = process.env.META_PAGE_ACCESS_TOKEN_ADSHALAA;
@@ -35,135 +34,177 @@ export async function POST(req: Request) {
         process.env.META_PAGE_ACCESS_TOKEN_TZAR ||
         process.env.META_PAGE_ACCESS_TOKEN ||
         process.env.META_SYSTEM_USER_TOKEN ||
-        process.env.WHATSAPP_PERMANENT_ACCESS_TOKEN ||
-        process.env.WHATSAPP_ACCESS_TOKEN ||
-        process.env.WHATSAPP_TOKEN;
-    }
-
-    if (!formId) {
-      return NextResponse.json(
-        { error: "Meta Lead Form ID is required." },
-        { status: 400 }
-      );
+        process.env.WHATSAPP_PERMANENT_ACCESS_TOKEN;
     }
 
     if (!token) {
       return NextResponse.json(
-        { error: "Missing Page Access Token in environment variables or payload." },
+        { error: "Missing Page Access Token. Please provide a Page Access Token with 'leads_retrieval' & 'pages_manage_ads' permissions." },
         { status: 400 }
       );
     }
 
     await dbConnect();
 
-    // Fetch past leads from Meta Graph API for this form
-    const graphUrl = `https://graph.facebook.com/v20.0/${formId}/leads?fields=created_time,id,field_data,form_id&limit=100&access_token=${token}`;
-    const metaRes = await axios.get(graphUrl);
+    // ─── AUTO-DISCOVER FORMS IF FORM_ID OMITTED ───────────────────────
+    let targetFormIds: string[] = [];
 
-    const rawLeads = metaRes.data?.data || [];
-    let syncedCount = 0;
-    let skippedCount = 0;
+    if (formId && formId.trim()) {
+      targetFormIds.push(formId.trim());
+    } else {
+      // Auto-discover forms from Page Access Token via GET /me/leadgen_forms or GET /me?fields=leadgen_forms
+      try {
+        const pageFormsRes = await axios.get(
+          `https://graph.facebook.com/v20.0/me?fields=id,name,leadgen_forms{id,name}&access_token=${token}`
+        );
 
+        const discovered = pageFormsRes.data?.leadgen_forms?.data || [];
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        targetFormIds = discovered.map((f: any) => f.id);
+
+        if (targetFormIds.length === 0) {
+          // Try direct /me/leadgen_forms endpoint
+          const directFormsRes = await axios.get(
+            `https://graph.facebook.com/v20.0/me/leadgen_forms?access_token=${token}`
+          );
+          // eslint-disable-next-line @typescript-eslint/no-explicit-any
+          targetFormIds = (directFormsRes.data?.data || []).map((f: any) => f.id);
+        }
+      } catch (discErr: any) {
+        console.warn("Form auto-discovery warning:", discErr.response?.data || discErr.message);
+      }
+    }
+
+    if (targetFormIds.length === 0) {
+      return NextResponse.json(
+        { error: "No Lead Forms found for this Page Token. Please enter your Meta Lead Form ID manually or verify token permissions." },
+        { status: 400 }
+      );
+    }
+
+    let totalSyncedCount = 0;
+    let totalSkippedCount = 0;
     const pipeline = await getDefaultPipeline();
     const assignedTo = await getAssignedBDE();
 
-    for (const item of rawLeads) {
-      const createdTime = item.created_time ? new Date(item.created_time) : new Date();
+    // ─── FETCH & INGEST LEADS FOR ALL TARGET FORMS ─────────────────────
+    for (const fId of targetFormIds) {
+      try {
+        const graphUrl = `https://graph.facebook.com/v20.0/${fId}/leads?fields=created_time,id,field_data,form_id&limit=100&access_token=${token}`;
+        const metaRes = await axios.get(graphUrl);
 
-      let fullName = "Historical Meta Lead";
-      let email = "";
-      let phone = "";
-      let companyName = "";
-      let city = "";
+        const rawLeads = metaRes.data?.data || [];
 
-      if (item.field_data) {
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        item.field_data.forEach((field: any) => {
-          const name = field.name?.toLowerCase() || "";
-          const val = field.values?.[0];
-          if (!val) return;
-          if (name.includes("full_name") || name.includes("name")) fullName = val;
-          if (name.includes("email")) email = val;
-          if (name.includes("phone")) phone = val;
-          if (name.includes("company")) companyName = val;
-          if (name.includes("city")) city = val;
-        });
-      }
+        for (const item of rawLeads) {
+          const createdTime = item.created_time ? new Date(item.created_time) : new Date();
 
-      if (!phone && !email) {
-        skippedCount++;
-        continue;
-      }
+          let fullName = "Historical Meta Lead";
+          let email = "";
+          let phone = "";
+          let companyName = "";
+          let city = "";
 
-      // Check if lead already exists by email or phone
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      const dedupeQuery: any[] = [];
-      if (email && email.includes("@")) dedupeQuery.push({ email: email.toLowerCase() });
-      if (phone && phone.replace(/\D/g, "").length >= 10) {
-        const cleanDigits = phone.replace(/\D/g, "").slice(-10);
-        dedupeQuery.push({ phone: { $regex: cleanDigits } });
-      }
+          if (item.field_data) {
+            // eslint-disable-next-line @typescript-eslint/no-explicit-any
+            item.field_data.forEach((field: any) => {
+              const name = field.name?.toLowerCase() || "";
+              const val = field.values?.[0];
+              if (!val) return;
+              if (name.includes("full_name") || name.includes("name")) fullName = val;
+              if (name.includes("email")) email = val;
+              if (name.includes("phone")) phone = val;
+              if (name.includes("company")) companyName = val;
+              if (name.includes("city")) city = val;
+            });
+          }
 
-      if (dedupeQuery.length > 0) {
-        const existing = await Lead.findOne({
-          business,
-          $or: dedupeQuery,
-        });
+          if (!phone && !email) {
+            totalSkippedCount++;
+            continue;
+          }
 
-        if (existing) {
-          skippedCount++;
-          continue;
+          // Deduplication check
+          // eslint-disable-next-line @typescript-eslint/no-explicit-any
+          const dedupeQuery: any[] = [];
+          if (email && email.includes("@")) dedupeQuery.push({ email: email.toLowerCase() });
+          if (phone && phone.replace(/\D/g, "").length >= 7) {
+            const cleanDigits = phone.replace(/\D/g, "").slice(-10);
+            dedupeQuery.push({ phone: { $regex: cleanDigits } });
+          }
+
+          if (dedupeQuery.length > 0) {
+            const existing = await Lead.findOne({
+              business,
+              $or: dedupeQuery,
+            });
+
+            if (existing) {
+              totalSkippedCount++;
+              continue;
+            }
+          }
+
+          const leadCustomId = await generateLeadCustomId(business as BusinessSlug);
+          const score = calculateLeadScore({ phone, interestedServices: ["Historical Meta Lead"] });
+
+          const slaDeadline = new Date(createdTime);
+          slaDeadline.setHours(slaDeadline.getHours() + 24);
+
+          const newLead = await Lead.create({
+            leadCustomId,
+            business: business as BusinessSlug,
+            fullName,
+            email: email.toLowerCase(),
+            phone,
+            companyName,
+            city,
+            source: "META_LEAD_AD",
+            interestedServices: ["Historical Meta Form Sync"],
+            pipelineId: pipeline._id,
+            stageId: "new-lead",
+            assignedTo,
+            score,
+            status: "ACTIVE",
+            slaDeadline,
+            metaAdDetails: {
+              formId: fId,
+            },
+            syncedFrom: "META_GRAPH_API",
+            createdAt: createdTime,
+          });
+
+          await Message.create({
+            leadId: newLead._id,
+            channel: "SYSTEM_NOTE",
+            direction: "INBOUND",
+            content: `Historical Meta Lead Ad synced from Form ID ${fId} (Submitted: ${createdTime.toLocaleDateString()})`,
+            status: "DELIVERED",
+            createdAt: createdTime,
+          });
+
+          totalSyncedCount++;
+        }
+      } catch (formErr: any) {
+        const metaError = formErr.response?.data?.error;
+        console.error(`Error syncing leads for form ${fId}:`, metaError || formErr.message);
+
+        if (metaError?.code === 200 || metaError?.error_subcode === 33) {
+          return NextResponse.json(
+            {
+              error: `Meta Permission Notice: Missing 'pages_manage_ads' or 'leads_retrieval' permission. Please ensure your Page Token has 'pages_manage_ads', 'leads_retrieval', and 'pages_show_list' permissions enabled in Meta Developer Portal.`,
+              details: metaError,
+            },
+            { status: 400 }
+          );
         }
       }
-
-      const leadCustomId = await generateLeadCustomId(business as BusinessSlug);
-      const score = calculateLeadScore({ phone, interestedServices: ["Historical Meta Lead"] });
-
-      const slaDeadline = new Date(createdTime);
-      slaDeadline.setHours(slaDeadline.getHours() + 24);
-
-      const newLead = await Lead.create({
-        leadCustomId,
-        business: business as BusinessSlug,
-        fullName,
-        email: email.toLowerCase(),
-        phone,
-        companyName,
-        city,
-        source: "META_LEAD_AD",
-        interestedServices: ["Historical Meta Form Import"],
-        pipelineId: pipeline._id,
-        stageId: "new-lead",
-        assignedTo,
-        score,
-        status: "ACTIVE",
-        slaDeadline,
-        metaAdDetails: {
-          adId: "historical_import",
-          formId,
-        },
-        syncedFrom: "META_HISTORICAL_SYNC",
-        createdAt: createdTime,
-      });
-
-      await Message.create({
-        leadId: newLead._id,
-        channel: "SYSTEM_NOTE",
-        direction: "INBOUND",
-        content: `Historical Meta Lead Ad synced from Form ID ${formId} (Submitted: ${createdTime.toLocaleDateString()})`,
-        status: "DELIVERED",
-        createdAt: createdTime,
-      });
-
-      syncedCount++;
     }
 
     return NextResponse.json({
       status: "success",
-      syncedCount,
-      skippedCount,
-      totalFetched: rawLeads.length,
-      message: `Successfully imported ${syncedCount} historical leads for ${business.toUpperCase()}! (${skippedCount} duplicates skipped)`,
+      syncedCount: totalSyncedCount,
+      skippedCount: totalSkippedCount,
+      message: `Successfully imported ${totalSyncedCount} historical leads for ${business.toUpperCase()} across ${targetFormIds.length} form(s)! (${totalSkippedCount} duplicates skipped)`,
     });
   } catch (error: any) {
     const metaError = error.response?.data?.error;
