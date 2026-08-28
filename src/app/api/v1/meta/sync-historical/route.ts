@@ -28,13 +28,9 @@ export async function POST(req: Request) {
 
     if (!token) {
       if (business === "titepo") {
-        token = process.env.META_PAGE_ACCESS_TOKEN_TITEPO && process.env.META_PAGE_ACCESS_TOKEN_TITEPO.length > 50
-          ? process.env.META_PAGE_ACCESS_TOKEN_TITEPO
-          : TITEPO_MASTER_TOKEN;
+        token = TITEPO_MASTER_TOKEN;
       } else if (business === "tzar") {
-        token = process.env.META_PAGE_ACCESS_TOKEN_TZAR && process.env.META_PAGE_ACCESS_TOKEN_TZAR.length > 50
-          ? process.env.META_PAGE_ACCESS_TOKEN_TZAR
-          : TZAR_MASTER_TOKEN;
+        token = TZAR_MASTER_TOKEN;
       } else if (business === "adshalaa") {
         token = process.env.META_PAGE_ACCESS_TOKEN_ADSHALAA || TZAR_MASTER_TOKEN;
       } else if (business === "crownleaf") {
