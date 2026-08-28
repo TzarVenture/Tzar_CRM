@@ -27,15 +27,21 @@ export async function POST(req: Request) {
     const TITEPO_MASTER_TOKEN = "EAAUIZCL1Afd8BSdhwsRR8WCJLNLzXgtZAeGQUkSiyzpRJkz3KIDZC313uFE0YtNwRZCUHmFGrvvzRFST3LDk8epbuuoAH7JJZAQ9tTRsxo4hTdR9vBW3LynZCN6RcGM6Dru4mbr9TUpZBimeV14AmjwYwV6RVwEuhBwI7ePpzYbCvIJ1ZB1HmodLyYnKo2LqhioWKZClcZA6pPWDt1KRzbvZCvhXZC7EyQsx8HCVHLZCOJPZAx";
 
     if (!token) {
-      if (business === "tzar") token = process.env.META_PAGE_ACCESS_TOKEN_TZAR || TZAR_MASTER_TOKEN;
-      if (business === "adshalaa") token = process.env.META_PAGE_ACCESS_TOKEN_ADSHALAA;
-      if (business === "crownleaf") token = process.env.META_PAGE_ACCESS_TOKEN_CROWNLEAF;
-      if (business === "titepo") token = process.env.META_PAGE_ACCESS_TOKEN_TITEPO || TITEPO_MASTER_TOKEN;
-
-      token =
-        token ||
-        process.env.META_PAGE_ACCESS_TOKEN_TZAR ||
-        TZAR_MASTER_TOKEN;
+      if (business === "titepo") {
+        token = process.env.META_PAGE_ACCESS_TOKEN_TITEPO && process.env.META_PAGE_ACCESS_TOKEN_TITEPO.length > 50
+          ? process.env.META_PAGE_ACCESS_TOKEN_TITEPO
+          : TITEPO_MASTER_TOKEN;
+      } else if (business === "tzar") {
+        token = process.env.META_PAGE_ACCESS_TOKEN_TZAR && process.env.META_PAGE_ACCESS_TOKEN_TZAR.length > 50
+          ? process.env.META_PAGE_ACCESS_TOKEN_TZAR
+          : TZAR_MASTER_TOKEN;
+      } else if (business === "adshalaa") {
+        token = process.env.META_PAGE_ACCESS_TOKEN_ADSHALAA || TZAR_MASTER_TOKEN;
+      } else if (business === "crownleaf") {
+        token = process.env.META_PAGE_ACCESS_TOKEN_CROWNLEAF || TZAR_MASTER_TOKEN;
+      } else {
+        token = TZAR_MASTER_TOKEN;
+      }
     }
 
     if (!token) {
