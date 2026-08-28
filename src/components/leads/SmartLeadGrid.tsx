@@ -316,16 +316,72 @@ export function SmartLeadGrid({ initialLeads }: SmartLeadGridProps) {
         </div>
 
         <div className="flex items-center gap-2 flex-wrap">
+          {/* 1. Refresh Data Button */}
+          <button
+            onClick={() => {
+              setIsLiveSyncing(true);
+              fetch(`/api/v1/leads?business=${selectedBrand}`)
+                .then((r) => r.json())
+                .then((d) => {
+                  if (d.leads) setLeads(d.leads);
+                })
+                .finally(() => setTimeout(() => setIsLiveSyncing(false), 500));
+            }}
+            disabled={isLiveSyncing}
+            className="flex items-center gap-1.5 px-3.5 py-2 text-xs font-bold text-slate-700 bg-slate-100 hover:bg-slate-200 border border-slate-300 rounded-xl transition-all cursor-pointer shadow-2xs disabled:opacity-50"
+            title="Reload lead data from database"
+          >
+            <RefreshCw className={`w-3.5 h-3.5 text-slate-600 ${isLiveSyncing ? "animate-spin" : ""}`} />
+            <span className="hidden sm:inline">Refresh Grid</span>
+          </button>
+
+          {/* 2. Live Meta Graph API Auto-Sync Button */}
+          <button
+            onClick={async () => {
+              setIsLiveSyncing(true);
+              try {
+                const res = await fetch("/api/v1/meta/sync-historical", {
+                  method: "POST",
+                  headers: { "Content-Type": "application/json" },
+                  body: JSON.stringify({
+                    business: selectedBrand === "all" ? "tzar" : selectedBrand,
+                  }),
+                }).then((r) => r.json());
+
+                if (res.message) {
+                  alert(res.message);
+                  const updated = await fetch(`/api/v1/leads?business=${selectedBrand}`).then((r) => r.json());
+                  if (updated.leads) setLeads(updated.leads);
+                } else {
+                  alert(`Meta API Sync Notice: ${res.error || "Graph API sync completed"}`);
+                }
+              } catch (err: any) {
+                alert(`Graph Sync Error: ${err.message}`);
+              } finally {
+                setIsLiveSyncing(false);
+              }
+            }}
+            disabled={isLiveSyncing}
+            className="flex items-center gap-1.5 px-3.5 py-2 text-xs font-bold text-emerald-800 bg-emerald-50 hover:bg-emerald-100 border border-emerald-300 rounded-xl transition-all cursor-pointer shadow-2xs disabled:opacity-50"
+            title="Auto-discover & sync lead forms directly from Meta Graph API"
+          >
+            <Zap className={`w-3.5 h-3.5 text-emerald-600 ${isLiveSyncing ? "animate-spin" : ""}`} />
+            <span>Sync Graph API</span>
+          </button>
+
+          {/* 3. Improved Import Meta Leads Button */}
           <button
             onClick={() => {
               setCsvResultMsg(null);
               setIsCsvModalOpen(true);
             }}
             className="flex items-center gap-1.5 px-3.5 py-2 text-xs font-bold text-slate-800 bg-slate-100 hover:bg-slate-200 border border-slate-300 rounded-xl transition-all cursor-pointer shadow-2xs"
+            title="Import Leads via Graph API or CSV"
           >
-            <Download className="w-4 h-4 text-emerald-600" /> Import Meta CSV Leads
+            <Download className="w-3.5 h-3.5 text-emerald-600" /> Import Meta Leads
           </button>
 
+          {/* 4. Add New Lead Button */}
           <button
             onClick={() => setIsCreateModalOpen(true)}
             className="flex items-center gap-2 px-4 py-2 text-xs font-bold text-white bg-slate-900 hover:bg-slate-800 rounded-xl shadow-xs transition-all cursor-pointer"

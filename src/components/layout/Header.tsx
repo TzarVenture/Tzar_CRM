@@ -458,18 +458,6 @@ export default function Header({ title }: HeaderProps) {
 
         {/* Notifications & User Menu */}
         <div className="flex items-center gap-3">
-          {/* Global Import Past Leads Button */}
-          <button
-            onClick={() => {
-              setImportMsg(null);
-              setIsGlobalImportOpen(true);
-            }}
-            className="hidden sm:flex items-center gap-1.5 px-3.5 py-2 text-xs font-bold text-slate-800 bg-slate-100 hover:bg-slate-200 border border-slate-300 rounded-xl transition-all cursor-pointer shadow-2xs"
-            title="Import Past Leads (Graph API or CSV)"
-          >
-            <Download className="w-3.5 h-3.5 text-emerald-600" /> Import Past Leads
-          </button>
-
           {/* Notification Bell Dropdown Container */}
           <div className="relative" ref={notifRef}>
             <button
