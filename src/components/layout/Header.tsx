@@ -22,6 +22,8 @@ import {
   Building2,
   ArrowRight,
   Sparkles,
+  Download,
+  Loader2,
 } from "lucide-react";
 import { useState, useEffect, useRef } from "react";
 import Link from "next/link";
@@ -69,6 +71,129 @@ export default function Header({ title }: HeaderProps) {
 
   const notifRef = useRef<HTMLDivElement>(null);
   const profileRef = useRef<HTMLDivElement>(null);
+
+  // Global Import Modal State
+  const [isGlobalImportOpen, setIsGlobalImportOpen] = useState(false);
+  const [importBusiness, setImportBusiness] = useState<"tzar" | "adshalaa" | "crownleaf" | "titepo">("tzar");
+  const [importFormId, setImportFormId] = useState("");
+  const [importToken, setImportToken] = useState("");
+  const [isImporting, setIsImporting] = useState(false);
+  const [importMsg, setImportMsg] = useState<string | null>(null);
+
+  const handleGlobalCsvUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    setIsImporting(true);
+    setImportMsg(null);
+
+    const reader = new FileReader();
+    reader.onload = async (event) => {
+      try {
+        const rawText = event.target?.result as string;
+        const cleanedText = rawText.replace(/\0/g, "").replace(/\r\n/g, "\n").replace(/\r/g, "\n");
+        const lines = cleanedText.split("\n").filter((l) => l.trim().length > 0);
+
+        if (lines.length < 2) {
+          setImportMsg("Error: CSV file appears to be empty.");
+          setIsImporting(false);
+          return;
+        }
+
+        const delimiter = lines[0].includes("\t") ? "\t" : ",";
+
+        const parseLine = (line: string): string[] => {
+          const result: string[] = [];
+          let current = "";
+          let inQuotes = false;
+          for (let k = 0; k < line.length; k++) {
+            const char = line[k];
+            if (char === '"') {
+              inQuotes = !inQuotes;
+            } else if (char === delimiter && !inQuotes) {
+              result.push(current.trim().replace(/^"|"$/g, ""));
+              current = "";
+            } else {
+              current += char;
+            }
+          }
+          result.push(current.trim().replace(/^"|"$/g, ""));
+          return result;
+        };
+
+        const headers = parseLine(lines[0]);
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        const records: any[] = [];
+
+        for (let i = 1; i < lines.length; i++) {
+          const values = parseLine(lines[i]);
+          // eslint-disable-next-line @typescript-eslint/no-explicit-any
+          const record: any = {};
+          headers.forEach((header, index) => {
+            record[header] = values[index] || "";
+          });
+          records.push(record);
+        }
+
+        const res = await fetch("/api/v1/meta/import-csv", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            leads: records,
+            business: importBusiness,
+          }),
+        }).then((r) => r.json());
+
+        if (res.message) {
+          setImportMsg(res.message);
+          setTimeout(() => router.refresh(), 1000);
+        } else {
+          setImportMsg(`Error: ${res.error || "Failed to import CSV leads"}`);
+        }
+      } catch (err: any) {
+        console.error("Global CSV Import error:", err);
+        setImportMsg(`Error: ${err.message}`);
+      } finally {
+        setIsImporting(false);
+      }
+    };
+
+    reader.readAsText(file);
+  };
+
+  const handleGlobalGraphSync = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!importFormId.trim()) {
+      setImportMsg("Error: Please enter a valid Meta Lead Form ID.");
+      return;
+    }
+
+    setIsImporting(true);
+    setImportMsg(null);
+
+    try {
+      const res = await fetch("/api/v1/meta/sync-historical", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          formId: importFormId.trim(),
+          business: importBusiness,
+          pageAccessToken: importToken.trim() || undefined,
+        }),
+      }).then((r) => r.json());
+
+      if (res.message) {
+        setImportMsg(res.message);
+        setTimeout(() => router.refresh(), 1000);
+      } else {
+        setImportMsg(`Error: ${res.error || "Failed to sync Meta leads"}`);
+      }
+    } catch (err: any) {
+      console.error("Global Graph sync error:", err);
+      setImportMsg(`Error: ${err.message}`);
+    } finally {
+      setIsImporting(false);
+    }
+  };
 
   // ─── 1. GLOBAL KEYBOARD SHORTCUT (Ctrl+K / Cmd+K) ──────────────────────────
   useEffect(() => {
@@ -333,6 +458,18 @@ export default function Header({ title }: HeaderProps) {
 
         {/* Notifications & User Menu */}
         <div className="flex items-center gap-3">
+          {/* Global Import Past Leads Button */}
+          <button
+            onClick={() => {
+              setImportMsg(null);
+              setIsGlobalImportOpen(true);
+            }}
+            className="hidden sm:flex items-center gap-1.5 px-3.5 py-2 text-xs font-bold text-slate-800 bg-slate-100 hover:bg-slate-200 border border-slate-300 rounded-xl transition-all cursor-pointer shadow-2xs"
+            title="Import Past Leads (Graph API or CSV)"
+          >
+            <Download className="w-3.5 h-3.5 text-emerald-600" /> Import Past Leads
+          </button>
+
           {/* Notification Bell Dropdown Container */}
           <div className="relative" ref={notifRef}>
             <button
@@ -615,6 +752,142 @@ export default function Header({ title }: HeaderProps) {
 
             <div className="p-3 border-t border-slate-200 bg-slate-50 text-right text-[11px] font-semibold text-slate-500">
               Press <kbd className="px-1.5 py-0.5 rounded bg-white border border-slate-300 font-mono text-[10px]">Esc</kbd> to close
+            </div>
+          </div>
+        </div>
+      )}
+      {/* ─── GLOBAL IMPORT HISTORICAL LEADS MODAL ───────────────────────── */}
+      {isGlobalImportOpen && (
+        <div className="fixed inset-0 z-50 bg-slate-900/60 backdrop-blur-xs flex items-center justify-center p-4">
+          <div className="bg-white rounded-3xl p-6 max-w-lg w-full border border-slate-300 shadow-2xl space-y-5 animate-fade-in text-slate-900">
+            <div className="flex items-center justify-between pb-3 border-b border-slate-200">
+              <div className="flex items-center gap-2">
+                <Download className="w-5 h-5 text-emerald-600" />
+                <h3 className="text-base font-bold text-slate-900">
+                  Import Past Meta Leads
+                </h3>
+              </div>
+              <button
+                onClick={() => setIsGlobalImportOpen(false)}
+                className="p-1.5 text-slate-400 hover:text-slate-600 rounded-xl cursor-pointer"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+
+            <div className="space-y-4 text-xs">
+              <div>
+                <label className="block font-bold text-slate-700 mb-1">
+                  Target Business Entity <span className="text-rose-500">*</span>
+                </label>
+                <select
+                  value={importBusiness}
+                  onChange={(e) => setImportBusiness(e.target.value as any)}
+                  className="w-full px-3.5 py-2.5 border border-slate-300 rounded-xl font-bold text-slate-900 outline-none bg-slate-50 cursor-pointer text-xs"
+                >
+                  <option value="tzar">Tzar Agency (Digital Marketing & WebDev)</option>
+                  <option value="adshalaa">Adshalaa EdTech (Course Registrations)</option>
+                  <option value="crownleaf">CrownLeaf Gifting (B2B Merchandise)</option>
+                  <option value="titepo">Titepo Toys (Kids Educational Kits)</option>
+                </select>
+              </div>
+
+              {/* ⚡ Option A: 1-Click Facebook CSV File Upload */}
+              <div className="p-4 border-2 border-dashed border-emerald-300 rounded-2xl bg-emerald-50/50 space-y-2">
+                <label className="block font-bold text-emerald-900">
+                  ⚡ Option A: Instant Facebook CSV Upload (Recommended)
+                </label>
+                <p className="text-[11px] font-medium text-emerald-700">
+                  Upload the downloaded CSV/Excel file from Meta Business Suite / Lead Center.
+                </p>
+                <label className="flex items-center justify-center p-3 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl transition-colors cursor-pointer text-center shadow-2xs font-bold text-xs">
+                  {isImporting ? (
+                    <span className="flex items-center gap-2">
+                      <Loader2 className="w-4 h-4 animate-spin" /> Processing CSV...
+                    </span>
+                  ) : (
+                    <span className="flex items-center gap-2">
+                      <Download className="w-4 h-4" /> Select Downloaded Facebook .csv File
+                    </span>
+                  )}
+                  <input
+                    type="file"
+                    accept=".csv"
+                    onChange={handleGlobalCsvUpload}
+                    className="hidden"
+                    disabled={isImporting}
+                  />
+                </label>
+              </div>
+
+              <div className="relative text-center my-2">
+                <div className="absolute inset-0 flex items-center">
+                  <div className="w-full border-t border-slate-200" />
+                </div>
+                <span className="relative bg-white px-3 text-[10px] font-bold text-slate-400 uppercase tracking-wider">
+                  OR USE META GRAPH API
+                </span>
+              </div>
+
+              {/* Option B: Graph API Sync Form ID */}
+              <form onSubmit={handleGlobalGraphSync} className="space-y-3 pt-1">
+                <div>
+                  <label className="block font-bold text-slate-700 mb-1">
+                    Meta Lead Form ID
+                  </label>
+                  <input
+                    type="text"
+                    placeholder="e.g. 1783218726427682 or Form ID from Meta Ads Manager"
+                    value={importFormId}
+                    onChange={(e) => setImportFormId(e.target.value)}
+                    className="w-full px-3.5 py-2 border border-slate-300 rounded-xl font-mono text-slate-900 outline-none bg-slate-50 text-xs"
+                  />
+                </div>
+
+                <div>
+                  <label className="block font-bold text-slate-700 mb-1">
+                    Page Access Token (Optional - defaults to server token)
+                  </label>
+                  <input
+                    type="password"
+                    placeholder="Leave empty to use saved server Page Token"
+                    value={importToken}
+                    onChange={(e) => setImportToken(e.target.value)}
+                    className="w-full px-3.5 py-2 border border-slate-300 rounded-xl font-mono text-slate-900 outline-none bg-slate-50 text-xs"
+                  />
+                </div>
+
+                <button
+                  type="submit"
+                  disabled={isImporting || !importFormId.trim()}
+                  className="w-full py-2.5 bg-slate-900 hover:bg-slate-800 text-white rounded-xl font-bold text-xs transition-all flex items-center justify-center gap-2 cursor-pointer disabled:opacity-50"
+                >
+                  {isImporting ? <Loader2 className="w-4 h-4 animate-spin" /> : <Download className="w-4 h-4 text-emerald-400" />}
+                  Sync Form Leads via Graph API
+                </button>
+              </form>
+
+              {importMsg && (
+                <div
+                  className={`p-3 rounded-xl border text-xs font-bold ${
+                    importMsg.startsWith("Error")
+                      ? "bg-rose-50 border-rose-200 text-rose-800"
+                      : "bg-emerald-50 border-emerald-200 text-emerald-800"
+                  }`}
+                >
+                  {importMsg}
+                </div>
+              )}
+
+              <div className="flex items-center justify-end pt-1">
+                <button
+                  type="button"
+                  onClick={() => setIsGlobalImportOpen(false)}
+                  className="px-4 py-1.5 text-xs font-bold text-slate-700 bg-slate-100 hover:bg-slate-200 rounded-xl cursor-pointer"
+                >
+                  Close
+                </button>
+              </div>
             </div>
           </div>
         </div>
