@@ -2,84 +2,61 @@ const mongoose = require('mongoose');
 
 const MONGODB_URI = 'mongodb+srv://crownleaf_db_user:Hw51WANeY8AMSSCC@cluster0.adkzcsy.mongodb.net/tzar_crm_db?retryWrites=true&w=majority';
 
-// Strict Meta Page ID Mapping
-const PAGE_BRAND_MAP = {
-  '364879847573029': 'tzar',       // Tzar Venture - Digital Marketing Agency
-  '1019277841258458': 'titepo',    // Titepo TOY STORE
-  '837451012790051': 'crownleaf',  // Crownleaf Gift Shop
-  '1245930131928783': 'adshalaa',  // Adshalaa Institute of Digital Marketing
-};
-
-const USER_TOKEN = 'EAAUIZCL1Afd8BSY4JszH1IEbP1Dp7V0UKPACyYdrZApz94VY88xo77Ld1qeGQZB1ZC7W2kNX6OGYRFPRdwVPHHWMCnsHOhqSX4S1EqyVX1LZBulrK3x6zOcFRltbLAkO5KZBI3364VvDoRJuBbz8kQ1VQRCrtsRAUhNocsZCELXTht8mZAXH6OG0bRd65U7HelZAezZBKdg4cfrbLOGvBHwQKhqrb4M1W1fZApjY9ZCok1VNOIoN4T7szjT2HKZCar7ZAvoJsOrplVV5RQy68ZD';
-
-const LeadSchema = new mongoose.Schema(
+const BRANDS_TO_SYNC = [
   {
-    leadCustomId: { type: String, unique: true },
-    metaLeadId: String,
-    business: { type: String, enum: ['tzar', 'adshalaa', 'crownleaf', 'titepo'] },
-    name: String,
-    email: String,
-    phone: String,
-    company: String,
-    city: String,
-    interestedServices: [String],
-    source: { type: String, default: 'META_LEAD_AD' },
-    stageId: { type: String, default: 'new-lead' },
-    status: { type: String, default: 'ACTIVE' },
-    metaFormFields: [{ label: String, value: String }],
-    metaAdDetails: {
-      formId: String,
-      formName: String,
-      adId: String,
-      adName: String,
-      campaignId: String,
-      campaignName: String,
-    },
-    createdAt: Date,
-    updatedAt: Date,
+    name: 'Tzar Venture',
+    pageId: '364879847573029',
+    business: 'tzar',
+    token: 'EAAUIZCL1Afd8BSQCbyrPPKy8mhK6cHwacWDZAuBOCYETXbSUHIgZAnG7o3Kt0Gau7iu2vtSTp8sPEeHswaDMHBbDQFrhR4P4NXDftfq49VsRIiLk76yw4CNLs6o0kP8yDL6F0TTByxVHLctvJdFoXW0itflex3G7JZBKg5ESB4vdcRVYlnZAdYCZArhUDT7HmF6cgqgbqOn26LKZBVos1Y8Vf7ViFuqAoushSZBcXAZDZD',
   },
-  { timestamps: true }
-);
+  {
+    name: 'Titepo Toys',
+    pageId: '1019277841258458',
+    business: 'titepo',
+    token: 'EAAUIZCL1Afd8BSZAMRTOwMNwaxfwvcw0pkCZAZCmLTRcBj0ZB4fTZAZBtkKkBC4eAhQFBVZA5DYiVfOfAx8nfTwPaBoNeRiHnoafK90dM75lnmugY99yW8NFcVUrpSsMZBZCZAYoKqph8T1cgr7FRgMzoUI8K49F3JjAz9wkssR3dllj6xZCDxr2vLxF1Lp31z1bU9odk5nA0RKx62WmVbEoH0Rt4JuMVEPolj5fxgzguQZDZD',
+  },
+  {
+    name: 'Adshalaa Institute',
+    pageId: '1245930131928783',
+    business: 'adshalaa',
+    token: 'EAAUIZCL1Afd8BSYn0vul1YsuzOB09ZCjWnqQxKa3AZBEujv8Wa0hwyuAhZChOmWwTsLdMSEGvZBOKvScwz2yKiQG5ZAxj9mGOGHNKxgXR0JzFsgCrUvuTiN4B8e7XIAUvwlZCbggN6ObzZB2ueMOqslAVIvw0dYMPtkTLuRhC45oTxQd1eOs7wSN4boawYwcBh8AyO4ZCtSKeuD6ciZAELECZB13xrRaJinbVb7zPWfSQZDZD',
+  },
+  {
+    name: 'Crownleaf Gifting',
+    pageId: '837451012790051',
+    business: 'crownleaf',
+    token: 'EAAUIZCL1Afd8BSVcPIyBeoZAAFNDwbXb4YaR4bGnLgw5skJyj6R2y56ScABUTFDkwN7JhGZASxQd7klo5TdTfaq0I7AU82F6yur0rBMBNgen0TgjMJI1bUfBPpoaRv4WPczkgKvMBRZBd5DjQOneZAuA04Wx52tZBxryij8WhTXzvwUblQk8DVir4kZAgmiPVYhHWFn8I1HBIIuJEQhEZAZBvSddJettvbuZBu4e0ZCggZDZD',
+  },
+];
 
+const LeadSchema = new mongoose.Schema({}, { strict: false });
 const Lead = mongoose.models.Lead || mongoose.model('Lead', LeadSchema);
 
-let counter = 100;
-
-async function syncAllStrict() {
+async function syncAll4Brands() {
   await mongoose.connect(MONGODB_URI);
-  console.log('Connected to MongoDB Atlas');
+  console.log('Connected to MongoDB Atlas\n');
 
-  // 1. Get Accounts / Pages
-  const accRes = await fetch(`https://graph.facebook.com/v20.0/me/accounts?access_token=${USER_TOKEN}`);
-  const accData = await accRes.json();
-  if (!accData.data) {
-    console.error('Failed to fetch pages:', accData);
-    return;
-  }
+  const totals = { tzar: 0, titepo: 0, adshalaa: 0, crownleaf: 0 };
 
-  const counts = { tzar: 0, titepo: 0, crownleaf: 0, adshalaa: 0, skippedOtherPages: 0 };
+  for (const b of BRANDS_TO_SYNC) {
+    console.log(`--- SYNCING [${b.name.toUpperCase()}] (Page ID: ${b.pageId}) ---`);
 
-  for (const page of accData.data) {
-    const pageId = String(page.id);
-    const assignedBusiness = PAGE_BRAND_MAP[pageId];
+    // 1. Fetch Leadgen Forms
+    const formsRes = await fetch(`https://graph.facebook.com/v20.0/${b.pageId}/leadgen_forms?access_token=${b.token}`);
+    const formsData = await formsRes.json();
 
-    if (!assignedBusiness) {
-      console.log(`Skipping non-CRM page: ${page.name} (${pageId})`);
-      counts.skippedOtherPages++;
+    if (!formsData.data || formsData.data.length === 0) {
+      console.log(`No active lead forms found for ${b.name}`);
       continue;
     }
 
-    console.log(`\n--- Processing Page: ${page.name} (${pageId}) -> BRAND: [${assignedBusiness.toUpperCase()}] ---`);
-
-    // 2. Get Leadgen Forms
-    const formsRes = await fetch(`https://graph.facebook.com/v20.0/${pageId}/leadgen_forms?access_token=${page.access_token}`);
-    const formsData = await formsRes.json();
-    if (!formsData.data) continue;
+    console.log(`Found ${formsData.data.length} active lead forms for ${b.name}`);
 
     for (const form of formsData.data) {
-      // 3. Fetch Leads for each Form
-      const leadsRes = await fetch(`https://graph.facebook.com/v20.0/${form.id}/leads?fields=id,created_time,field_data,ad_id,ad_name,campaign_id,campaign_name&limit=100&access_token=${page.access_token}`);
+      // 2. Fetch Leads per Form
+      const leadsRes = await fetch(`https://graph.facebook.com/v20.0/${form.id}/leads?fields=id,created_time,field_data,ad_id,ad_name,campaign_id,campaign_name&limit=100&access_token=${b.token}`);
       const leadsData = await leadsRes.json();
+
       if (!leadsData.data || leadsData.data.length === 0) continue;
 
       for (const item of leadsData.data) {
@@ -111,9 +88,8 @@ async function syncAllStrict() {
 
         if (!phone && !email) continue;
 
-        counter++;
-        const prefix = assignedBusiness === 'tzar' ? 'TZ-LD' : assignedBusiness === 'titepo' ? 'TT-LD' : assignedBusiness === 'crownleaf' ? 'CL-LD' : 'AD-LD';
-        const uniqueId = `${prefix}-${Date.now().toString().slice(-4)}${counter}`;
+        const prefix = b.business === 'tzar' ? 'TZ-LD' : b.business === 'titepo' ? 'TT-LD' : b.business === 'crownleaf' ? 'CL-LD' : 'AD-LD';
+        const uniqueId = `${prefix}-${Date.now().toString().slice(-4)}${Math.floor(1000 + Math.random() * 8999)}`;
         const createdDate = item.created_time ? new Date(item.created_time) : new Date();
 
         const filter = item.id
@@ -125,7 +101,7 @@ async function syncAllStrict() {
         const existingLead = await Lead.findOne(filter);
 
         if (existingLead) {
-          existingLead.business = assignedBusiness; // STRICT PROPER BRAND ASSIGNMENT!
+          existingLead.business = b.business; // STRICT ISOLATION!
           existingLead.name = name || existingLead.name;
           existingLead.email = email ? email.toLowerCase() : existingLead.email;
           existingLead.phone = phone || existingLead.phone;
@@ -142,19 +118,12 @@ async function syncAllStrict() {
             campaignName: item.campaign_name || '',
           };
           existingLead.createdAt = createdDate;
-
-          // Normalize leadCustomId prefix
-          if (existingLead.leadCustomId && !existingLead.leadCustomId.startsWith(prefix)) {
-            const numPart = existingLead.leadCustomId.split('-').pop() || Math.floor(1000 + Math.random() * 9000);
-            existingLead.leadCustomId = `${prefix}-${numPart}`;
-          }
-
           await existingLead.save();
         } else {
           await Lead.create({
             leadCustomId: uniqueId,
             metaLeadId: item.id,
-            business: assignedBusiness,
+            business: b.business,
             name: name || 'Meta Lead',
             email: email ? email.toLowerCase() : '',
             phone: phone || '',
@@ -177,18 +146,18 @@ async function syncAllStrict() {
           });
         }
 
-        counts[assignedBusiness]++;
+        totals[b.business]++;
       }
     }
   }
 
-  console.log('\n=== STRICT BRAND ISOLATION SYNC COMPLETE ===');
-  console.log('TZAR (Marketing & WebDev):', counts.tzar);
-  console.log('TITEPO (Toys & Birthday Events):', counts.titepo);
-  console.log('CROWNLEAF (Gifting):', counts.crownleaf);
-  console.log('ADSHALAA (EdTech & Courses):', counts.adshalaa);
+  console.log('\n=== INGESTION & SYNC SUMMARY ACROSS ALL 4 BRANDS ===');
+  console.log('TZAR (WebDev & Digital Marketing):', totals.tzar);
+  console.log('TITEPO (Toys & Birthday Gifts):', totals.titepo);
+  console.log('ADSHALAA (EdTech & Courses):', totals.adshalaa);
+  console.log('CROWNLEAF (Corporate Gifting):', totals.crownleaf);
 
   await mongoose.disconnect();
 }
 
-syncAllStrict().catch(console.error);
+syncAll4Brands().catch(console.error);
