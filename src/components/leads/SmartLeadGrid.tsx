@@ -52,10 +52,10 @@ const BRAND_CONFIG: Record<
   { label: string; bg: string; text: string; border: string; icon: any; logo: string }
 > = {
   all: { label: "All Businesses", bg: "bg-slate-900", text: "text-white", border: "border-slate-800", icon: Layers, logo: "" },
-  tzar: { label: "Tzar Agency", bg: "bg-emerald-700", text: "text-white", border: "border-emerald-800", icon: Briefcase, logo: "/tzar-logo.png" },
-  adshalaa: { label: "Adshalaa EdTech", bg: "bg-blue-700", text: "text-white", border: "border-blue-800", icon: BookOpen, logo: "/adshalaa-logo.png" },
-  crownleaf: { label: "CrownLeaf Gifting", bg: "bg-amber-600", text: "text-white", border: "border-amber-700", icon: Gift, logo: "/Crownleaf-logo.png" },
-  titepo: { label: "Titepo Toys", bg: "bg-pink-600", text: "text-white", border: "border-pink-700", icon: ShoppingBag, logo: "/titepo-logo.png" },
+  tzar: { label: "Tzar Agency", bg: "bg-[#0d4733]", text: "text-white", border: "border-[#083022]", icon: Briefcase, logo: "/tzar-logo.png" },
+  adshalaa: { label: "Adshalaa EdTech", bg: "bg-[#0d4733]", text: "text-white", border: "border-[#083022]", icon: BookOpen, logo: "/adshalaa-logo.png" },
+  crownleaf: { label: "CrownLeaf Gifting", bg: "bg-[#0d4733]", text: "text-white", border: "border-[#083022]", icon: Gift, logo: "/Crownleaf-logo.png" },
+  titepo: { label: "Titepo Toys", bg: "bg-[#0d4733]", text: "text-white", border: "border-[#083022]", icon: ShoppingBag, logo: "/titepo-logo.png" },
 };
 
 const STAGES: { id: KanbanStage; name: string; color: string }[] = [

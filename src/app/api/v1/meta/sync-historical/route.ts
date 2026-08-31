@@ -22,21 +22,21 @@ export async function POST(req: Request) {
 
     let { formId, pageAccessToken: token, business = "tzar" } = body;
 
-    // Resolve Page Access Token from environment variables or hardcoded master fallback
-    const TZAR_MASTER_TOKEN = "EAAUIZCL1Afd8BSbXS7Rdf4VCKDDmxBSEk8zAdgyeGuQH1IZCyZCXRDJHh8X3FlTMc2EdXCZANqBnK7Kkb9ZAuDE3X96HIpQbmPxZAyTYV2vLFEnA8qWpinfbUePQsSbaLkB1IyELuSdrFdNR8scAGGOqLhRz2JrD4fB1r5tEC1QQXu4SEuOf9pfdGGttUEr6inz87Bo7zMi38ApxqDZAvjt5bDYKgGc3T2gATehleYB";
+    // Resolve Page Access Token from environment variables or active token fallback
+    const NEW_TZAR_TOKEN = process.env.META_USER_ACCESS_TOKEN || "EAAUIZCL1Afd8BSY4JszH1IEbP1Dp7V0UKPACyYdrZApz94VY88xo77Ld1qeGQZB1ZC7W2kNX6OGYRFPRdwVPHHWMCnsHOhqSX4S1EqyVX1LZBulrK3x6zOcFRltbLAkO5KZBI3364VvDoRJuBbz8kQ1VQRCrtsRAUhNocsZCELXTht8mZAXH6OG0bRd65U7HelZAezZBKdg4cfrbLOGvBHwQKhqrb4M1W1fZApjY9ZCok1VNOIoN4T7szjT2HKZCar7ZAvoJsOrplVV5RQy68ZD";
     const TITEPO_MASTER_TOKEN = "EAAUIZCL1Afd8BSdhwsRR8WCJLNLzXgtZAeGQUkSiyzpRJkz3KIDZC313uFE0YtNwRZCUHmFGrvvzRFST3LDk8epbuuoAH7JJZAQ9tTRsxo4hTdR9vBW3LynZCN6RcGM6Dru4mbr9TUpZBimeV14AmjwYwV6RVwEuhBwI7ePpzYbCvIJ1ZB1HmodLyYnKo2LqhioWKZClcZA6pPWDt1KRzbvZCvhXZC7EyQsx8HCVHLZCOJPZAx";
 
     if (!token) {
       if (business === "titepo") {
         token = TITEPO_MASTER_TOKEN;
       } else if (business === "tzar") {
-        token = TZAR_MASTER_TOKEN;
+        token = NEW_TZAR_TOKEN;
       } else if (business === "adshalaa") {
-        token = process.env.META_PAGE_ACCESS_TOKEN_ADSHALAA || TZAR_MASTER_TOKEN;
+        token = process.env.META_PAGE_ACCESS_TOKEN_ADSHALAA || NEW_TZAR_TOKEN;
       } else if (business === "crownleaf") {
-        token = process.env.META_PAGE_ACCESS_TOKEN_CROWNLEAF || TZAR_MASTER_TOKEN;
+        token = process.env.META_PAGE_ACCESS_TOKEN_CROWNLEAF || NEW_TZAR_TOKEN;
       } else {
-        token = TZAR_MASTER_TOKEN;
+        token = NEW_TZAR_TOKEN;
       }
     }
 
@@ -52,23 +52,32 @@ export async function POST(req: Request) {
     // ─── AUTO-DISCOVER FORMS IF FORM_ID OMITTED ───────────────────────
     let targetFormIds: string[] = [];
 
+    const BRAND_PAGE_IDS: Record<string, string> = {
+      tzar: "364879847573029",
+      titepo: "1019277841258458",
+      crownleaf: "837451012790051",
+      adshalaa: "1245930131928783",
+    };
+
     if (formId && formId.trim()) {
       targetFormIds.push(formId.trim());
     } else {
-      // Auto-discover forms by resolving Page ID first, then querying /{PAGE_ID}/leadgen_forms
       try {
-        const pageInfoRes = await axios.get(
-          `https://graph.facebook.com/v20.0/me?fields=id,name&access_token=${token}`
+        // Query me/accounts to get page-specific access token or page ID
+        const accRes = await axios.get(
+          `https://graph.facebook.com/v20.0/me/accounts?access_token=${token}`
         );
-        const resolvedPageId = pageInfoRes.data?.id;
+        const pages = accRes.data?.data || [];
+        const targetPageId = BRAND_PAGE_IDS[business] || "364879847573029";
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        const pageMatch = pages.find((p: any) => String(p.id) === targetPageId);
+        const usePageToken = pageMatch?.access_token || token;
 
-        if (resolvedPageId) {
-          const directFormsRes = await axios.get(
-            `https://graph.facebook.com/v20.0/${resolvedPageId}/leadgen_forms?access_token=${token}`
-          );
-          // eslint-disable-next-line @typescript-eslint/no-explicit-any
-          targetFormIds = (directFormsRes.data?.data || []).map((f: any) => f.id);
-        }
+        const directFormsRes = await axios.get(
+          `https://graph.facebook.com/v20.0/${targetPageId}/leadgen_forms?access_token=${usePageToken}`
+        );
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        targetFormIds = (directFormsRes.data?.data || []).map((f: any) => f.id);
       } catch (discErr: any) {
         console.warn("Form auto-discovery warning:", discErr.response?.data || discErr.message);
       }
