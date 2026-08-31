@@ -465,17 +465,12 @@ export function SmartLeadGrid({ initialLeads }: SmartLeadGridProps) {
                   }),
                 }).then((r) => r.json());
 
-                if (res.message) {
-                  alert(res.message);
-                  const updated = await fetch(`/api/v1/leads?business=${selectedBrand}`).then((r) => r.json());
-                  if (updated.leads) setLeads(updated.leads);
-                } else {
-                  alert(`Meta API Sync Notice: ${res.error || "Graph API sync completed"}`);
-                }
+                const updated = await fetch(`/api/v1/leads?business=${selectedBrand}`).then((r) => r.json());
+                if (updated.leads) setLeads(updated.leads);
               } catch (err: any) {
-                alert(`Graph Sync Error: ${err.message}`);
+                console.warn("Graph Sync Notice:", err);
               } finally {
-                setIsLiveSyncing(false);
+                setTimeout(() => setIsLiveSyncing(false), 500);
               }
             }}
             disabled={isLiveSyncing}
