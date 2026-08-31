@@ -85,7 +85,8 @@ export async function GET(req: Request) {
 
     const leads = await Lead.find(filter)
       .populate("assignedTo", "name email avatarUrl role")
-      .sort({ createdAt: -1 });
+      .sort({ createdAt: -1 })
+      .lean();
 
     return NextResponse.json({ leads }, { status: 200 });
   } catch (error) {
