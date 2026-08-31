@@ -54,20 +54,20 @@ export async function POST(req: Request) {
     const adId = String(change?.ad_id || "meta_ad_direct");
     const formId = String(change?.form_id || "meta_form_direct");
 
-    // Brand Page & Form ID environment variables or fallback detection
-    const pageTzar = process.env.META_PAGE_ID_TZAR || "";
-    const pageAdshalaa = process.env.META_PAGE_ID_ADSHALAA || "";
-    const pageCrownleaf = process.env.META_PAGE_ID_CROWNLEAF || "";
-    const pageTitepo = process.env.META_PAGE_ID_TITEPO || "";
+    // Explicit Page ID mapping for all 4 brands
+    const BRAND_PAGE_IDS: Record<string, BusinessSlug> = {
+      "364879847573029": "tzar",       // Tzar Venture - Digital Marketing Agency
+      "1019277841258458": "titepo",    // Titepo TOY STORE
+      "837451012790051": "crownleaf",  // Crownleaf Gifting
+      "1245930131928783": "adshalaa",  // Adshalaa Institute
+    };
 
     let business: BusinessSlug = "tzar"; // Default to Tzar Agency if unspecified
 
     // 1. Precise Page ID Matching
-    if (pageId && pageTzar && pageId === pageTzar) business = "tzar";
-    else if (pageId && pageAdshalaa && pageId === pageAdshalaa) business = "adshalaa";
-    else if (pageId && pageCrownleaf && pageId === pageCrownleaf) business = "crownleaf";
-    else if (pageId && pageTitepo && pageId === pageTitepo) business = "titepo";
-    else {
+    if (pageId && BRAND_PAGE_IDS[pageId]) {
+      business = BRAND_PAGE_IDS[pageId];
+    } else {
       // 2. String Match Fallback from payload or form string
       const formStr = `${formId} ${pageId} ${JSON.stringify(body)}`.toLowerCase();
       if (formStr.includes("titepo") || body.business === "titepo") business = "titepo";
