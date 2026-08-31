@@ -3,6 +3,10 @@ node_modules/
 /.pnp
 .pnp.js
 
+# Local scratch / one-off debugging scripts (NEVER commit these)
+scratch_*.js
+scratch/
+
 # Next.js build & cache outputs
 .next/
 out/
