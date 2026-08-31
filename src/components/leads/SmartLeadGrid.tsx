@@ -518,17 +518,17 @@ export function SmartLeadGrid({ initialLeads }: SmartLeadGridProps) {
               <button
                 key={bSlug}
                 onClick={() => setSelectedBrand(bSlug)}
-                className={`inline-flex items-center gap-1.5 px-3.5 py-2 rounded-xl text-xs font-bold transition-all cursor-pointer ${
+                className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-bold transition-all cursor-pointer ${
                   isSelected
-                    ? `${config.bg} ${config.text} shadow-xs`
+                    ? "bg-white text-slate-900 shadow-sm border border-slate-300 ring-2 ring-emerald-600/30"
                     : "text-slate-700 hover:bg-slate-300/60"
                 }`}
               >
                 {config.logo ? (
-                  <img src={config.logo} alt={config.label} className="h-4.5 w-auto object-contain max-h-5" />
+                  <img src={config.logo} alt={config.label} className="h-3.5 w-auto object-contain max-h-4" />
                 ) : (
                   <>
-                    <Icon className="w-3.5 h-3.5" />
+                    <Icon className="w-3.5 h-3.5 text-slate-700" />
                     <span>{config.label}</span>
                   </>
                 )}
@@ -840,7 +840,7 @@ export function SmartLeadGrid({ initialLeads }: SmartLeadGridProps) {
                       {/* Brand Entity Badge with Image Logo */}
                       <td className="py-3.5 px-4">
                         {bConfig.logo ? (
-                          <img src={bConfig.logo} alt={bConfig.label} className="h-5 w-auto object-contain max-h-5" />
+                          <img src={bConfig.logo} alt={bConfig.label} className="h-4 w-auto object-contain max-h-4" />
                         ) : (
                           <span className={`inline-flex items-center gap-1.5 text-[11px] font-bold px-2.5 py-1 rounded-xl ${bConfig.bg} ${bConfig.text}`}>
                             <BIcon className="w-3.5 h-3.5" />
