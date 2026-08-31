@@ -27,17 +27,7 @@ export async function POST(req: Request) {
     const TITEPO_MASTER_TOKEN = "EAAUIZCL1Afd8BSdhwsRR8WCJLNLzXgtZAeGQUkSiyzpRJkz3KIDZC313uFE0YtNwRZCUHmFGrvvzRFST3LDk8epbuuoAH7JJZAQ9tTRsxo4hTdR9vBW3LynZCN6RcGM6Dru4mbr9TUpZBimeV14AmjwYwV6RVwEuhBwI7ePpzYbCvIJ1ZB1HmodLyYnKo2LqhioWKZClcZA6pPWDt1KRzbvZCvhXZC7EyQsx8HCVHLZCOJPZAx";
 
     if (!token) {
-      if (business === "titepo") {
-        token = TITEPO_MASTER_TOKEN;
-      } else if (business === "tzar") {
-        token = NEW_TZAR_TOKEN;
-      } else if (business === "adshalaa") {
-        token = process.env.META_PAGE_ACCESS_TOKEN_ADSHALAA || NEW_TZAR_TOKEN;
-      } else if (business === "crownleaf") {
-        token = process.env.META_PAGE_ACCESS_TOKEN_CROWNLEAF || NEW_TZAR_TOKEN;
-      } else {
-        token = NEW_TZAR_TOKEN;
-      }
+      token = NEW_TZAR_TOKEN;
     }
 
     if (!token) {

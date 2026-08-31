@@ -197,7 +197,8 @@ export function SmartLeadGrid({ initialLeads }: SmartLeadGridProps) {
       }
     };
 
-    // Auto-fetch every 5 seconds for instant real-time intake
+    // Auto-fetch immediately on tab switch + poll every 5 seconds for instant real-time intake
+    fetchLatestLeads();
     const interval = setInterval(fetchLatestLeads, 5000);
     return () => clearInterval(interval);
   }, [selectedBrand]);
