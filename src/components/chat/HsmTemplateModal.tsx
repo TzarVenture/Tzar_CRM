@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { X, FileText, Send, Check, MessageSquare } from "lucide-react";
 
 export interface HsmTemplate {
@@ -88,12 +88,37 @@ export default function HsmTemplateModal({
   serviceName = "Website Development",
   onSelectTemplate,
 }: HsmTemplateModalProps) {
-  const [selectedTemplate, setSelectedTemplate] = useState<HsmTemplate>(
-    PRE_APPROVED_TEMPLATES[0]
-  );
+  const [templateList, setTemplateList] = useState<HsmTemplate[]>(PRE_APPROVED_TEMPLATES);
+  const [selectedTemplate, setSelectedTemplate] = useState<HsmTemplate>(PRE_APPROVED_TEMPLATES[0]);
   const [param1, setParam1] = useState(leadName);
   const [param2, setParam2] = useState(serviceName);
   const [param3, setParam3] = useState("https://tzar.agency/portal");
+
+  // Fetch live Meta WABA approved templates on mount
+  useEffect(() => {
+    async function loadMetaTemplates() {
+      try {
+        const res = await fetch("/api/v1/whatsapp/templates").then((r) => r.json());
+        if (res.templates && Array.isArray(res.templates) && res.templates.length > 0) {
+          // eslint-disable-next-line @typescript-eslint/no-explicit-any
+          const live: HsmTemplate[] = res.templates.map((t: any) => ({
+            id: t.name,
+            name: t.name,
+            displayName: `${t.name} (${t.status})`,
+            category: (t.category === "MARKETING" ? "MARKETING" : "UTILITY") as any,
+            bodyTemplate: t.bodyText || t.name,
+            variablesCount: (t.bodyText?.match(/\{\{\d+\}\}/g) || []).length,
+          }));
+
+          setTemplateList(live);
+          setSelectedTemplate(live[0]);
+        }
+      } catch (err) {
+        console.warn("Failed to fetch live Meta templates, using defaults:", err);
+      }
+    }
+    loadMetaTemplates();
+  }, []);
 
   if (!isOpen) return null;
 
@@ -161,7 +186,7 @@ export default function HsmTemplateModal({
             <label className="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1">
               Select Template
             </label>
-            {PRE_APPROVED_TEMPLATES.map((tpl) => {
+            {templateList.map((tpl) => {
               const isSelected = selectedTemplate.id === tpl.id;
               return (
                 <div
