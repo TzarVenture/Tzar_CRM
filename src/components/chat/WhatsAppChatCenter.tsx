@@ -241,12 +241,12 @@ export default function WhatsAppChatCenter() {
     }
   };
 
-  // Filter leads by search query
+  // Filter leads by search query safely
   const filteredLeads = leads.filter(
     (l) =>
-      l.fullName.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      l.phone.includes(searchQuery) ||
-      l.leadCustomId.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      (l.fullName || "").toLowerCase().includes(searchQuery.toLowerCase()) ||
+      (l.phone || "").includes(searchQuery) ||
+      (l.leadCustomId || "").toLowerCase().includes(searchQuery.toLowerCase()) ||
       (l.companyName &&
         l.companyName.toLowerCase().includes(searchQuery.toLowerCase()))
   );
@@ -312,16 +312,16 @@ export default function WhatsAppChatCenter() {
                     className="w-10 h-10 rounded-full flex items-center justify-center text-white font-bold text-sm shrink-0 shadow-2xs mt-0.5"
                     style={{ backgroundColor: "var(--color-brand-green)" }}
                   >
-                    {lead.fullName.charAt(0).toUpperCase()}
+                    {(lead.fullName || lead.phone || "L").charAt(0).toUpperCase()}
                   </div>
 
                   <div className="flex-1 min-w-0">
                     <div className="flex items-center justify-between mb-0.5">
                       <span className="text-xs font-bold text-slate-900 truncate">
-                        {lead.fullName}
+                        {lead.fullName || lead.phone || "Unnamed Lead"}
                       </span>
                       <span className="text-[10px] font-mono font-bold px-1.5 py-0.5 rounded bg-slate-100 text-slate-600">
-                        {lead.leadCustomId}
+                        {lead.leadCustomId || "LD"}
                       </span>
                     </div>
 
@@ -353,15 +353,15 @@ export default function WhatsAppChatCenter() {
                   className="w-10 h-10 rounded-full flex items-center justify-center text-white font-bold text-sm shadow-2xs"
                   style={{ backgroundColor: "var(--color-brand-green)" }}
                 >
-                  {selectedLead.fullName.charAt(0).toUpperCase()}
+                  {(selectedLead.fullName || selectedLead.phone || "L").charAt(0).toUpperCase()}
                 </div>
                 <div>
                   <div className="flex items-center gap-2">
                     <h3 className="text-sm font-bold text-slate-900">
-                      {selectedLead.fullName}
+                      {selectedLead.fullName || selectedLead.phone || "Unnamed Lead"}
                     </h3>
                     <span className="text-xs font-mono font-bold px-2 py-0.5 rounded bg-slate-100 text-slate-700">
-                      {selectedLead.leadCustomId}
+                      {selectedLead.leadCustomId || "LD"}
                     </span>
                   </div>
                   <div className="flex items-center gap-3 text-xs font-semibold text-slate-500 mt-0.5">

@@ -168,7 +168,7 @@ export default function LeadDetailClient({ leadId }: LeadDetailClientProps) {
             className="w-14 h-14 rounded-2xl flex items-center justify-center text-white font-extrabold text-xl shadow-xs"
             style={{ backgroundColor: "var(--color-brand-green)" }}
           >
-            {lead.fullName.charAt(0).toUpperCase()}
+            {(lead.fullName || lead.phone || "L").charAt(0).toUpperCase()}
           </div>
           <div>
             <div className="flex items-center gap-3">
