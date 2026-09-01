@@ -175,7 +175,7 @@ export default function LeadDetailPage() {
     if (!newNoteContent.trim() || !lead || !lead._id) return;
     setIsSubmittingNote(true);
     try {
-      const res = await fetch(`/api/v1/leads/${lead._id}/messages`, {
+      const res = await fetch(`/api/v1/leads/${lead._id}/notes`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ content: newNoteContent.trim() }),

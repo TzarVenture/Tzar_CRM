@@ -141,14 +141,16 @@ export default function TeamDirectory() {
   };
 
   const openEditModal = (member: TeamMember) => {
-    setEditingMember(member);
-    setName(member.name);
-    setEmail(member.email);
+    // Read from the latest team state to get fresh data (avoids stale closures)
+    const freshMember = team.find((m) => m._id === member._id) || member;
+    setEditingMember(freshMember);
+    setName(freshMember.name);
+    setEmail(freshMember.email);
     setPassword(""); // Leave blank if not changing
-    setRole(member.role);
-    setPhone(member.phone || "");
-    setIsActive(member.isActive);
-    setAllowedBusinesses(member.allowedBusinesses || ["tzar", "titepo", "adshalaa", "crownleaf"]);
+    setRole(freshMember.role);
+    setPhone(freshMember.phone || "");
+    setIsActive(freshMember.isActive);
+    setAllowedBusinesses(freshMember.allowedBusinesses || ["tzar", "titepo", "adshalaa", "crownleaf"]);
     setError(null);
     setIsModalOpen(true);
   };
@@ -183,8 +185,8 @@ export default function TeamDirectory() {
       setIsSubmitting(true);
 
       if (editingMember) {
-        // Edit existing
-        await axios.patch(`/api/v1/team/${editingMember._id}`, {
+        // Edit existing — capture the returned updated user from server
+        const patchRes = await axios.patch(`/api/v1/team/${editingMember._id}`, {
           name,
           email,
           ...(password ? { password } : {}),
@@ -193,6 +195,14 @@ export default function TeamDirectory() {
           isActive,
           allowedBusinesses,
         });
+
+        // Immediately update the team card in local state with server's response
+        const updatedUser: TeamMember = patchRes.data.user;
+        if (updatedUser) {
+          setTeam((prev) =>
+            prev.map((m) => (m._id === updatedUser._id ? { ...m, ...updatedUser } : m))
+          );
+        }
 
         // If the logged-in admin edited their own account, trigger session update & reload for Header sync!
         if (session?.user?.id === editingMember._id) {
@@ -213,6 +223,7 @@ export default function TeamDirectory() {
       }
 
       setIsModalOpen(false);
+      // Full re-fetch to ensure server-sync (no stale data on any card)
       fetchTeam();
     } catch (err: unknown) {
       if (axios.isAxiosError(err)) {
