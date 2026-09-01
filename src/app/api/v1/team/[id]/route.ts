@@ -12,6 +12,7 @@ const UpdateTeamMemberSchema = z.object({
   role: z
     .enum([
       "SUPER_ADMIN",
+      "ADMIN",
       "SALES_MANAGER",
       "BDE",
       "MEDIA_BUYER",
@@ -21,6 +22,7 @@ const UpdateTeamMemberSchema = z.object({
     .optional(),
   phone: z.string().optional(),
   isActive: z.boolean().optional(),
+  allowedBusinesses: z.array(z.string()).optional(),
 });
 
 // PATCH: Edit Team Member
@@ -30,9 +32,9 @@ export async function PATCH(
 ) {
   try {
     const session = await auth();
-    if (!session || session.user?.role !== "SUPER_ADMIN") {
+    if (!session || (session.user?.role !== "SUPER_ADMIN" && session.user?.role !== "ADMIN")) {
       return NextResponse.json(
-        { error: "Unauthorized: Super Admin only" },
+        { error: "Unauthorized: Admin only" },
         { status: 403 }
       );
     }
@@ -61,6 +63,7 @@ export async function PATCH(
     if (data.role) user.role = data.role as any;
     if (data.phone !== undefined) user.phone = data.phone;
     if (data.isActive !== undefined) user.isActive = data.isActive;
+    if (data.allowedBusinesses !== undefined) user.allowedBusinesses = data.allowedBusinesses as any;
     if (data.password) {
       user.passwordHash = await bcrypt.hash(data.password, 10);
     }

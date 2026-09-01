@@ -2,6 +2,7 @@ import mongoose, { Schema, Document, Model } from "mongoose";
 
 export type UserRole =
   | "SUPER_ADMIN"
+  | "ADMIN"
   | "SALES_MANAGER"
   | "BDE"
   | "MEDIA_BUYER"
@@ -16,6 +17,7 @@ export interface IUser extends Document {
   phone?: string;
   avatarUrl?: string;
   assignedPipelineIds: mongoose.Types.ObjectId[];
+  allowedBusinesses?: Array<"tzar" | "titepo" | "adshalaa" | "crownleaf">;
   googleOAuthTokens?: {
     accessToken?: string;
     refreshToken?: string;
@@ -41,6 +43,7 @@ const UserSchema: Schema<IUser> = new Schema(
       type: String,
       enum: [
         "SUPER_ADMIN",
+        "ADMIN",
         "SALES_MANAGER",
         "BDE",
         "MEDIA_BUYER",
@@ -54,6 +57,10 @@ const UserSchema: Schema<IUser> = new Schema(
     phone: { type: String, trim: true },
     avatarUrl: { type: String },
     assignedPipelineIds: [{ type: Schema.Types.ObjectId, ref: "Pipeline" }],
+    allowedBusinesses: {
+      type: [String],
+      default: ["tzar", "titepo", "adshalaa", "crownleaf"],
+    },
     googleOAuthTokens: {
       accessToken: { type: String },
       refreshToken: { type: String },

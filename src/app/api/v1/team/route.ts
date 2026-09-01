@@ -11,6 +11,7 @@ const AddTeamMemberSchema = z.object({
   password: z.string().min(6, "Password must be at least 6 characters"),
   role: z.enum([
     "SUPER_ADMIN",
+    "ADMIN",
     "SALES_MANAGER",
     "BDE",
     "MEDIA_BUYER",
@@ -18,14 +19,15 @@ const AddTeamMemberSchema = z.object({
     "CLIENT",
   ]),
   phone: z.string().optional(),
+  allowedBusinesses: z.array(z.string()).optional(),
 });
 
 export async function GET() {
   try {
     const session = await auth();
-    if (!session || session.user?.role !== "SUPER_ADMIN") {
+    if (!session || (session.user?.role !== "SUPER_ADMIN" && session.user?.role !== "ADMIN")) {
       return NextResponse.json(
-        { error: "Forbidden: Super Admin only" },
+        { error: "Forbidden: Admin only" },
         { status: 403 }
       );
     }
@@ -45,9 +47,9 @@ export async function GET() {
 export async function POST(req: Request) {
   try {
     const session = await auth();
-    if (!session || session.user?.role !== "SUPER_ADMIN") {
+    if (!session || (session.user?.role !== "SUPER_ADMIN" && session.user?.role !== "ADMIN")) {
       return NextResponse.json(
-        { error: "Unauthorized: Super Admin only" },
+        { error: "Unauthorized: Admin only" },
         { status: 403 }
       );
     }
@@ -80,6 +82,7 @@ export async function POST(req: Request) {
       passwordHash,
       role,
       phone,
+      allowedBusinesses: (parseResult.data.allowedBusinesses || ["tzar", "titepo", "adshalaa", "crownleaf"]) as any,
       isActive: true,
     });
 

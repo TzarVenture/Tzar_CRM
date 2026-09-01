@@ -269,9 +269,25 @@ export function SmartLeadGrid({ initialLeads }: SmartLeadGridProps) {
     });
   }, [leads, selectedBrand, selectedStageFilter, sourceFilter, slaFilter, dateFilter, customStartDate, customEndDate, searchQuery]);
 
+  const [isExportMenuOpen, setIsExportMenuOpen] = useState(false);
+
   // Pro Excel Export Handler (.csv / .xlsx compatible with UTF-8 BOM)
-  const handleExportExcel = () => {
-    if (filteredLeads.length === 0) {
+  const handleExportExcel = (mode: "selected" | "filtered" | "all" = "filtered") => {
+    let targetDataset: Partial<ILead>[] = [];
+
+    if (mode === "selected") {
+      targetDataset = leads.filter((l) => l._id && selectedLeadIds.includes(l._id.toString()));
+      if (targetDataset.length === 0) {
+        alert("No leads currently selected. Please check leads in the table first.");
+        return;
+      }
+    } else if (mode === "all") {
+      targetDataset = leads;
+    } else {
+      targetDataset = filteredLeads;
+    }
+
+    if (targetDataset.length === 0) {
       alert("No leads found matching current filter criteria to export.");
       return;
     }
@@ -298,7 +314,7 @@ export function SmartLeadGrid({ initialLeads }: SmartLeadGridProps) {
       "Created Date",
     ];
 
-    const rows = filteredLeads.map((l) => [
+    const rows = targetDataset.map((l) => [
       `"${l.leadCustomId || ""}"`,
       `"${(l.business || "").toUpperCase()}"`,
       `"${(l.fullName || "").replace(/"/g, '""')}"`,
@@ -326,10 +342,11 @@ export function SmartLeadGrid({ initialLeads }: SmartLeadGridProps) {
     const link = document.createElement("a");
     link.href = url;
     const timestamp = new Date().toISOString().slice(0, 10);
-    link.setAttribute("download", `Tzar_CRM_Leads_Export_${selectedBrand}_${timestamp}.csv`);
+    link.setAttribute("download", `Tzar_CRM_Leads_Export_${mode}_${selectedBrand}_${timestamp}.csv`);
     document.body.appendChild(link);
     link.click();
     document.body.removeChild(link);
+    setIsExportMenuOpen(false);
   };
 
   // Bulk Selection Handlers
@@ -598,14 +615,49 @@ export function SmartLeadGrid({ initialLeads }: SmartLeadGridProps) {
               )}
             </button>
 
-            {/* Excel Export Button */}
-            <button
-              onClick={handleExportExcel}
-              className="flex items-center gap-1.5 px-3.5 py-2 text-xs font-bold text-emerald-900 bg-emerald-100 hover:bg-emerald-200 border border-emerald-300 rounded-xl transition-all cursor-pointer shadow-2xs"
-              title="Export filtered leads dataset to Excel (.csv format)"
-            >
-              <Download className="w-3.5 h-3.5 text-emerald-700" /> Export Excel
-            </button>
+            {/* Excel Export Dropdown */}
+            <div className="relative">
+              <button
+                onClick={() => setIsExportMenuOpen((prev) => !prev)}
+                className="flex items-center gap-1.5 px-3.5 py-2 text-xs font-bold text-emerald-900 bg-emerald-100 hover:bg-emerald-200 border border-emerald-300 rounded-xl transition-all cursor-pointer shadow-2xs"
+                title="Export leads dataset to Excel / CSV"
+              >
+                <Download className="w-3.5 h-3.5 text-emerald-700" /> Export Excel
+              </button>
+
+              {isExportMenuOpen && (
+                <div className="absolute right-0 mt-2 w-56 bg-white border border-slate-300 rounded-xl shadow-xl z-30 p-1 space-y-1 text-xs animate-fade-in">
+                  <button
+                    onClick={() => handleExportExcel("selected")}
+                    disabled={selectedLeadIds.length === 0}
+                    className="w-full text-left px-3 py-2 rounded-lg font-bold flex items-center justify-between hover:bg-slate-100 disabled:opacity-50 disabled:cursor-not-allowed text-slate-800"
+                  >
+                    <span>Selected Leads</span>
+                    <span className="px-2 py-0.5 rounded bg-emerald-100 text-emerald-800 text-[10px]">
+                      {selectedLeadIds.length}
+                    </span>
+                  </button>
+                  <button
+                    onClick={() => handleExportExcel("filtered")}
+                    className="w-full text-left px-3 py-2 rounded-lg font-bold flex items-center justify-between hover:bg-slate-100 text-slate-800"
+                  >
+                    <span>Current Filtered View</span>
+                    <span className="px-2 py-0.5 rounded bg-slate-100 text-slate-700 text-[10px]">
+                      {filteredLeads.length}
+                    </span>
+                  </button>
+                  <button
+                    onClick={() => handleExportExcel("all")}
+                    className="w-full text-left px-3 py-2 rounded-lg font-bold flex items-center justify-between hover:bg-slate-100 text-slate-800 border-t border-slate-100 pt-2"
+                  >
+                    <span>All Leads Dataset</span>
+                    <span className="px-2 py-0.5 rounded bg-blue-100 text-blue-800 text-[10px]">
+                      {leads.length}
+                    </span>
+                  </button>
+                </div>
+              )}
+            </div>
 
             {selectedStageFilter !== "all" && (
               <button

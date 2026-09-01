@@ -127,9 +127,9 @@ export async function DELETE(
 ) {
   try {
     const session = await auth();
-    if (!session || session.user?.role !== "SUPER_ADMIN") {
+    if (!session || (session.user?.role !== "ADMIN" && session.user?.role !== "SUPER_ADMIN")) {
       return NextResponse.json(
-        { error: "Forbidden: Only Super Admin (Agency Owner) can delete leads" },
+        { error: "Forbidden: Only administrators can delete leads" },
         { status: 403 }
       );
     }

@@ -7,8 +7,11 @@ import { auth } from "@/lib/auth";
 export async function DELETE(req: Request) {
   try {
     const session = await auth();
-    if (!session) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    if (!session || (session.user?.role !== "ADMIN" && session.user?.role !== "SUPER_ADMIN")) {
+      return NextResponse.json(
+        { error: "Forbidden: Only administrators can delete leads." },
+        { status: 403 }
+      );
     }
 
     const body = await req.json();

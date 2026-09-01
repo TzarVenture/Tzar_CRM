@@ -75,9 +75,12 @@ export default function Sidebar() {
     return item.roles.includes(userRole);
   });
 
+  const [pendingHref, setPendingHref] = useState<string | null>(null);
+
   const isActive = (href: string) => {
-    if (href === "/") return pathname === "/";
-    return pathname.startsWith(href);
+    const current = pendingHref ?? pathname;
+    if (href === "/") return current === "/";
+    return current.startsWith(href);
   };
 
   return (
@@ -89,7 +92,7 @@ export default function Sidebar() {
     >
       {/* Logo Header */}
       <div className="flex items-center justify-between px-3 py-4 border-b border-(--color-border-light)">
-        <Link href="/" className="flex items-center gap-3 overflow-hidden">
+        <Link href="/" prefetch={true} className="flex items-center gap-3 overflow-hidden">
           <div className="flex items-center justify-center shrink-0">
             {/* eslint-disable-next-line @next/next/no-img-element */}
             <img
@@ -133,9 +136,11 @@ export default function Sidebar() {
             <Link
               key={item.href}
               href={item.href}
+              prefetch={true}
+              onClick={() => setPendingHref(item.href)}
               title={isCollapsed ? item.label : undefined}
               className={clsx(
-                "flex items-center gap-3.5 px-3 py-2.5 rounded-xl text-sm font-semibold transition-all duration-150 group",
+                "flex items-center gap-3.5 px-3 py-2.5 rounded-xl text-sm font-semibold transition-all duration-150 group cursor-pointer",
                 isCollapsed ? "justify-center" : "",
                 active
                   ? "text-white shadow-xs"
@@ -158,7 +163,7 @@ export default function Sidebar() {
               {!isCollapsed && <span className="truncate">{item.label}</span>}
 
               {active && !isCollapsed && (
-                <span className="ml-auto w-2 h-2 rounded-full bg-white shrink-0" />
+                <span className="ml-auto w-2 h-2 rounded-full bg-white shrink-0 animate-pulse" />
               )}
             </Link>
           );

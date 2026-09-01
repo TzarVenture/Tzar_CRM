@@ -329,6 +329,25 @@ export default function LeadDetailClient({ leadId }: LeadDetailClientProps) {
               {/* Tab 1: Activity Timeline */}
               {activeTab === "activity" && (
                 <div className="space-y-4">
+                  {/* Quick Note Input Bar inside Timeline */}
+                  <form onSubmit={handleAddNote} className="p-3 bg-slate-50 border border-slate-200 rounded-xl flex gap-2 mb-4">
+                    <input
+                      type="text"
+                      value={noteContent}
+                      onChange={(e) => setNoteContent(e.target.value)}
+                      placeholder="Type a quick executive note or update..."
+                      className="flex-1 px-3 py-1.5 text-xs font-medium rounded-lg border border-slate-300 bg-white outline-none focus:border-(--color-brand-green)"
+                    />
+                    <button
+                      type="submit"
+                      disabled={isSendingNote || !noteContent.trim()}
+                      className="px-4 py-1.5 text-xs font-bold text-white rounded-lg shadow-2xs cursor-pointer disabled:opacity-50"
+                      style={{ backgroundColor: "var(--color-brand-green)" }}
+                    >
+                      Add Note
+                    </button>
+                  </form>
+
                   {messages.length === 0 ? (
                     <div className="text-center py-16 text-xs font-semibold text-slate-500">
                       No activity logs recorded for this lead yet.
@@ -355,19 +374,21 @@ export default function LeadDetailClient({ leadId }: LeadDetailClientProps) {
                           ) : msg.channel === "GMAIL" ? (
                             <Mail className="w-4 h-4" />
                           ) : (
-                            <CheckCircle2 className="w-4 h-4" />
+                            <FileText className="w-4 h-4" />
                           )}
                         </div>
                         <div className="flex-1">
                           <div className="flex items-center justify-between mb-1.5">
                             <span className="font-bold text-slate-900">
-                              {msg.channel} · {msg.direction}
+                              {msg.channel === "SYSTEM_NOTE"
+                                ? `📝 Executive Note by ${msg.senderInfo?.name || "BDE"}`
+                                : `${msg.channel} · ${msg.direction}`}
                             </span>
                             <span className="text-xs font-semibold text-slate-500">
                               {format(new Date(msg.createdAt), "MMM d, h:mm a")}
                             </span>
                           </div>
-                          <p className="text-slate-700 font-medium whitespace-pre-wrap leading-relaxed">
+                          <p className="text-slate-800 font-medium whitespace-pre-wrap leading-relaxed">
                             {msg.content}
                           </p>
                         </div>

@@ -62,6 +62,7 @@ export const { auth, handlers, signIn, signOut } = NextAuth({
           email: user.email,
           role: user.role,
           avatarUrl: user.avatarUrl ?? null,
+          allowedBusinesses: user.allowedBusinesses || ["tzar", "titepo", "adshalaa", "crownleaf"],
         };
       },
     }),
@@ -74,6 +75,7 @@ export const { auth, handlers, signIn, signOut } = NextAuth({
         token.id = user.id;
         token.role = (user as { role: UserRole }).role;
         token.avatarUrl = (user as { avatarUrl: string | null }).avatarUrl;
+        token.allowedBusinesses = (user as { allowedBusinesses?: string[] }).allowedBusinesses || ["tzar", "titepo", "adshalaa", "crownleaf"];
       }
       return token;
     },
@@ -84,6 +86,8 @@ export const { auth, handlers, signIn, signOut } = NextAuth({
         session.user.id = token.id as string;
         session.user.role = token.role as UserRole;
         session.user.avatarUrl = token.avatarUrl as string | null;
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        (session.user as any).allowedBusinesses = (token.allowedBusinesses as string[]) || ["tzar", "titepo", "adshalaa", "crownleaf"];
       }
       return session;
     },
