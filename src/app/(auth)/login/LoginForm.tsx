@@ -25,15 +25,17 @@ export default function LoginForm() {
         redirect: false,
       });
 
+      console.log("Login signIn result:", result);
+
       if (result?.error) {
         setError("Invalid email or password. Please try again.");
         return;
       }
 
       // Redirect based on role — we'll do a full reload so session is fresh
-      router.push("/");
-      router.refresh();
-    } catch {
+      window.location.href = "/";
+    } catch (err) {
+      console.error("Login catch error:", err);
       setError("Something went wrong. Please try again.");
     } finally {
       setIsLoading(false);

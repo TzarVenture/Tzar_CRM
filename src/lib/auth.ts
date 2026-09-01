@@ -39,7 +39,10 @@ export const { auth, handlers, signIn, signOut } = NextAuth({
           })
           .safeParse(credentials);
 
-        if (!parsed.success) return null;
+        if (!parsed.success) {
+          console.warn("Auth validation failed:", parsed.error.format());
+          return null;
+        }
 
         const { email, password } = parsed.data;
 
@@ -49,11 +52,19 @@ export const { auth, handlers, signIn, signOut } = NextAuth({
           "+passwordHash"
         );
 
-        if (!user || !user.isActive) return null;
+        if (!user || !user.isActive) {
+          console.warn("User not found or inactive:", email);
+          return null;
+        }
 
         // 3. Verify password
         const isValid = await bcrypt.compare(password, user.passwordHash);
-        if (!isValid) return null;
+        if (!isValid) {
+          console.warn("Invalid password for user:", email);
+          return null;
+        }
+
+        console.log("Auth success for user:", email, "role:", user.role, "allowedBusinesses:", user.allowedBusinesses);
 
         // 4. Return user object — this goes into the JWT
         return {
