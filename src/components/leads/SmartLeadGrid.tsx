@@ -307,9 +307,13 @@ export function SmartLeadGrid({ initialLeads }: SmartLeadGridProps) {
     let targetDataset: Partial<ILead>[] = [];
 
     if (mode === "selected") {
-      targetDataset = leads.filter((l) => l._id && selectedLeadIds.includes(l._id.toString()));
+      const idSet = new Set(selectedLeadIds.map(String));
+      targetDataset = leads.filter((l) => l._id && idSet.has(String(l._id)));
       if (targetDataset.length === 0) {
-        alert("No leads currently selected. Please check leads in the table first.");
+        targetDataset = filteredLeads.filter((l) => l._id && idSet.has(String(l._id)));
+      }
+      if (targetDataset.length === 0) {
+        alert("No leads currently selected. Please select leads using the checkboxes first.");
         return;
       }
     } else if (mode === "all") {
@@ -826,14 +830,28 @@ export function SmartLeadGrid({ initialLeads }: SmartLeadGridProps) {
               Clear Selection
             </button>
 
+            {/* Direct Export Selected Button */}
             <button
-              onClick={handleBulkDelete}
-              disabled={isDeletingBulk}
-              className="px-4 py-1.5 text-xs font-bold bg-rose-600 hover:bg-rose-700 text-white rounded-xl shadow-xs transition-all flex items-center gap-1.5 cursor-pointer"
+              onClick={() => handleExportExcel("selected")}
+              className="px-4 py-1.5 text-xs font-bold bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl shadow-xs transition-all flex items-center gap-1.5 cursor-pointer"
+              title="Download Excel / CSV for selected rows"
             >
-              {isDeletingBulk ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Trash2 className="w-3.5 h-3.5" />}
-              Delete Selected ({selectedLeadIds.length})
+              <Download className="w-3.5 h-3.5" />
+              Download Excel ({selectedLeadIds.length} Selected)
             </button>
+
+            {/* Delete Selected Button (Admin Only) */}
+            {(userRole === "SUPER_ADMIN" || userRole === "ADMIN") && (
+              <button
+                onClick={handleBulkDelete}
+                disabled={isDeletingBulk}
+                className="px-4 py-1.5 text-xs font-bold bg-rose-600 hover:bg-rose-700 text-white rounded-xl shadow-xs transition-all flex items-center gap-1.5 cursor-pointer"
+                title="Permanently delete selected leads (Admin Privilege)"
+              >
+                {isDeletingBulk ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Trash2 className="w-3.5 h-3.5" />}
+                Delete Selected ({selectedLeadIds.length})
+              </button>
+            )}
           </div>
         </div>
       )}
