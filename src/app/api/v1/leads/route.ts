@@ -61,7 +61,18 @@ export async function GET(req: Request) {
       status: "ACTIVE",
     };
 
-    if (business && business !== "all") {
+    const userRole = session.user?.role;
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const allowedBusinesses: string[] = (session.user as any)?.allowedBusinesses || ["tzar", "titepo", "adshalaa", "crownleaf"];
+
+    // Non-admin roles (BDE, Sales Reps) are strictly scoped to their allowed businesses
+    if (userRole !== "SUPER_ADMIN" && userRole !== "ADMIN") {
+      if (business && business !== "all") {
+        filter.business = allowedBusinesses.includes(business) ? business : "NONE";
+      } else {
+        filter.business = { $in: allowedBusinesses };
+      }
+    } else if (business && business !== "all") {
       filter.business = business;
     }
 

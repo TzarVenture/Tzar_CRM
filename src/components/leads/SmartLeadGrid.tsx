@@ -31,6 +31,7 @@ import {
   Calendar,
 } from "lucide-react";
 import { useRouter } from "next/navigation";
+import { useSession } from "next-auth/react";
 import { ILead, BusinessSlug, KanbanStage } from "@/models/Lead";
 import { LeadWorkspaceDrawer } from "./LeadWorkspaceDrawer";
 import { CreateLeadModal } from "./CreateLeadModal";
@@ -70,8 +71,33 @@ const STAGES: { id: KanbanStage; name: string; color: string }[] = [
 
 export function SmartLeadGrid({ initialLeads }: SmartLeadGridProps) {
   const router = useRouter();
+  const { data: session } = useSession();
+  const userRole = session?.user?.role;
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const allowedBusinesses = useMemo<string[]>(() => {
+    return (session?.user as any)?.allowedBusinesses || ["tzar", "titepo", "adshalaa", "crownleaf"];
+  }, [session]);
+
+  const availableBrands = useMemo(() => {
+    if (userRole === "SUPER_ADMIN" || userRole === "ADMIN") {
+      return ["all", "tzar", "adshalaa", "crownleaf", "titepo"] as const;
+    }
+    const filtered = (["tzar", "adshalaa", "crownleaf", "titepo"] as const).filter((b) =>
+      allowedBusinesses.includes(b)
+    );
+    return ["all", ...filtered];
+  }, [userRole, allowedBusinesses]);
+
   const [leads, setLeads] = useState<Partial<ILead>[]>(initialLeads);
   const [selectedBrand, setSelectedBrand] = useState<"all" | BusinessSlug>("all");
+
+  useEffect(() => {
+    if (userRole !== "SUPER_ADMIN" && userRole !== "ADMIN") {
+      if (selectedBrand !== "all" && !allowedBusinesses.includes(selectedBrand)) {
+        setSelectedBrand("all");
+      }
+    }
+  }, [selectedBrand, allowedBusinesses, userRole]);
   const [selectedStageFilter, setSelectedStageFilter] = useState<string>("all");
   const [searchQuery, setSearchQuery] = useState<string>("");
   const [selectedLeadForDrawer, setSelectedLeadForDrawer] = useState<Partial<ILead> | null>(null);
@@ -208,6 +234,11 @@ export function SmartLeadGrid({ initialLeads }: SmartLeadGridProps) {
     const now = new Date();
 
     return leads.filter((lead) => {
+      // 0. Strict RBAC Business Access Scoping for Non-Admins
+      if (userRole !== "SUPER_ADMIN" && userRole !== "ADMIN") {
+        if (!allowedBusinesses.includes(lead.business || "")) return false;
+      }
+
       // 1. Business Brand Filter
       if (selectedBrand !== "all" && lead.business !== selectedBrand) return false;
 
@@ -521,15 +552,16 @@ export function SmartLeadGrid({ initialLeads }: SmartLeadGridProps) {
 
         {/* Brand Filter Pills */}
         <div className="flex items-center gap-1.5 p-1 bg-slate-200/70 rounded-2xl border border-slate-300">
-          {(["all", "tzar", "adshalaa", "crownleaf", "titepo"] as const).map((bSlug) => {
-            const config = BRAND_CONFIG[bSlug];
+          {availableBrands.map((bSlug) => {
+            const config = BRAND_CONFIG[bSlug as keyof typeof BRAND_CONFIG];
+            if (!config) return null;
             const Icon = config.icon;
             const isSelected = selectedBrand === bSlug;
 
             return (
               <button
                 key={bSlug}
-                onClick={() => setSelectedBrand(bSlug)}
+                onClick={() => setSelectedBrand(bSlug as "all" | BusinessSlug)}
                 className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-bold transition-all cursor-pointer ${
                   isSelected
                     ? "bg-white text-slate-900 shadow-sm border border-slate-300 ring-2 ring-emerald-600/30"
