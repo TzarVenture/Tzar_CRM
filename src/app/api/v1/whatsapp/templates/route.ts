@@ -31,22 +31,31 @@ export async function GET() {
     const url = `https://graph.facebook.com/${WHATSAPP_API_VERSION}/${WABA_ID}/message_templates?access_token=${token}`;
     const res = await axios.get(url);
 
-    const templates = (res.data?.data || []).map((t: any) => {
-      const bodyComponent = t.components?.find((c: any) => c.type === "BODY");
-      const headerComponent = t.components?.find((c: any) => c.type === "HEADER");
+    const EXCLUDED_DUMMY_NAMES = [
+      "hello_world",
+      "webinar_confirmation",
+      "webinar_confirmation_image",
+      "3p_direct_integration_test_template",
+    ];
 
-      return {
-        id: t.id,
-        name: t.name,
-        language: t.language || "en",
-        status: t.status,
-        category: t.category,
-        headerFormat: headerComponent?.format || "NONE",
-        bodyText: bodyComponent?.text || "",
-        exampleVars: bodyComponent?.example?.body_text?.[0] || [],
-        components: t.components || [],
-      };
-    });
+    const templates = (res.data?.data || [])
+      .filter((t: any) => !EXCLUDED_DUMMY_NAMES.includes(t.name))
+      .map((t: any) => {
+        const bodyComponent = t.components?.find((c: any) => c.type === "BODY");
+        const headerComponent = t.components?.find((c: any) => c.type === "HEADER");
+
+        return {
+          id: t.id,
+          name: t.name,
+          language: t.language || "en",
+          status: t.status,
+          category: t.category,
+          headerFormat: headerComponent?.format || "NONE",
+          bodyText: bodyComponent?.text || "",
+          exampleVars: bodyComponent?.example?.body_text?.[0] || [],
+          components: t.components || [],
+        };
+      });
 
     return NextResponse.json({ templates }, { status: 200 });
   } catch (err: any) {

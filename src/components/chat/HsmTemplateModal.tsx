@@ -14,58 +14,40 @@ export interface HsmTemplate {
 
 export const PRE_APPROVED_TEMPLATES: HsmTemplate[] = [
   {
-    id: "hello_world",
-    name: "hello_world",
-    displayName: "Meta Official Default (hello_world)",
-    category: "UTILITY",
-    bodyTemplate:
-      "Welcome and thank you for choosing WhatsApp Business Cloud API.",
-    variablesCount: 0,
-  },
-  {
-    id: "webinar_confirmation_image",
-    name: "webinar_confirmation_image",
-    displayName: "Webinar Confirmation (WABA Approved)",
-    category: "UTILITY",
-    bodyTemplate:
-      "Thank you for registering! We look forward to seeing you at the upcoming session.",
-    variablesCount: 0,
-  },
-  {
     id: "tzar_lead_welcome_v1",
     name: "tzar_lead_welcome_v1",
-    displayName: "Welcome & Discovery Call",
+    displayName: "Tzar Venture — Welcome & Discovery Call",
     category: "UTILITY",
     bodyTemplate:
-      "Hi {{1}}, thank you for reaching out to Tzar Agency. Our team has reviewed your {{2}} inquiry. When would be a convenient time for a brief discovery call?",
+      "Hi {{1}}, thank you for reaching out to Tzar Venture Digital Agency!\n\nWe received your inquiry regarding {{2}}. Our strategy team would love to share a customized roadmap for your business.\n\nWhen is a convenient time for a brief discovery call today?\n\nBest regards,\nTeam Tzar Venture",
     variablesCount: 2,
   },
   {
-    id: "tzar_proposal_followup_v1",
-    name: "tzar_proposal_followup_v1",
-    displayName: "Proposal Review Follow-up",
-    category: "UTILITY",
+    id: "titepo_inquiry_welcome_v1",
+    name: "titepo_inquiry_welcome_v1",
+    displayName: "Titepo Toys — Welcome & Catalog Inquiry",
+    category: "MARKETING",
     bodyTemplate:
-      "Hi {{1}}, following up on the project proposal we shared for {{2}}. Have you had a chance to review the scope? Let us know if you'd like to schedule a call.",
+      "Hi {{1}}, thank you for contacting Titepo Toys & Return Gifts!\n\nWe received your inquiry for {{2}}. We have exclusive return gift hampers, customized party favors, and toy collections ready for your event!\n\nWould you like us to share our catalog and price list on WhatsApp?\n\nWarm regards,\nTeam Titepo",
     variablesCount: 2,
   },
   {
-    id: "tzar_meeting_reminder_v1",
-    name: "tzar_meeting_reminder_v1",
-    displayName: "Meeting Reminder",
-    category: "UTILITY",
+    id: "adshalaa_course_inquiry_v1",
+    name: "adshalaa_course_inquiry_v1",
+    displayName: "Adshalaa Institute — Demo Session Invite",
+    category: "MARKETING",
     bodyTemplate:
-      "Hi {{1}}, just a quick reminder about our scheduled strategy session for {{2}}. Here is the link to join: {{3}}.",
-    variablesCount: 3,
+      "Hi {{1}}, thank you for your interest in Adshalaa Digital Marketing Institute!\n\nWe received your application for {{2}}.\n\nWould you like to attend a free live demo session this week with our founder Rahul Rastogi?\n\nBest regards,\nTeam Adshalaa",
+    variablesCount: 2,
   },
   {
-    id: "tzar_onboarding_invite_v1",
-    name: "tzar_onboarding_invite_v1",
-    displayName: "Client Onboarding Portal Invite",
-    category: "UTILITY",
+    id: "crownleaf_welcome_lead_v1",
+    name: "crownleaf_welcome_lead_v1",
+    displayName: "Crownleaf Luxury — Welcome & Catalog Request",
+    category: "MARKETING",
     bodyTemplate:
-      "Hi {{1}}, welcome aboard! Please complete your brand onboarding questionnaire here: {{2}} so we can kick off {{3}}.",
-    variablesCount: 3,
+      "Hi {{1}}, thank you for reaching out to Crownleaf!\n\nWe received your inquiry regarding {{2}}. We offer bespoke packaging, premium gift boxes, and corporate hampers tailored to your requirements.\n\nWhen can we schedule a quick call to discuss your quantities and delivery timeline?\n\nWarm regards,\nTeam Crownleaf",
+    variablesCount: 2,
   },
 ];
 
