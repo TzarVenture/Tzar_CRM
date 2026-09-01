@@ -33,6 +33,7 @@ interface TeamMember {
   role: string;
   phone?: string;
   isActive: boolean;
+  allowedBusinesses?: string[];
   createdAt: string;
 }
 
@@ -105,6 +106,7 @@ export default function TeamDirectory() {
   const [role, setRole] = useState("BDE");
   const [phone, setPhone] = useState("");
   const [isActive, setIsActive] = useState(true);
+  const [allowedBusinesses, setAllowedBusinesses] = useState<string[]>(["tzar", "titepo", "adshalaa", "crownleaf"]);
 
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -133,6 +135,7 @@ export default function TeamDirectory() {
     setRole("BDE");
     setPhone("");
     setIsActive(true);
+    setAllowedBusinesses(["tzar", "titepo", "adshalaa", "crownleaf"]);
     setError(null);
     setIsModalOpen(true);
   };
@@ -145,6 +148,7 @@ export default function TeamDirectory() {
     setRole(member.role);
     setPhone(member.phone || "");
     setIsActive(member.isActive);
+    setAllowedBusinesses(member.allowedBusinesses || ["tzar", "titepo", "adshalaa", "crownleaf"]);
     setError(null);
     setIsModalOpen(true);
   };
@@ -187,6 +191,7 @@ export default function TeamDirectory() {
           role,
           phone,
           isActive,
+          allowedBusinesses,
         });
 
         // If the logged-in admin edited their own account, trigger session update & reload for Header sync!
@@ -203,6 +208,7 @@ export default function TeamDirectory() {
           password,
           role,
           phone,
+          allowedBusinesses,
         });
       }
 
@@ -503,6 +509,17 @@ export default function TeamDirectory() {
                     <span className="text-slate-900">{member.phone}</span>
                   </div>
                 )}
+                {/* Brand Access Badges */}
+                <div className="pt-2">
+                  <span className="text-[10px] font-bold text-slate-400 uppercase block mb-1">Permitted Brand Leads:</span>
+                  <div className="flex flex-wrap gap-1">
+                    {(member.allowedBusinesses || ["tzar", "titepo", "adshalaa", "crownleaf"]).map((b) => (
+                      <span key={b} className="px-2 py-0.5 rounded text-[10px] font-extrabold uppercase bg-slate-100 text-slate-800 border border-slate-200">
+                        {b}
+                      </span>
+                    ))}
+                  </div>
+                </div>
               </div>
             </div>
           ))
@@ -719,8 +736,50 @@ export default function TeamDirectory() {
                 />
               </div>
 
+              {/* Brand Lead Access Controls for Admin */}
+              <div className="pt-2">
+                <label className="block text-xs font-bold text-slate-800 uppercase tracking-wider mb-2">
+                  🛡️ Brand Lead Access Permissions (RBAC)
+                </label>
+                <div className="grid grid-cols-2 gap-2.5 p-3 bg-slate-50 border border-slate-200 rounded-xl">
+                  {[
+                    { id: "tzar", label: "Tzar Venture", color: "text-blue-700 font-bold" },
+                    { id: "titepo", label: "Titepo Toys", color: "text-amber-700 font-bold" },
+                    { id: "adshalaa", label: "Adshalaa Institute", color: "text-emerald-700 font-bold" },
+                    { id: "crownleaf", label: "Crownleaf Luxury", color: "text-purple-700 font-bold" },
+                  ].map((b) => {
+                    const isChecked = allowedBusinesses.includes(b.id);
+                    return (
+                      <label
+                        key={b.id}
+                        className={`flex items-center gap-2 p-2 rounded-lg border text-xs cursor-pointer transition-all ${
+                          isChecked ? "bg-white border-emerald-300 shadow-2xs" : "bg-slate-100/60 border-slate-200 opacity-60"
+                        }`}
+                      >
+                        <input
+                          type="checkbox"
+                          checked={isChecked}
+                          onChange={(e) => {
+                            if (e.target.checked) {
+                              setAllowedBusinesses((prev) => [...prev, b.id]);
+                            } else {
+                              setAllowedBusinesses((prev) => prev.filter((id) => id !== b.id));
+                            }
+                          }}
+                          className="w-4 h-4 rounded text-emerald-600 accent-emerald-600 cursor-pointer"
+                        />
+                        <span className={b.color}>{b.label}</span>
+                      </label>
+                    );
+                  })}
+                </div>
+                <p className="text-[11px] text-slate-500 font-medium mt-1">
+                  Controls which business leads this team member is permitted to view in the pipeline.
+                </p>
+              </div>
+
               {editingMember && (
-                <div className="flex items-center gap-2 pt-2">
+                <div className="flex items-center gap-2 pt-1">
                   <input
                     type="checkbox"
                     id="isActive"
