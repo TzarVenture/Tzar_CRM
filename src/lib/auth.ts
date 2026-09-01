@@ -66,6 +66,11 @@ export const { auth, handlers, signIn, signOut } = NextAuth({
 
         console.log("Auth success for user:", email, "role:", user.role, "allowedBusinesses:", user.allowedBusinesses);
 
+        // Convert Mongoose CoreArray to plain JavaScript Array to satisfy structuredClone in jose JWT builder
+        const cleanAllowedBusinesses: Array<"tzar" | "titepo" | "adshalaa" | "crownleaf"> = user.allowedBusinesses
+          ? Array.from(user.allowedBusinesses).map(String) as any
+          : ["tzar", "titepo", "adshalaa", "crownleaf"];
+
         // 4. Return user object — this goes into the JWT
         return {
           id: user._id.toString(),
@@ -73,7 +78,7 @@ export const { auth, handlers, signIn, signOut } = NextAuth({
           email: user.email,
           role: user.role,
           avatarUrl: user.avatarUrl ?? null,
-          allowedBusinesses: user.allowedBusinesses || ["tzar", "titepo", "adshalaa", "crownleaf"],
+          allowedBusinesses: cleanAllowedBusinesses,
         };
       },
     }),
@@ -86,7 +91,10 @@ export const { auth, handlers, signIn, signOut } = NextAuth({
         token.id = user.id;
         token.role = (user as { role: UserRole }).role;
         token.avatarUrl = (user as { avatarUrl: string | null }).avatarUrl;
-        token.allowedBusinesses = (user as { allowedBusinesses?: string[] }).allowedBusinesses || ["tzar", "titepo", "adshalaa", "crownleaf"];
+        const raw = (user as { allowedBusinesses?: string[] }).allowedBusinesses;
+        token.allowedBusinesses = raw
+          ? Array.from(raw).map(String)
+          : ["tzar", "titepo", "adshalaa", "crownleaf"];
       }
       return token;
     },
@@ -97,8 +105,11 @@ export const { auth, handlers, signIn, signOut } = NextAuth({
         session.user.id = token.id as string;
         session.user.role = token.role as UserRole;
         session.user.avatarUrl = token.avatarUrl as string | null;
+        const tokenAllowed = token.allowedBusinesses as string[] | undefined;
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        (session.user as any).allowedBusinesses = (token.allowedBusinesses as string[]) || ["tzar", "titepo", "adshalaa", "crownleaf"];
+        (session.user as any).allowedBusinesses = tokenAllowed
+          ? Array.from(tokenAllowed).map(String)
+          : ["tzar", "titepo", "adshalaa", "crownleaf"];
       }
       return session;
     },
