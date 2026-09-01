@@ -87,10 +87,25 @@ export async function POST(req: Request) {
     let adName = "Lead Gen Form Ad";
     let isRealData = false;
 
-    const pageAccessToken =
-      process.env.META_PAGE_ACCESS_TOKEN ||
-      process.env.META_SYSTEM_USER_TOKEN ||
-      "";
+    // Resolve dedicated Page Access Token for this business / page ID
+    let pageAccessToken = "";
+    if (pageId === "1019277841258458" || business === "titepo") {
+      pageAccessToken = process.env.META_PAGE_ACCESS_TOKEN_TITEPO || "";
+    } else if (pageId === "1245930131928783" || business === "adshalaa") {
+      pageAccessToken = process.env.META_PAGE_ACCESS_TOKEN_ADSHALAA || "";
+    } else if (pageId === "837451012790051" || business === "crownleaf") {
+      pageAccessToken = process.env.META_PAGE_ACCESS_TOKEN_CROWNLEAF || "";
+    } else {
+      pageAccessToken = process.env.META_PAGE_ACCESS_TOKEN_TZAR || "";
+    }
+
+    if (!pageAccessToken) {
+      pageAccessToken =
+        process.env.META_PAGE_ACCESS_TOKEN ||
+        process.env.META_SYSTEM_USER_TOKEN ||
+        process.env.META_USER_ACCESS_TOKEN ||
+        "";
+    }
 
     // Detect if this is Meta Lead Ads Testing Tool (leadgen_id is 444444444 or dummy)
     const isTestTool = leadgenId === "444444444" || leadgenId.startsWith("test_");
