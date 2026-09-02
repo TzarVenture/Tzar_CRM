@@ -31,6 +31,12 @@ import {
   ChevronRight,
 } from "lucide-react";
 import { ILead, BusinessSlug, KanbanStage } from "@/models/Lead";
+import {
+  TitepoSpecsCard,
+  TzarSpecsCard,
+  AdshalaaSpecsCard,
+  CrownleafSpecsCard,
+} from "@/components/leads/brand-specs";
 
 function FacebookIcon(props: React.SVGProps<SVGSVGElement>) {
   return (
@@ -377,70 +383,44 @@ export default function LeadDetailPage() {
               Primary Contact Details
             </h3>
 
-            <div className="grid grid-cols-2 gap-4 text-xs">
-              <div>
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 text-xs">
+              <div className="min-w-0">
                 <p className="text-slate-500 font-medium">Email Address</p>
-                <a href={`mailto:${lead.email}`} className="font-bold text-slate-900 hover:underline flex items-center gap-1 mt-0.5">
-                  <Mail className="w-3.5 h-3.5 text-slate-400" /> {lead.email || "N/A"}
+                <a href={`mailto:${lead.email}`} className="font-bold text-slate-900 hover:underline flex items-center gap-1.5 mt-0.5 break-all">
+                  <Mail className="w-3.5 h-3.5 text-slate-400 shrink-0" /> {lead.email || "N/A"}
                 </a>
               </div>
 
-              <div>
+              <div className="min-w-0">
                 <p className="text-slate-500 font-medium">Phone Number</p>
-                <a href={`tel:${lead.phone}`} className="font-bold text-slate-900 hover:underline flex items-center gap-1 mt-0.5">
-                  <Phone className="w-3.5 h-3.5 text-slate-400" /> {lead.phone}
+                <a href={`tel:${lead.phone}`} className="font-bold text-slate-900 hover:underline flex items-center gap-1.5 mt-0.5 break-words">
+                  <Phone className="w-3.5 h-3.5 text-slate-400 shrink-0" /> {lead.phone}
                 </a>
               </div>
 
-              <div>
+              <div className="min-w-0">
                 <p className="text-slate-500 font-medium">City & Location</p>
-                <p className="font-bold text-slate-900 flex items-center gap-1 mt-0.5">
-                  <MapPin className="w-3.5 h-3.5 text-slate-400" /> {[lead.city, lead.country].filter(Boolean).join(", ") || "N/A"}
+                <p className="font-bold text-slate-900 flex items-center gap-1.5 mt-0.5 break-words">
+                  <MapPin className="w-3.5 h-3.5 text-slate-400 shrink-0" />
+                  {lead.city || lead.titepoData?.streetAddress || [lead.country].filter(Boolean).join(", ") || "N/A"}
                 </p>
               </div>
 
-              <div>
+              <div className="min-w-0">
                 <p className="text-slate-500 font-medium">Facebook Submitted Date</p>
-                <p className="font-bold text-emerald-800 flex items-center gap-1 mt-0.5">
-                  <Calendar className="w-3.5 h-3.5 text-emerald-600" />
+                <p className="font-bold text-emerald-800 flex items-center gap-1.5 mt-0.5 break-words">
+                  <Calendar className="w-3.5 h-3.5 text-emerald-600 shrink-0" />
                   {lead.createdAt ? new Date(lead.createdAt).toLocaleString("en-GB", { dateStyle: "medium", timeStyle: "short" }) : "N/A"}
                 </p>
               </div>
             </div>
           </div>
 
-          {/* Titepo Toys Event Specifications Card */}
-          {lead.business === "titepo" && (
-            <div className="bg-gradient-to-br from-pink-50/80 via-purple-50/40 to-white p-5 rounded-2xl border border-pink-200/90 space-y-4 shadow-2xs">
-              <div className="flex items-center justify-between pb-2 border-b border-pink-200/70">
-                <h3 className="text-xs font-extrabold uppercase tracking-wider text-pink-900 flex items-center gap-2">
-                  <ShoppingBag className="w-4 h-4 text-pink-600" /> Titepo Event & Return Gift Specifications
-                </h3>
-              </div>
-
-              <div className="grid grid-cols-2 gap-3 text-xs">
-                <div className="bg-white/80 p-3 rounded-xl border border-pink-100">
-                  <p className="text-slate-500 font-medium">Occasion / Event</p>
-                  <p className="font-extrabold text-slate-900 mt-1">{lead.titepoData?.eventType || "Birthday Party"}</p>
-                </div>
-
-                <div className="bg-white/80 p-3 rounded-xl border border-pink-100">
-                  <p className="text-slate-500 font-medium">Return Gifts Quantity</p>
-                  <p className="font-extrabold text-pink-700 mt-1">{lead.titepoData?.kidsCount || "20 - 50 Gifts"}</p>
-                </div>
-
-                <div className="bg-white/80 p-3 rounded-xl border border-pink-100">
-                  <p className="text-slate-500 font-medium">Budget Per Gift</p>
-                  <p className="font-extrabold text-emerald-700 mt-1">{lead.titepoData?.budgetPerGift || "₹501 - ₹1,000"}</p>
-                </div>
-
-                <div className="bg-white/80 p-3 rounded-xl border border-pink-100">
-                  <p className="text-slate-500 font-medium">Child Age Group</p>
-                  <p className="font-extrabold text-purple-700 mt-1">{lead.titepoData?.childAgeGroup || "4 - 6 Years"}</p>
-                </div>
-              </div>
-            </div>
-          )}
+          {/* Dynamic Brand-Specific Specification Cards (Honest Data, No Fake Fallbacks) */}
+          {lead.business === "titepo" && <TitepoSpecsCard lead={lead} />}
+          {lead.business === "tzar" && <TzarSpecsCard lead={lead} />}
+          {lead.business === "adshalaa" && <AdshalaaSpecsCard lead={lead} />}
+          {lead.business === "crownleaf" && <CrownleafSpecsCard lead={lead} />}
 
           {/* Facebook Lead Form Submitted Questions & Answers Card */}
           {lead.metaFormFields && lead.metaFormFields.length > 0 && (

@@ -969,15 +969,31 @@ export function SmartLeadGrid({ initialLeads }: SmartLeadGridProps) {
                         </div>
                       </td>
 
-                      {/* Interest / Course */}
+                      {/* Interest / Course / Program */}
                       <td className="py-3.5 px-4 font-medium text-slate-800">
-                        {lead.interestedServices && lead.interestedServices.length > 0 ? (
-                          <span className="truncate max-w-[180px] inline-block font-semibold">
-                            {lead.interestedServices.join(", ")}
-                          </span>
-                        ) : (
-                          <span className="text-slate-400">General Inquiry</span>
-                        )}
+                        {(() => {
+                          let label = lead.interestedServices?.[0];
+                          if (!label || label === "General Inquiry" || label === "Meta Lead Ad Form") {
+                            if (lead.business === "titepo") {
+                              label = lead.titepoData?.eventType
+                                ? `${lead.titepoData.eventType} (${lead.titepoData.kidsCount || "Return Gifts"})`
+                                : "Titepo Return Gifts & Favors";
+                            } else if (lead.business === "tzar") {
+                              label = lead.tzarData?.serviceNeeded || (lead.companyName ? `${lead.companyName} - WebDev` : "WebDev & Marketing");
+                            } else if (lead.business === "adshalaa") {
+                              label = lead.adshalaaData?.courseName || lead.adshalaaData?.programName || "Digital Marketing Mastery";
+                            } else if (lead.business === "crownleaf") {
+                              label = lead.crownleafData?.giftingOccasion || "Corporate Gifting Hampers";
+                            } else {
+                              label = "Inbound Sales Inquiry";
+                            }
+                          }
+                          return (
+                            <span className="truncate max-w-[200px] inline-block font-semibold text-xs text-slate-900" title={label}>
+                              {label}
+                            </span>
+                          );
+                        })()}
                       </td>
 
                       {/* Source */}

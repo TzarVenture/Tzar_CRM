@@ -9,6 +9,7 @@ import {
   calculateLeadScore,
   generateLeadCustomId,
 } from "@/lib/lead-utils";
+import { parseMetaLeadPayload } from "@/lib/lead-field-normalizer";
 
 /**
  * 1. GET: Verification Handler for Meta Webhook Setup
@@ -110,6 +111,8 @@ export async function POST(req: Request) {
     // Detect if this is Meta Lead Ads Testing Tool (leadgen_id is 444444444 or dummy)
     const isTestTool = leadgenId === "444444444" || leadgenId.startsWith("test_");
 
+    let rawFieldData: any[] = [];
+
     // Fetch full field data from Meta Graph API if Access Token & real leadgenId present
     if (!isTestTool && leadgenId && pageAccessToken && pageAccessToken.startsWith("EAA")) {
       try {
@@ -128,34 +131,25 @@ export async function POST(req: Request) {
           if (metaRes.data.ad_name) adName = metaRes.data.ad_name;
 
           if (metaRes.data.field_data) {
-            // eslint-disable-next-line @typescript-eslint/no-explicit-any
-            metaRes.data.field_data.forEach((field: any) => {
-              const name = field.name?.toLowerCase() || "";
-              const val = field.values?.[0];
-              if (!val) return;
-              if (name.includes("full_name") || name.includes("name")) { fullName = val; isRealData = true; }
-              if (name.includes("email")) { email = val; isRealData = true; }
-              if (name.includes("phone")) { phone = val; isRealData = true; }
-              if (name.includes("company")) companyName = val;
-              if (name.includes("city")) city = val;
-            });
+            rawFieldData = metaRes.data.field_data;
+            isRealData = true;
           }
         }
       } catch (graphErr: unknown) {
         console.error("Meta Graph API Lead Fetch Warning (Using payload fallbacks):", graphErr);
       }
     } else if (change.field_data) {
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      change.field_data.forEach((field: any) => {
-        const name = field.name?.toLowerCase() || "";
-        const val = field.values?.[0];
-        if (!val) return;
-        if (name.includes("full_name") || name.includes("name")) { fullName = val; isRealData = true; }
-        if (name.includes("email")) { email = val; isRealData = true; }
-        if (name.includes("phone")) { phone = val; isRealData = true; }
-        if (name.includes("company")) companyName = val;
-        if (name.includes("city")) city = val;
-      });
+      rawFieldData = change.field_data;
+    }
+
+    // Normalize and extract all fields using bulletproof multi-brand parser
+    const normalized = parseMetaLeadPayload(rawFieldData, business);
+    if (isRealData || normalized.fullName !== "Meta Lead") {
+      fullName = normalized.fullName;
+      if (normalized.email) email = normalized.email;
+      if (normalized.phone) phone = normalized.phone;
+      if (normalized.city) city = normalized.city;
+      if (normalized.companyName) companyName = normalized.companyName;
     }
 
     if (isTestTool) {
@@ -209,7 +203,7 @@ export async function POST(req: Request) {
     const leadCustomId = await generateLeadCustomId(business);
     const score = calculateLeadScore({
       phone,
-      interestedServices: ["Meta Lead Ad Inquiry"],
+      interestedServices: [normalized.interestLabel || "Meta Lead Ad Inquiry"],
     });
 
     const slaDeadline = new Date();
@@ -224,13 +218,17 @@ export async function POST(req: Request) {
       companyName,
       city,
       source: "META_LEAD_AD",
-      interestedServices: ["Meta Lead Ad Form"],
+      interestedServices: [normalized.interestLabel || "Meta Lead Ad Inquiry"],
       pipelineId: pipeline._id,
       stageId: "new-lead",
       assignedTo,
       score,
       status: "ACTIVE",
       slaDeadline,
+      titepoData: normalized.titepoData,
+      tzarData: normalized.tzarData,
+      adshalaaData: normalized.adshalaaData,
+      crownleafData: normalized.crownleafData,
       metaAdDetails: {
         adId,
         adName,
@@ -239,6 +237,7 @@ export async function POST(req: Request) {
         formId,
         pageId,
       },
+      metaFormFields: normalized.metaFormFields,
       syncedFrom: "META_WEBHOOK",
     });
 

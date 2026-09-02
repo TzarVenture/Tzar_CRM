@@ -3,18 +3,29 @@ import { z } from "zod";
 import dbConnect from "@/lib/db";
 import BroadcastCampaign from "@/models/BroadcastCampaign";
 import Lead from "@/models/Lead";
-import Message from "@/models/Message";
 import { auth } from "@/lib/auth";
+import { executeBroadcastCampaign } from "@/lib/whatsapp-broadcast-runner";
 
 const CreateBroadcastSchema = z.object({
   name: z.string().min(1, "Campaign name is required"),
+  business: z.enum(["tzar", "titepo", "crownleaf", "adshalaa"]).optional(),
   templateName: z.string().min(1, "Template name is required"),
+  templateLanguage: z.string().default("en_US"),
   templateParams: z.array(z.string()).optional().default([]),
+  mediaAttachment: z
+    .object({
+      type: z.enum(["document", "image"]),
+      url: z.string().min(1, "Media URL is required"),
+      filename: z.string().optional(),
+    })
+    .optional(),
   targetFilter: z
     .object({
+      business: z.string().optional(),
       stageId: z.string().optional(),
       minBudget: z.number().optional(),
       serviceTag: z.string().optional(),
+      selectedLeadIds: z.array(z.string()).optional(),
     })
     .optional()
     .default({}),
@@ -59,63 +70,83 @@ export async function POST(req: Request) {
       );
     }
 
-    const { name, templateName, templateParams, targetFilter } = parseResult.data;
+    const {
+      name,
+      business,
+      templateName,
+      templateLanguage,
+      templateParams,
+      mediaAttachment,
+      targetFilter,
+    } = parseResult.data;
+
     await dbConnect();
 
-    // Query targeted leads
+    // Query targeted leads to count audience
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const leadFilter: any = { status: "ACTIVE" };
-    if (targetFilter.stageId) leadFilter.stageId = targetFilter.stageId;
-    if (targetFilter.minBudget)
-      leadFilter.estimatedBudget = { $gte: targetFilter.minBudget };
-    if (targetFilter.serviceTag)
-      leadFilter.interestedServices = targetFilter.serviceTag;
+    let leadFilter: any = { status: "ACTIVE" };
 
-    const targetLeads = await Lead.find(leadFilter);
+    if (targetFilter.selectedLeadIds && targetFilter.selectedLeadIds.length > 0) {
+      leadFilter = { _id: { $in: targetFilter.selectedLeadIds } };
+    } else {
+      if (business || targetFilter.business) {
+        leadFilter.business = business || targetFilter.business;
+      }
+      if (targetFilter.stageId) {
+        leadFilter.stageId = targetFilter.stageId;
+      }
+      if (targetFilter.minBudget) {
+        leadFilter.estimatedBudget = { $gte: targetFilter.minBudget };
+      }
+      if (targetFilter.serviceTag) {
+        leadFilter.interestedServices = targetFilter.serviceTag;
+      }
+    }
 
-    if (targetLeads.length === 0) {
+    const recipientCount = await Lead.countDocuments(leadFilter);
+
+    if (recipientCount === 0) {
       return NextResponse.json(
         { error: "No target leads found matching selected filter" },
         { status: 400 }
       );
     }
 
-    // Create Broadcast Campaign Record
-    const campaign = await BroadcastCampaign.create({
+    // Create Broadcast Campaign Record in QUEUED state
+    const campaign = await (BroadcastCampaign as any).create({
       name,
+      business: business || targetFilter.business,
       templateName,
+      templateLanguage,
       templateParams,
-      targetFilter,
-      totalRecipients: targetLeads.length,
-      sentCount: targetLeads.length,
-      deliveredCount: Math.floor(targetLeads.length * 0.95), // 95% delivery simulation
-      readCount: Math.floor(targetLeads.length * 0.78), // 78% read rate simulation
-      status: "COMPLETED",
+      mediaAttachment,
+      targetFilter: {
+        business: targetFilter.business,
+        stageId: targetFilter.stageId,
+        minBudget: targetFilter.minBudget,
+        serviceTag: targetFilter.serviceTag,
+        selectedLeadIds: targetFilter.selectedLeadIds,
+      },
+      totalRecipients: recipientCount,
+      sentCount: 0,
+      deliveredCount: 0,
+      failedCount: 0,
+      readCount: 0,
+      status: "QUEUED",
       createdBy: session.user.id,
     });
 
-    // Batch create outbound message documents for each recipient
-    const outboundMessages = targetLeads.map((lead) => ({
-      leadId: lead._id,
-      channel: "WHATSAPP",
-      direction: "OUTBOUND",
-      senderId: session.user.id,
-      senderInfo: {
-        name: session.user.name || "Broadcast Bot",
-        phoneOrEmail: session.user.email || undefined,
-      },
-      content: `[Bulk Broadcast: ${name}] Template: ${templateName}`,
-      externalMessageId: `wmid.broadcast_${campaign._id}_${lead._id}`,
-      status: "DELIVERED",
-      isRead: true,
-    }));
-
-    await Message.insertMany(outboundMessages);
+    const campaignId = (campaign as any)._id?.toString() || "";
+    if (campaignId) {
+      executeBroadcastCampaign(campaignId).catch((err) => {
+        console.error(`Error in broadcast runner for ${campaignId}:`, err);
+      });
+    }
 
     return NextResponse.json(
       {
         status: "success",
-        message: `Broadcast campaign "${name}" successfully dispatched to ${targetLeads.length} recipients!`,
+        message: `Broadcast campaign "${name}" queued for ${recipientCount} recipients. Dispatching via Meta Cloud API.`,
         campaign,
       },
       { status: 201 }

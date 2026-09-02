@@ -32,6 +32,12 @@ import {
 } from "lucide-react";
 import { useSession } from "next-auth/react";
 import { ILead, BusinessSlug, KanbanStage } from "@/models/Lead";
+import {
+  TitepoSpecsCard,
+  TzarSpecsCard,
+  AdshalaaSpecsCard,
+  CrownleafSpecsCard,
+} from "@/components/leads/brand-specs";
 
 function FacebookIcon(props: React.SVGProps<SVGSVGElement>) {
   return (
@@ -568,73 +574,11 @@ export function LeadWorkspaceDrawer({
                   </div>
                 </div>
               </div>
-
-              {/* Dedicated Titepo Toys Event Specifications Card */}
-              {lead.business === "titepo" && (
-                <div className="bg-gradient-to-br from-pink-50/80 via-purple-50/40 to-white p-5 rounded-2xl border border-pink-200/90 space-y-4 shadow-2xs">
-                  <div className="flex items-center justify-between pb-2 border-b border-pink-200/70">
-                    <h3 className="text-xs font-extrabold uppercase tracking-wider text-pink-900 flex items-center gap-2">
-                      <ShoppingBag className="w-4 h-4 text-pink-600" /> Titepo Event & Return Gift Specifications
-                    </h3>
-                    <span className="text-[10px] font-extrabold px-2.5 py-0.5 rounded-full bg-pink-100 text-pink-800 border border-pink-200">
-                      Educational Kits Inquiry
-                    </span>
-                  </div>
-
-                  <div className="grid grid-cols-2 gap-4 text-xs">
-                    <div className="bg-white/80 p-3 rounded-xl border border-pink-100">
-                      <p className="text-slate-500 font-medium">Occasion / Event</p>
-                      <p className="font-extrabold text-slate-900 mt-1 flex items-center gap-1.5">
-                        🎂 {lead.titepoData?.eventType || "Birthday Party"}
-                      </p>
-                    </div>
-
-                    <div className="bg-white/80 p-3 rounded-xl border border-pink-100">
-                      <p className="text-slate-500 font-medium">Return Gifts Quantity</p>
-                      <p className="font-extrabold text-pink-700 mt-1 flex items-center gap-1.5">
-                        🎁 {lead.titepoData?.kidsCount || "20 - 50 Gifts"}
-                      </p>
-                    </div>
-
-                    <div className="bg-white/80 p-3 rounded-xl border border-pink-100">
-                      <p className="text-slate-500 font-medium">Budget Per Gift</p>
-                      <p className="font-extrabold text-emerald-700 mt-1 flex items-center gap-1.5">
-                        💰 {lead.titepoData?.budgetPerGift || "₹501 - ₹1,000"}
-                      </p>
-                    </div>
-
-                    <div className="bg-white/80 p-3 rounded-xl border border-pink-100">
-                      <p className="text-slate-500 font-medium">Child Age Group</p>
-                      <p className="font-extrabold text-purple-700 mt-1 flex items-center gap-1.5">
-                        👶 {lead.titepoData?.childAgeGroup || "4 - 6 Years"}
-                      </p>
-                    </div>
-
-                    <div className="bg-white/80 p-3 rounded-xl border border-pink-100">
-                      <p className="text-slate-500 font-medium">Event Date</p>
-                      <p className="font-extrabold text-slate-900 mt-1 flex items-center gap-1.5">
-                        📅 {lead.titepoData?.eventDate || "Upcoming"}
-                      </p>
-                    </div>
-
-                    <div className="bg-white/80 p-3 rounded-xl border border-pink-100">
-                      <p className="text-slate-500 font-medium">Ad Platform</p>
-                      <p className="font-extrabold text-blue-700 mt-1 uppercase flex items-center gap-1.5">
-                        📱 {lead.titepoData?.platform || "Instagram / Facebook Ad"}
-                      </p>
-                    </div>
-                  </div>
-
-                  {lead.titepoData?.specialRequirements && (
-                    <div className="pt-2">
-                      <p className="text-slate-500 font-medium text-[11px]">Special Customizations & Requirements:</p>
-                      <p className="text-xs font-semibold text-slate-900 bg-white p-3 rounded-xl border border-pink-200 mt-1">
-                        📝 "{lead.titepoData.specialRequirements}"
-                      </p>
-                    </div>
-                  )}
-                </div>
-              )}
+              {/* Dynamic Brand-Specific Specification Cards (Honest Data, No Fake Fallbacks) */}
+              {lead.business === "titepo" && <TitepoSpecsCard lead={lead} />}
+              {lead.business === "tzar" && <TzarSpecsCard lead={lead} />}
+              {lead.business === "adshalaa" && <AdshalaaSpecsCard lead={lead} />}
+              {lead.business === "crownleaf" && <CrownleafSpecsCard lead={lead} />}
 
               {/* BDE Edit & Budget Management Card */}
               <div className="bg-white p-5 rounded-2xl border border-slate-200 space-y-4 shadow-2xs">

@@ -55,12 +55,22 @@ export interface ILead extends Document {
     internshipType?: string;
     resumeUrl?: string;
     checkboxConsent?: string;
+    serviceNeeded?: string;
+    budget?: string;
+    timeline?: string;
+    hasWebsite?: string;
+    companyType?: string;
+    companyName?: string;
   };
 
   // 2. Adshalaa EdTech Specific Sub-Schema
   adshalaaData?: {
     formType?: "ENQUIRY" | "REGISTRATION" | "WEBINAR" | "BROCHURE" | "CONTACT";
     programName?: string;
+    courseName?: string;
+    studentStatus?: string;
+    learningMode?: string;
+    careerGoal?: string;
     dob?: string;
     professionalStatus?: string;
     company?: string;
@@ -78,6 +88,11 @@ export interface ILead extends Document {
   // 3. CrownLeaf Corporate Gifting Sub-Schema
   crownleafData?: {
     giftingCategory?: string;
+    giftingOccasion?: string;
+    recipientType?: string;
+    boxQuantity?: string | number;
+    budgetPerBox?: string;
+    customBranding?: string;
     quantityUnits?: number;
   };
 
@@ -89,6 +104,7 @@ export interface ILead extends Document {
     childAgeGroup?: string;
     eventDate?: string;
     specialRequirements?: string;
+    streetAddress?: string;
     platform?: string;
   };
 
@@ -205,11 +221,21 @@ const LeadSchema: Schema<ILead> = new Schema(
       internshipType: String,
       resumeUrl: String,
       checkboxConsent: String,
+      serviceNeeded: String,
+      budget: String,
+      timeline: String,
+      hasWebsite: String,
+      companyType: String,
+      companyName: String,
     },
 
     adshalaaData: {
       formType: { type: String, enum: ["ENQUIRY", "REGISTRATION", "WEBINAR", "BROCHURE", "CONTACT"] },
       programName: String,
+      courseName: String,
+      studentStatus: String,
+      learningMode: String,
+      careerGoal: String,
       dob: String,
       professionalStatus: String,
       company: String,
@@ -226,6 +252,11 @@ const LeadSchema: Schema<ILead> = new Schema(
 
     crownleafData: {
       giftingCategory: String,
+      giftingOccasion: String,
+      recipientType: String,
+      boxQuantity: Schema.Types.Mixed,
+      budgetPerBox: String,
+      customBranding: String,
       quantityUnits: Number,
     },
 
@@ -236,6 +267,7 @@ const LeadSchema: Schema<ILead> = new Schema(
       childAgeGroup: String,
       eventDate: String,
       specialRequirements: String,
+      streetAddress: String,
       platform: String,
     },
 

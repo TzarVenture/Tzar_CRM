@@ -10,6 +10,7 @@ import {
   calculateLeadScore,
   generateLeadCustomId,
 } from "@/lib/lead-utils";
+import { parseMetaLeadPayload } from "@/lib/lead-field-normalizer";
 
 export async function POST(req: Request) {
   try {
@@ -109,45 +110,16 @@ export async function POST(req: Request) {
         for (const item of rawLeads) {
           const createdTime = item.created_time ? new Date(item.created_time) : new Date();
 
-          let fullName = "Meta Lead";
-          let email = "";
-          let phone = "";
-          let companyName = "";
-          let city = "";
-          let eventType = "";
-          let kidsCount = "";
-          let budgetPerGift = "";
-          let childAgeGroup = "";
-          let eventDate = "";
-          let specialRequirements = "";
-          const metaFormFields: { label: string; value: string }[] = [];
+          // 1. Unified, bulletproof multi-brand parsing
+          const normalized = parseMetaLeadPayload(item.field_data || [], business as BusinessSlug);
 
-          if (item.field_data) {
-            // eslint-disable-next-line @typescript-eslint/no-explicit-any
-            item.field_data.forEach((field: any) => {
-              const rawName = field.name || "";
-              const name = rawName.toLowerCase();
-              const val = field.values?.[0] || "";
-              if (!val) return;
-
-              metaFormFields.push({
-                label: rawName.replace(/_/g, " "),
-                value: val,
-              });
-
-              if (name.includes("full_name") || name.includes("name")) fullName = val;
-              if (name.includes("email")) email = val;
-              if (name.includes("phone")) phone = val;
-              if (name.includes("company")) companyName = val;
-              if (name.includes("city")) city = val;
-              if (name.includes("occasion") || name.includes("event")) eventType = val;
-              if (name.includes("return_gifts") || name.includes("quantity")) kidsCount = val;
-              if (name.includes("budget")) budgetPerGift = val;
-              if (name.includes("age")) childAgeGroup = val;
-              if (name.includes("date")) eventDate = val;
-              if (name.includes("requirements") || name.includes("special")) specialRequirements = val;
-            });
-          }
+          const fullName = normalized.fullName;
+          const email = normalized.email;
+          const phone = normalized.phone;
+          const companyName = normalized.companyName || "";
+          const city = normalized.city || "";
+          const metaFormFields = normalized.metaFormFields;
+          const interestLabel = normalized.interestLabel;
 
           if (!phone && !email) {
             totalSkippedCount++;
@@ -176,19 +148,6 @@ export async function POST(req: Request) {
           }
 
           const leadCustomId = await generateLeadCustomId(business as BusinessSlug);
-
-          // Dynamic Interest / Program Label Construction
-          let interestLabel = "Meta Lead Ad Form";
-          if (business === "titepo") {
-            interestLabel = eventType ? `${eventType.replace(/_/g, " ")} (${kidsCount || "Return Gifts"})` : "Titepo Return Gifts";
-          } else if (business === "tzar") {
-            interestLabel = companyName ? `${companyName} - WebDev` : "WebDev & Digital Marketing";
-          } else if (business === "adshalaa") {
-            interestLabel = "Adshalaa EdTech Program";
-          } else if (business === "crownleaf") {
-            interestLabel = "CrownLeaf Corporate Gifting";
-          }
-
           const score = calculateLeadScore({ phone, interestedServices: [interestLabel] });
 
           const slaDeadline = new Date(createdTime);
@@ -210,15 +169,10 @@ export async function POST(req: Request) {
             score,
             status: "ACTIVE",
             slaDeadline,
-            titepoData: business === "titepo" ? {
-              eventType,
-              kidsCount,
-              budgetPerGift,
-              childAgeGroup,
-              eventDate,
-              specialRequirements,
-              platform: "ig",
-            } : undefined,
+            titepoData: normalized.titepoData,
+            tzarData: normalized.tzarData,
+            adshalaaData: normalized.adshalaaData,
+            crownleafData: normalized.crownleafData,
             metaAdDetails: {
               formId: fId,
             },
