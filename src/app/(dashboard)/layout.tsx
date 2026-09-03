@@ -4,6 +4,8 @@ import { redirect } from "next/navigation";
 import Sidebar from "@/components/layout/Sidebar";
 import Header from "@/components/layout/Header";
 import AuthProvider from "@/components/providers/AuthProvider";
+import { MobileNavProvider } from "@/components/layout/MobileNavContext";
+import { MobileBottomNav } from "@/components/layout/MobileBottomNav";
 
 export const metadata: Metadata = {
   title: "Dashboard",
@@ -20,27 +22,32 @@ export default async function DashboardLayout({
 
   return (
     <AuthProvider>
-      <div className="min-h-screen" style={{ backgroundColor: "var(--color-bg-app)" }}>
-        {/* Fixed Sidebar */}
-        <Sidebar />
+      <MobileNavProvider>
+        <div className="min-h-screen" style={{ backgroundColor: "var(--color-bg-app)" }}>
+          {/* Responsive Sidebar (Fixed on Desktop, Slide-over Sheet on Mobile) */}
+          <Sidebar />
 
-        {/* Main Content Area */}
-        <div
-          className="flex flex-col min-h-screen"
-          style={{ marginLeft: "var(--sidebar-width)" }}
-        >
-          {/* Fixed Header */}
-          <Header />
-
-          {/* Page Content */}
-          <main
-            className="flex-1 p-4 sm:p-6 lg:p-8 max-w-[1920px] w-full mx-auto transition-all"
-            style={{ marginTop: "var(--header-height)" }}
+          {/* Main Content Area (0 margin on mobile, sidebar offset on desktop) */}
+          <div
+            className="flex flex-col min-h-screen transition-all duration-200"
+            style={{ marginLeft: "var(--sidebar-width)" }}
           >
-            {children}
-          </main>
+            {/* Responsive Top Header */}
+            <Header />
+
+            {/* Page Content with safe-area padding for mobile bottom nav */}
+            <main
+              className="flex-1 p-3.5 sm:p-6 lg:p-8 max-w-[1920px] w-full mx-auto transition-all pb-24 md:pb-8"
+              style={{ marginTop: "var(--header-height)" }}
+            >
+              {children}
+            </main>
+          </div>
+
+          {/* Mobile Bottom Navigation Bar (App-like navigation for < md screens) */}
+          <MobileBottomNav />
         </div>
-      </div>
+      </MobileNavProvider>
     </AuthProvider>
   );
 }

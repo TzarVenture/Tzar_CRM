@@ -20,6 +20,7 @@ import {
   ExternalLink,
   Download,
   Trash2,
+  ArrowLeft,
 } from "lucide-react";
 import { format } from "date-fns";
 import HsmTemplateModal, { HsmTemplate } from "./HsmTemplateModal";
@@ -252,10 +253,12 @@ export default function WhatsAppChatCenter() {
   );
 
   return (
-    <div className="flex gap-5 h-[calc(100vh-var(--header-height)-52px)] overflow-hidden">
-      {/* Left Sidebar: Contact Conversations List */}
+    <div className="flex gap-5 h-[calc(100vh-var(--header-height)-70px)] sm:h-[calc(100vh-var(--header-height)-52px)] overflow-hidden">
+      {/* Left Sidebar: Contact Conversations List (Full width on mobile when no lead selected, desktop fixed) */}
       <div
-        className="w-80 sm:w-96 shrink-0 bg-white rounded-2xl border border-slate-300 flex flex-col shadow-xs overflow-hidden"
+        className={`w-full md:w-80 lg:w-96 shrink-0 bg-white rounded-2xl border border-slate-300 flex flex-col shadow-xs overflow-hidden ${
+          selectedLead ? "hidden md:flex" : "flex"
+        }`}
       >
         {/* Header & Search */}
         <div className="p-4 border-b border-slate-200 bg-slate-50/60 space-y-3">
@@ -342,31 +345,44 @@ export default function WhatsAppChatCenter() {
         </div>
       </div>
 
-      {/* Right Panel: Active Conversation Window */}
-      <div className="flex-1 bg-white rounded-2xl border border-slate-300 flex flex-col shadow-xs overflow-hidden">
+      {/* Right Panel: Active Conversation Window (Full width on mobile when lead selected) */}
+      <div
+        className={`flex-1 bg-white rounded-2xl border border-slate-300 flex flex-col shadow-xs overflow-hidden ${
+          !selectedLead ? "hidden md:flex" : "flex"
+        }`}
+      >
         {selectedLead ? (
           <>
-            {/* Conversation Header Bar */}
-            <div className="p-4 border-b border-slate-200 bg-slate-50/60 flex items-center justify-between">
-              <div className="flex items-center gap-3">
+            {/* Conversation Header Bar with Mobile Back Button */}
+            <div className="p-3.5 sm:p-4 border-b border-slate-200 bg-slate-50/60 flex items-center justify-between">
+              <div className="flex items-center gap-2.5 sm:gap-3">
+                {/* Mobile Back to Contacts Button */}
+                <button
+                  onClick={() => setSelectedLead(null)}
+                  className="md:hidden p-1.5 -ml-1 rounded-xl text-slate-700 hover:text-slate-900 hover:bg-slate-200/60 transition-colors flex items-center gap-1 text-xs font-bold cursor-pointer"
+                  title="Back to conversations list"
+                >
+                  <ArrowLeft className="w-4 h-4" />
+                </button>
+
                 <div
-                  className="w-10 h-10 rounded-full flex items-center justify-center text-white font-bold text-sm shadow-2xs"
+                  className="w-9 h-9 sm:w-10 sm:h-10 rounded-full flex items-center justify-center text-white font-bold text-xs sm:text-sm shadow-2xs shrink-0"
                   style={{ backgroundColor: "var(--color-brand-green)" }}
                 >
                   {(selectedLead.fullName || selectedLead.phone || "L").charAt(0).toUpperCase()}
                 </div>
-                <div>
-                  <div className="flex items-center gap-2">
-                    <h3 className="text-sm font-bold text-slate-900">
+                <div className="min-w-0">
+                  <div className="flex items-center gap-1.5 sm:gap-2">
+                    <h3 className="text-xs sm:text-sm font-bold text-slate-900 truncate">
                       {selectedLead.fullName || selectedLead.phone || "Unnamed Lead"}
                     </h3>
-                    <span className="text-xs font-mono font-bold px-2 py-0.5 rounded bg-slate-100 text-slate-700">
+                    <span className="text-[10px] sm:text-xs font-mono font-bold px-1.5 sm:px-2 py-0.5 rounded bg-slate-100 text-slate-700 shrink-0">
                       {selectedLead.leadCustomId || "LD"}
                     </span>
                   </div>
-                  <div className="flex items-center gap-3 text-xs font-semibold text-slate-500 mt-0.5">
-                    <span className="flex items-center gap-1">
-                      <Phone className="w-3 h-3 text-slate-400" />
+                  <div className="flex items-center gap-2 sm:gap-3 text-[11px] sm:text-xs font-semibold text-slate-500 mt-0.5">
+                    <span className="flex items-center gap-1 truncate">
+                      <Phone className="w-3 h-3 text-slate-400 shrink-0" />
                       {selectedLead.phone}
                     </span>
                     {selectedLead.companyName && (

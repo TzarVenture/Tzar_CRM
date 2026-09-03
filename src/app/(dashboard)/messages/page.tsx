@@ -22,30 +22,32 @@ export default function MessagesPage() {
           </p>
         </div>
 
-        {/* Sub-Tabs */}
-        <div className="flex bg-slate-200/70 p-1.5 rounded-xl border border-slate-300">
-          {[
-            { id: "chat", label: "2-Way Live Chat", icon: MessageCircle },
-            { id: "broadcast", label: "Bulk Broadcasts", icon: Send },
-            { id: "chatbot", label: "AI Chatbot Rules", icon: Bot },
-          ].map((tab) => {
-            const Icon = tab.icon;
-            const active = activeTab === tab.id;
-            return (
-              <button
-                key={tab.id}
-                onClick={() => setActiveTab(tab.id as typeof activeTab)}
-                className={`flex items-center gap-2 px-4 py-2 text-xs font-bold rounded-lg transition-all cursor-pointer ${
-                  active
-                    ? "bg-white text-(--color-brand-green) shadow-2xs"
-                    : "text-slate-600 hover:text-slate-900"
-                }`}
-              >
-                <Icon className="w-4 h-4" />
-                {tab.label}
-              </button>
-            );
-          })}
+        {/* Sub-Tabs (Responsive Swipeable on Mobile) */}
+        <div className="w-full sm:w-auto overflow-x-auto no-scrollbar pb-1">
+          <div className="inline-flex bg-slate-100 p-1 rounded-2xl border border-slate-200 shrink-0 gap-1">
+            {[
+              { id: "chat", label: "2-Way Live Chat", icon: MessageCircle },
+              { id: "broadcast", label: "Bulk Broadcasts", icon: Send },
+              { id: "chatbot", label: "AI Chatbot Rules", icon: Bot },
+            ].map((tab) => {
+              const Icon = tab.icon;
+              const active = activeTab === tab.id;
+              return (
+                <button
+                  key={tab.id}
+                  onClick={() => setActiveTab(tab.id as typeof activeTab)}
+                  className={`flex items-center gap-2 px-3.5 py-2 text-xs font-bold rounded-xl transition-all cursor-pointer whitespace-nowrap ${
+                    active
+                      ? "bg-white text-slate-900 shadow-2xs border border-slate-200"
+                      : "text-slate-600 hover:text-slate-900 hover:bg-slate-200/50"
+                  }`}
+                >
+                  <Icon className={`w-3.5 h-3.5 ${active ? "text-emerald-600" : "text-slate-500"}`} />
+                  <span>{tab.label}</span>
+                </button>
+              );
+            })}
+          </div>
         </div>
       </div>
 

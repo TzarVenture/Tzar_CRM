@@ -149,81 +149,81 @@ export default function ClientDirectory() {
 
   return (
     <div className="space-y-6 animate-fade-in">
-      {/* Overview Cards */}
-      <div className="grid grid-cols-1 sm:grid-cols-3 gap-5">
-        <div className="bg-white rounded-2xl p-6 border border-slate-300 shadow-xs">
-          <div className="flex items-center justify-between mb-3">
-            <span className="text-xs font-bold text-slate-600 uppercase tracking-wider">
+      {/* Overview Cards (BagUI Style) */}
+      <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+        <div className="bg-white rounded-2xl p-5 border border-slate-200/90 shadow-2xs">
+          <div className="flex items-center justify-between mb-2">
+            <span className="text-xs font-bold text-slate-500">
               Active Client Accounts
             </span>
-            <div className="p-2.5 rounded-xl bg-blue-50">
-              <Building2 className="w-5 h-5 text-blue-600" />
+            <div className="p-2 rounded-xl bg-blue-50">
+              <Building2 className="w-4 h-4 text-blue-600" />
             </div>
           </div>
-          <p className="text-3xl font-extrabold text-slate-900">
+          <p className="text-2xl sm:text-3xl font-black text-slate-900 tracking-tight">
             {clients.length}
           </p>
-          <p className="text-xs font-semibold text-slate-500 mt-1">Converted agency accounts</p>
+          <p className="text-xs font-semibold text-slate-400 mt-0.5">Converted agency clients</p>
         </div>
 
-        <div className="bg-white rounded-2xl p-6 border border-slate-300 shadow-xs">
-          <div className="flex items-center justify-between mb-3">
-            <span className="text-xs font-bold text-slate-600 uppercase tracking-wider">
+        <div className="bg-white rounded-2xl p-5 border border-slate-200/90 shadow-2xs">
+          <div className="flex items-center justify-between mb-2">
+            <span className="text-xs font-bold text-slate-500">
               Monthly Recurring Retainer (MRR)
             </span>
-            <div className="p-2.5 rounded-xl bg-emerald-50">
-              <DollarSign className="w-5 h-5 text-emerald-600" />
+            <div className="p-2 rounded-xl bg-emerald-50">
+              <DollarSign className="w-4 h-4 text-emerald-600" />
             </div>
           </div>
-          <p className="text-3xl font-extrabold text-(--color-brand-green)">
-            ${totalMonthlyRetainer.toLocaleString()} / mo
+          <p className="text-2xl sm:text-3xl font-black text-emerald-700 tracking-tight">
+            ₹{totalMonthlyRetainer.toLocaleString("en-IN")} <span className="text-xs font-semibold text-slate-400">/ mo</span>
           </p>
-          <p className="text-xs font-semibold text-slate-500 mt-1">Active client retainers</p>
+          <p className="text-xs font-semibold text-slate-400 mt-0.5">Active client contracts</p>
         </div>
 
-        <div className="bg-white rounded-2xl p-6 border border-slate-300 shadow-xs">
-          <div className="flex items-center justify-between mb-3">
-            <span className="text-xs font-bold text-slate-600 uppercase tracking-wider">
+        <div className="bg-white rounded-2xl p-5 border border-slate-200/90 shadow-2xs">
+          <div className="flex items-center justify-between mb-2">
+            <span className="text-xs font-bold text-slate-500">
               Lifetime Revenue
             </span>
-            <div className="p-2.5 rounded-xl bg-purple-50">
-              <ShieldCheck className="w-5 h-5 text-purple-600" />
+            <div className="p-2 rounded-xl bg-purple-50">
+              <ShieldCheck className="w-4 h-4 text-purple-600" />
             </div>
           </div>
-          <p className="text-3xl font-extrabold text-purple-600">
-            ${totalLifetimeRevenue.toLocaleString()}
+          <p className="text-2xl sm:text-3xl font-black text-purple-700 tracking-tight">
+            ₹{totalLifetimeRevenue.toLocaleString("en-IN")}
           </p>
-          <p className="text-xs font-semibold text-slate-500 mt-1">Total revenue generated</p>
+          <p className="text-xs font-semibold text-slate-400 mt-0.5">Total collected to date</p>
         </div>
       </div>
 
       {/* Directory Table */}
-      <div className="bg-white rounded-2xl border border-slate-300 shadow-xs overflow-hidden">
-        <div className="p-5 border-b border-slate-200 bg-slate-50/60 flex items-center justify-between">
-          <div className="flex items-center gap-2">
-            <Building2 className="w-5 h-5 text-(--color-brand-green)" />
-            <h3 className="text-sm font-bold text-slate-900">
+      <div className="bg-white rounded-2xl border border-slate-200/90 shadow-2xs overflow-hidden space-y-3 p-5">
+        <div className="flex flex-wrap items-center justify-between gap-3 pb-3 border-b border-slate-100">
+          <div>
+            <h3 className="text-base font-bold text-slate-900">
               Accounts Directory
             </h3>
+            <p className="text-xs text-slate-500 font-medium">Manage client retainers, portals, and onboarding</p>
           </div>
 
-          <div className="flex items-center gap-3 flex-1 justify-end ml-4">
+          <div className="flex items-center gap-2.5 flex-1 justify-end">
             <div className="relative max-w-xs flex-1">
-              <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
+              <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-slate-400" />
               <input
                 type="text"
                 placeholder="Search clients, company, ID..."
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
-                className="w-full pl-9 pr-3 py-1.5 text-xs font-semibold rounded-xl border border-slate-300 bg-white outline-none"
+                className="w-full pl-9 pr-3 py-1.5 text-xs font-semibold rounded-xl border border-slate-200 bg-slate-50 hover:border-slate-300 focus:bg-white focus:border-slate-900 outline-none transition-all"
               />
             </div>
 
             <button
               onClick={() => setIsCreateClientModalOpen(true)}
-              className="flex items-center gap-1.5 px-4 py-1.5 text-xs font-bold text-white bg-slate-900 hover:bg-slate-800 rounded-xl shadow-xs transition-all cursor-pointer whitespace-nowrap"
+              className="flex items-center gap-1.5 px-4 py-2 text-xs font-bold text-white bg-slate-900 hover:bg-slate-800 rounded-xl shadow-2xs transition-all cursor-pointer whitespace-nowrap"
             >
-              <Plus className="w-3.5 h-3.5 text-blue-400" /> Add New Client
+              <Plus className="w-3.5 h-3.5" /> Add New Client
             </button>
           </div>
         </div>

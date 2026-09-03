@@ -29,6 +29,7 @@ import {
   CheckSquare,
   Square,
   Calendar,
+  MessageSquare,
 } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { useSession } from "next-auth/react";
@@ -467,20 +468,20 @@ export function SmartLeadGrid({ initialLeads }: SmartLeadGridProps) {
 
   return (
     <div className="space-y-6 animate-fade-in">
-      {/* ─── 1. BRAND SWITCHER BAR ─────────────────────────────────────── */}
-      <div className="flex flex-wrap items-center justify-between gap-4 pb-2 border-b border-slate-300">
+      {/* ─── 1. BRAND SWITCHER BAR (BAGUI SHADCN STYLE) ────────────────── */}
+      <div className="flex flex-wrap items-center justify-between gap-4 pb-3 border-b border-slate-200/90">
         <div>
-          <div className="flex items-center gap-2">
-            <h1 className="text-2xl font-bold text-slate-900 tracking-tight">
-              Centralized Leads Data Grid
+          <div className="flex items-center gap-2.5">
+            <h1 className="text-2xl sm:text-3xl font-black text-slate-900 tracking-tight">
+              Centralized Sales Pipeline
             </h1>
-            <span className="inline-flex items-center gap-1.5 text-[10px] font-extrabold px-2.5 py-1 rounded-full bg-emerald-100 text-emerald-800 border border-emerald-200 shadow-2xs">
+            <span className="inline-flex items-center gap-1.5 text-[11px] font-bold px-2.5 py-0.5 rounded-full bg-emerald-50 text-emerald-800 border border-emerald-200">
               <Zap className={`w-3 h-3 text-emerald-600 ${isLiveSyncing ? "animate-spin" : ""}`} />
-              Live Sync 5s
+              Live Sync Active
             </span>
           </div>
-          <p className="text-xs font-semibold text-slate-600 mt-0.5">
-            Unified workspace consolidating leads across all 4 Tzar Group entities (Auto-refreshes every 5s)
+          <p className="text-xs sm:text-sm font-semibold text-slate-500 mt-0.5">
+            Unified lead intake and deals across Tzar Group business entities
           </p>
         </div>
 
@@ -497,11 +498,11 @@ export function SmartLeadGrid({ initialLeads }: SmartLeadGridProps) {
                 .finally(() => setTimeout(() => setIsLiveSyncing(false), 500));
             }}
             disabled={isLiveSyncing}
-            className="flex items-center gap-1.5 px-3.5 py-2 text-xs font-bold text-slate-700 bg-slate-100 hover:bg-slate-200 border border-slate-300 rounded-xl transition-all cursor-pointer shadow-2xs disabled:opacity-50"
+            className="flex items-center gap-1.5 px-3.5 py-2 text-xs font-bold text-slate-700 bg-white hover:bg-slate-50 border border-slate-200 hover:border-slate-300 rounded-xl transition-all cursor-pointer shadow-2xs disabled:opacity-50"
             title="Reload lead data from database"
           >
-            <RefreshCw className={`w-3.5 h-3.5 text-slate-600 ${isLiveSyncing ? "animate-spin" : ""}`} />
-            <span className="hidden sm:inline">Refresh Grid</span>
+            <RefreshCw className={`w-3.5 h-3.5 text-slate-500 ${isLiveSyncing ? "animate-spin" : ""}`} />
+            <span className="hidden sm:inline">Refresh</span>
           </button>
 
           {/* 2. Live Meta Graph API Auto-Sync Button */}
@@ -509,7 +510,7 @@ export function SmartLeadGrid({ initialLeads }: SmartLeadGridProps) {
             onClick={async () => {
               setIsLiveSyncing(true);
               try {
-                const res = await fetch("/api/v1/meta/sync-historical", {
+                await fetch("/api/v1/meta/sync-historical", {
                   method: "POST",
                   headers: { "Content-Type": "application/json" },
                   body: JSON.stringify({
@@ -526,11 +527,11 @@ export function SmartLeadGrid({ initialLeads }: SmartLeadGridProps) {
               }
             }}
             disabled={isLiveSyncing}
-            className="flex items-center gap-1.5 px-3.5 py-2 text-xs font-bold text-emerald-800 bg-emerald-50 hover:bg-emerald-100 border border-emerald-300 rounded-xl transition-all cursor-pointer shadow-2xs disabled:opacity-50"
+            className="flex items-center gap-1.5 px-3.5 py-2 text-xs font-bold text-emerald-800 bg-emerald-50 hover:bg-emerald-100 border border-emerald-200 rounded-xl transition-all cursor-pointer shadow-2xs disabled:opacity-50"
             title="Auto-discover & sync lead forms directly from Meta Graph API"
           >
             <Zap className={`w-3.5 h-3.5 text-emerald-600 ${isLiveSyncing ? "animate-spin" : ""}`} />
-            <span>Sync Graph API</span>
+            <span>Sync Meta Leads</span>
           </button>
 
           {/* 3. Improved Import Meta Leads Button */}
@@ -539,55 +540,107 @@ export function SmartLeadGrid({ initialLeads }: SmartLeadGridProps) {
               setCsvResultMsg(null);
               setIsCsvModalOpen(true);
             }}
-            className="flex items-center gap-1.5 px-3.5 py-2 text-xs font-bold text-slate-800 bg-slate-100 hover:bg-slate-200 border border-slate-300 rounded-xl transition-all cursor-pointer shadow-2xs"
+            className="flex items-center gap-1.5 px-3.5 py-2 text-xs font-bold text-slate-800 bg-white hover:bg-slate-50 border border-slate-200 hover:border-slate-300 rounded-xl transition-all cursor-pointer shadow-2xs"
             title="Import Leads via Graph API or CSV"
           >
-            <Download className="w-3.5 h-3.5 text-emerald-600" /> Import Meta Leads
+            <Download className="w-3.5 h-3.5 text-emerald-600" /> Import Leads
           </button>
 
           {/* 4. Add New Lead Button */}
           <button
             onClick={() => setIsCreateModalOpen(true)}
-            className="flex items-center gap-2 px-4 py-2 text-xs font-bold text-white bg-slate-900 hover:bg-slate-800 rounded-xl shadow-xs transition-all cursor-pointer"
+            className="flex items-center gap-1.5 px-4 py-2 text-xs font-bold text-white bg-slate-900 hover:bg-slate-800 rounded-xl shadow-2xs transition-all cursor-pointer"
           >
-            <Plus className="w-4 h-4 text-emerald-400" /> Add New Lead
+            <Plus className="w-3.5 h-3.5" /> Add Lead
           </button>
         </div>
 
-        {/* Brand Filter Pills */}
-        <div className="flex items-center gap-1.5 p-1 bg-slate-200/70 rounded-2xl border border-slate-300">
-          {availableBrands.map((bSlug) => {
-            const config = BRAND_CONFIG[bSlug as keyof typeof BRAND_CONFIG];
-            if (!config) return null;
-            const Icon = config.icon;
-            const isSelected = selectedBrand === bSlug;
+        {/* Brand Switcher Bar (100% Responsive Grid - All 5 Brands Fit Within Mobile Screen) */}
+        <div className="w-full">
+          <div className="grid grid-cols-5 gap-1 p-1 bg-slate-100/90 rounded-2xl border border-slate-200 w-full">
+            {availableBrands.map((bSlug) => {
+              const config = BRAND_CONFIG[bSlug as keyof typeof BRAND_CONFIG];
+              if (!config) return null;
+              const isSelected = selectedBrand === bSlug;
+
+              return (
+                <button
+                  key={bSlug}
+                  onClick={() => setSelectedBrand(bSlug as "all" | BusinessSlug)}
+                  className={`flex items-center justify-center py-1.5 px-1 rounded-xl transition-all cursor-pointer min-h-[34px] sm:min-h-[38px] ${
+                    isSelected
+                      ? "bg-white text-slate-900 shadow-2xs border border-slate-200 ring-2 ring-slate-900/10 font-black"
+                      : "text-slate-600 hover:text-slate-900 hover:bg-slate-200/60"
+                  }`}
+                  title={config.label}
+                >
+                  {config.logo ? (
+                    <img
+                      src={config.logo}
+                      alt={config.label}
+                      className="h-3.5 sm:h-5 w-auto object-contain max-w-[55px] sm:max-w-[85px]"
+                    />
+                  ) : (
+                    <span className="text-[11px] sm:text-xs font-black">All</span>
+                  )}
+                </button>
+              );
+            })}
+          </div>
+        </div>
+      </div>
+
+      {/* ─── 2A. MOBILE STAGE MATRIX (Fits 100% inside screen, zero cards moving outside) ─── */}
+      <div className="md:hidden bg-white p-3 rounded-2xl border border-slate-200/90 shadow-2xs space-y-2">
+        <div className="flex items-center justify-between">
+          <span className="text-[10px] font-extrabold uppercase tracking-wider text-slate-400">
+            Pipeline Stages ({leads.length} Leads)
+          </span>
+          {selectedStageFilter !== "all" && (
+            <button
+              onClick={() => setSelectedStageFilter("all")}
+              className="text-[10px] font-bold text-rose-600 hover:underline"
+            >
+              Reset to All
+            </button>
+          )}
+        </div>
+
+        {/* 3-Column Touch Matrix of Stages - 100% Within Mobile Viewport */}
+        <div className="grid grid-cols-3 gap-1.5">
+          {STAGES.map((s) => {
+            const metrics = stageMetrics[s.id] || { count: 0, value: 0 };
+            const isActive = selectedStageFilter === s.id;
 
             return (
               <button
-                key={bSlug}
-                onClick={() => setSelectedBrand(bSlug as "all" | BusinessSlug)}
-                className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-bold transition-all cursor-pointer ${
-                  isSelected
-                    ? "bg-white text-slate-900 shadow-sm border border-slate-300 ring-2 ring-emerald-600/30"
-                    : "text-slate-700 hover:bg-slate-300/60"
+                key={s.id}
+                onClick={() => setSelectedStageFilter(isActive ? "all" : s.id)}
+                className={`p-2 rounded-xl text-center border transition-all cursor-pointer ${
+                  isActive
+                    ? "bg-slate-900 text-white border-slate-900 shadow-xs"
+                    : "bg-slate-50 hover:bg-slate-100 text-slate-700 border-slate-200/80"
                 }`}
               >
-                {config.logo ? (
-                  <img src={config.logo} alt={config.label} className="h-3.5 w-auto object-contain max-h-4" />
-                ) : (
-                  <>
-                    <Icon className="w-3.5 h-3.5 text-slate-700" />
-                    <span>{config.label}</span>
-                  </>
-                )}
+                <p className="text-[10px] font-bold truncate leading-tight">{s.name}</p>
+                <div className="flex items-center justify-center gap-1 mt-0.5">
+                  <span className={`text-xs font-black ${isActive ? "text-emerald-400" : "text-slate-900"}`}>
+                    {metrics.count}
+                  </span>
+                  {metrics.value > 0 && (
+                    <span className="text-[9px] font-bold text-slate-400 truncate">
+                      ₹{metrics.value >= 1000 ? `${Math.round(metrics.value / 1000)}k` : metrics.value}
+                    </span>
+                  )}
+                </div>
               </button>
             );
           })}
         </div>
       </div>
 
-      {/* ─── 2. STAGE KPI SUMMARY CARDS ─────────────────────────────────── */}
-      <div className="grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-7 gap-3">
+      {/* ─── 2B. DESKTOP 7-COLUMN STAGE CARDS (Visible on md+ screens) ─────────── */}
+      <div className="hidden md:grid md:grid-cols-7 gap-3">
         {STAGES.map((s) => {
           const metrics = stageMetrics[s.id] || { count: 0, value: 0 };
           const isActive = selectedStageFilter === s.id;
@@ -598,20 +651,20 @@ export function SmartLeadGrid({ initialLeads }: SmartLeadGridProps) {
               onClick={() => setSelectedStageFilter(isActive ? "all" : s.id)}
               className={`p-3.5 rounded-2xl text-left border transition-all cursor-pointer ${
                 isActive
-                  ? "bg-slate-900 text-white border-slate-900 shadow-md ring-2 ring-slate-900/20"
-                  : "bg-white text-slate-800 border-slate-300 hover:border-slate-400 shadow-2xs"
+                  ? "bg-slate-900 text-white border-slate-900 shadow-sm ring-2 ring-slate-900/15"
+                  : "bg-white text-slate-800 border-slate-200/90 hover:border-slate-300 shadow-2xs"
               }`}
             >
-              <div className="flex items-center justify-between mb-1">
+              <div className="flex items-center justify-between mb-1.5">
                 <span className={`text-[10px] font-extrabold uppercase tracking-wider ${isActive ? "text-slate-300" : "text-slate-500"}`}>
                   {s.name}
                 </span>
-                <span className={`text-xs font-bold px-1.5 py-0.5 rounded-md ${isActive ? "bg-slate-800 text-white" : "bg-slate-100 text-slate-700"}`}>
+                <span className={`text-xs font-bold px-1.5 py-0.2 rounded-md ${isActive ? "bg-slate-800 text-white" : "bg-slate-100 text-slate-700"}`}>
                   {metrics.count}
                 </span>
               </div>
-              <p className={`text-sm font-extrabold ${isActive ? "text-emerald-400" : "text-slate-900"}`}>
-                ₹{metrics.value.toLocaleString()}
+              <p className={`text-sm font-black tracking-tight ${isActive ? "text-emerald-400" : "text-slate-900"}`}>
+                ₹{metrics.value.toLocaleString("en-IN")}
               </p>
             </button>
           );
@@ -856,8 +909,151 @@ export function SmartLeadGrid({ initialLeads }: SmartLeadGridProps) {
         </div>
       )}
 
-      {/* ─── 4. HIGH-DENSITY SMART DATA GRID ─────────────────────────────── */}
-      <div className="bg-white rounded-2xl border border-slate-300 shadow-xs overflow-hidden">
+      {/* ─── 4A. MOBILE TOUCH-OPTIMIZED LEAD CARDS (Visible on < md screens) ─── */}
+      <div className="md:hidden space-y-3">
+        {filteredLeads.length === 0 ? (
+          <div className="p-8 text-center text-xs font-semibold text-slate-500 bg-white rounded-2xl border border-slate-200">
+            No leads found matching current search or filters.
+          </div>
+        ) : (
+          filteredLeads.map((lead) => {
+            const bSlug = (lead.business || "tzar") as BusinessSlug;
+            const bConfig = BRAND_CONFIG[bSlug] || BRAND_CONFIG.tzar;
+            const currentStageObj = STAGES.find((s) => s.id === lead.stageId) || STAGES[0];
+            const isSelected = selectedLeadIds.includes(lead._id?.toString() || "");
+
+            return (
+              <div
+                key={lead._id?.toString() || lead.leadCustomId}
+                className={`p-4 rounded-2xl bg-white border border-slate-200/90 shadow-2xs space-y-3 transition-all ${
+                  isSelected ? "ring-2 ring-emerald-500 bg-emerald-50/20" : ""
+                }`}
+              >
+                {/* Header Row: Checkbox, ID, Brand Logo, Stage Selector */}
+                <div className="flex items-center justify-between gap-2">
+                  <div className="flex items-center gap-2">
+                    <button
+                      type="button"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        toggleSelectLead(lead._id?.toString() || "");
+                      }}
+                      className="text-slate-500 hover:text-slate-900 cursor-pointer"
+                    >
+                      {isSelected ? (
+                        <CheckSquare className="w-4 h-4 text-emerald-600" />
+                      ) : (
+                        <Square className="w-4 h-4 text-slate-300" />
+                      )}
+                    </button>
+
+                    <span className="font-mono font-bold text-xs text-slate-900">
+                      {lead.leadCustomId}
+                    </span>
+
+                    {bConfig.logo ? (
+                      <img src={bConfig.logo} alt={bConfig.label} className="h-4 w-auto object-contain max-h-4" />
+                    ) : (
+                      <span className={`text-[10px] font-bold px-2 py-0.5 rounded ${bConfig.bg} ${bConfig.text}`}>
+                        {bConfig.label}
+                      </span>
+                    )}
+                  </div>
+
+                  {/* Stage Selector Dropdown */}
+                  <select
+                    value={lead.stageId || "new-lead"}
+                    onChange={(e) =>
+                      handleStageChange(lead._id!.toString(), e.target.value as KanbanStage)
+                    }
+                    className={`text-[10px] font-extrabold px-2 py-1 rounded-lg border outline-none cursor-pointer ${currentStageObj.color}`}
+                  >
+                    {STAGES.map((s) => (
+                      <option key={s.id} value={s.id}>
+                        {s.name}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+
+                {/* Middle Row: Name, Phone, Service, Submitted Date */}
+                <div
+                  onClick={() => router.push(`/pipeline/${lead._id}`)}
+                  className="cursor-pointer space-y-1"
+                >
+                  <div className="flex items-center justify-between">
+                    <p className="font-bold text-sm text-slate-900">{lead.fullName}</p>
+                    {lead.source === "META_LEAD_AD" ? (
+                      <span className="inline-flex items-center gap-1 text-[10px] font-extrabold px-1.5 py-0.5 rounded bg-[#1877F2] text-white">
+                        <FacebookIcon className="w-3 h-3 fill-white text-white" /> Meta Ad
+                      </span>
+                    ) : (
+                      <span className="text-[10px] font-bold px-1.5 py-0.5 rounded bg-slate-100 text-slate-600">
+                        {lead.source}
+                      </span>
+                    )}
+                  </div>
+
+                  <p className="text-xs font-semibold text-slate-600 truncate">
+                    {lead.interestedServices?.[0] || lead.companyName || "General Inquiry"}
+                  </p>
+
+                  <div className="flex items-center gap-3 text-[11px] text-slate-400 font-medium">
+                    <span>{lead.phone}</span>
+                    <span>•</span>
+                    <span>{lead.createdAt ? new Date(lead.createdAt).toLocaleDateString("en-GB", { day: "2-digit", month: "short" }) : ""}</span>
+                  </div>
+                </div>
+
+                {/* Bottom Row: Est Budget & Quick Touch Actions */}
+                <div className="flex items-center justify-between pt-2 border-t border-slate-100">
+                  <div>
+                    <span className="text-[10px] font-bold text-slate-400 uppercase">Est. Value</span>
+                    <p className="text-xs font-black text-slate-900">
+                      {lead.estimatedBudget ? `₹${lead.estimatedBudget.toLocaleString("en-IN")}` : "—"}
+                    </p>
+                  </div>
+
+                  <div className="flex items-center gap-1.5">
+                    {/* WhatsApp Quick Link */}
+                    <a
+                      href={`https://wa.me/${(lead.phone || "").replace(/[^0-9]/g, "")}`}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="p-2 rounded-xl bg-emerald-50 text-emerald-700 hover:bg-emerald-100 border border-emerald-200/80 transition-colors"
+                      title="Chat on WhatsApp"
+                    >
+                      <MessageSquare className="w-3.5 h-3.5" />
+                    </a>
+
+                    {/* Phone Call Link */}
+                    <a
+                      href={`tel:${lead.phone}`}
+                      className="p-2 rounded-xl bg-slate-100 text-slate-700 hover:bg-slate-200 transition-colors"
+                      title="Call Lead"
+                    >
+                      <Phone className="w-3.5 h-3.5" />
+                    </a>
+
+                    {/* 360 Workspace Drawer Link */}
+                    <button
+                      onClick={() => setSelectedLeadForDrawer(lead)}
+                      className="px-3 py-1.5 rounded-xl bg-slate-900 hover:bg-slate-800 text-white text-xs font-bold transition-colors cursor-pointer flex items-center gap-1"
+                      title="Open Workspace Drawer"
+                    >
+                      <span>Workspace</span>
+                      <ChevronRight className="w-3 h-3" />
+                    </button>
+                  </div>
+                </div>
+              </div>
+            );
+          })
+        )}
+      </div>
+
+      {/* ─── 4B. DESKTOP HIGH-DENSITY SMART DATA GRID (Visible on md+ screens) ─── */}
+      <div className="hidden md:block bg-white rounded-2xl border border-slate-300 shadow-xs overflow-hidden">
         <div className="overflow-x-auto">
           <table className="w-full text-left text-xs border-collapse">
             <thead>
