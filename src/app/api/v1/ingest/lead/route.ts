@@ -9,6 +9,7 @@ import {
   calculateLeadScore,
   generateLeadCustomId,
 } from "@/lib/lead-utils";
+import { sendAutoWelcomeWhatsApp } from "@/lib/whatsapp";
 
 const IngestLeadSchema = z.object({
   business: z.enum(["tzar", "adshalaa", "crownleaf", "titepo"]).default("tzar"),
@@ -258,6 +259,15 @@ export async function POST(req: Request) {
       content: `New lead ingested for brand [${business.toUpperCase()}] via ${source}. Initial message: "${requirementsMessage || "N/A"}"`,
       status: "DELIVERED",
     });
+
+    // ⚡ Industry Feature: Trigger Automated WhatsApp Welcome Template
+    sendAutoWelcomeWhatsApp({
+      leadId: newLead._id.toString(),
+      fullName,
+      phone,
+      business,
+      service: interestedServices[0] || requirementsMessage,
+    }).catch((waErr) => console.warn("WhatsApp Auto-Welcome Notice:", waErr.message));
 
     return NextResponse.json(
       {

@@ -118,6 +118,7 @@ export interface ILead extends Document {
 
   // Meta Ads Attribution Data
   metaAdDetails?: {
+    leadgenId?: string;
     adId?: string;
     adName?: string;
     campaignId?: string;
@@ -279,6 +280,7 @@ const LeadSchema: Schema<ILead> = new Schema(
     },
 
     metaAdDetails: {
+      leadgenId: String,
       adId: String,
       adName: String,
       campaignId: String,
@@ -315,6 +317,7 @@ LeadSchema.index({ business: 1, createdAt: -1 });
 LeadSchema.index({ assignedTo: 1, status: 1 });
 LeadSchema.index({ email: 1, createdAt: -1 });
 LeadSchema.index({ phone: 1, createdAt: -1 });
+LeadSchema.index({ "metaAdDetails.leadgenId": 1 }, { sparse: true });
 
 // Clear cached model in dev mode to ensure updated schema & enums apply
 delete (mongoose.models as any).Lead;

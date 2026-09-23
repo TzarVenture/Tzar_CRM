@@ -10,6 +10,7 @@ import {
   generateLeadCustomId,
 } from "@/lib/lead-utils";
 import { parseMetaLeadPayload } from "@/lib/lead-field-normalizer";
+import { sendAutoWelcomeWhatsApp } from "@/lib/whatsapp";
 
 /**
  * 1. GET: Verification Handler for Meta Webhook Setup
@@ -156,9 +157,13 @@ export async function POST(req: Request) {
       console.log(`⚡ Meta Lead Ads Testing Tool event received for Page ID: ${pageId}. Created test lead for brand: ${business.toUpperCase()}`);
     }
 
-    // Deduplication check for real leads (only deduplicate if real email or real phone matched)
+    // Deduplication check for real leads
     let existingLead = null;
-    if (isRealData) {
+    if (leadgenId && !isTestTool) {
+      existingLead = await Lead.findOne({ "metaAdDetails.leadgenId": leadgenId });
+    }
+
+    if (!existingLead && isRealData) {
       const dedupeQuery: any[] = [];
       if (email && email.includes("@")) dedupeQuery.push({ email: email.toLowerCase() });
       if (phone && phone.replace(/\D/g, "").length >= 10) {
@@ -230,6 +235,7 @@ export async function POST(req: Request) {
       adshalaaData: normalized.adshalaaData,
       crownleafData: normalized.crownleafData,
       metaAdDetails: {
+        leadgenId,
         adId,
         adName,
         campaignId: "cmp_meta_2026",
@@ -248,6 +254,15 @@ export async function POST(req: Request) {
       content: `Instant Meta Lead Ad Ingestion for brand [${business.toUpperCase()}] from campaign "${campaignName}" (Form ID: ${formId})`,
       status: "DELIVERED",
     });
+
+    // ⚡ Industry Feature: Trigger Automated WhatsApp Welcome Template
+    sendAutoWelcomeWhatsApp({
+      leadId: newLead._id.toString(),
+      fullName,
+      phone,
+      business,
+      service: normalized.interestLabel,
+    }).catch((waErr) => console.warn("WhatsApp Auto-Welcome Notice:", waErr.message));
 
     console.log(`🎯 Meta Lead Ad ingested for ${business.toUpperCase()}: ${fullName} (${leadCustomId})`);
 

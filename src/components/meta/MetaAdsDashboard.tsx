@@ -21,6 +21,9 @@ import {
   BookOpen,
   Gift,
   ShoppingBag,
+  Zap,
+  AlertCircle,
+  ShieldCheck,
 } from "lucide-react";
 
 interface CampaignItem {
@@ -77,8 +80,18 @@ export default function MetaAdsDashboard() {
   const [campSpend, setCampSpend] = useState<number | "">(0);
   const [campLeads, setCampLeads] = useState<number | "">(0);
   const [campRevenue, setCampRevenue] = useState<number | "">(0);
-  const [campStatus, setCampStatus] = useState<"ACTIVE" | "PAUSED">("ACTIVE");
-  const [isSavingCamp, setIsSavingCamp] = useState(false);
+  // Real Brand Token Health Status State
+  const [brandStatus, setBrandStatus] = useState<Record<string, any>>({});
+  const [syncNotice, setSyncNotice] = useState<string | null>(null);
+
+  const fetchTokenStatus = useCallback(async () => {
+    try {
+      const res = await axios.get("/api/v1/meta/token-status");
+      setBrandStatus(res.data.brands || {});
+    } catch (err) {
+      console.error("Failed to fetch token status:", err);
+    }
+  }, []);
 
   const fetchMetaInsights = useCallback(async () => {
     try {
@@ -86,12 +99,13 @@ export default function MetaAdsDashboard() {
       const res = await axios.get("/api/v1/meta-ads");
       setKpis(res.data.kpiSummary);
       setCampaigns(res.data.campaigns || []);
+      await fetchTokenStatus();
     } catch (err) {
       console.error("Failed to fetch Meta Ads insights:", err);
     } finally {
       setIsLoading(false);
     }
-  }, []);
+  }, [fetchTokenStatus]);
 
   useEffect(() => {
     fetchMetaInsights();
@@ -100,10 +114,27 @@ export default function MetaAdsDashboard() {
   const handleSyncNow = async () => {
     try {
       setIsSyncing(true);
+      setSyncNotice(null);
+
+      // 1. Run real server-side Meta Auto-Sync across all forms
+      const autoSyncRes = await axios.get("/api/v1/meta/auto-sync?force=true&includeArchived=true");
+      const syncedCount = autoSyncRes.data?.summary?.totalSynced || 0;
+      const skippedCount = autoSyncRes.data?.summary?.totalSkipped || 0;
+
+      // 2. Resync financial ad spend & insights
       await axios.post("/api/v1/meta-ads");
-      fetchMetaInsights();
-    } catch (err) {
+
+      await fetchMetaInsights();
+
+      if (syncedCount > 0) {
+        setSyncNotice(`✨ ${syncedCount} new Meta leads ingested across active campaigns!`);
+      } else {
+        setSyncNotice(`Meta sync up-to-date: ${skippedCount} existing leads verified.`);
+      }
+      setTimeout(() => setSyncNotice(null), 6000);
+    } catch (err: any) {
       console.error("Failed to sync Meta Graph API:", err);
+      setSyncNotice(`Sync Error: ${err.response?.data?.error || err.message}`);
     } finally {
       setIsSyncing(false);
     }
@@ -282,6 +313,91 @@ export default function MetaAdsDashboard() {
             <RefreshCw className={`w-4 h-4 ${isSyncing ? "animate-spin" : ""}`} />
             {isSyncing ? "Resyncing..." : "Sync Graph API"}
           </button>
+        </div>
+      </div>
+
+      {/* Sync Notification Banner */}
+      {syncNotice && (
+        <div className="flex items-center justify-between px-5 py-3 rounded-2xl bg-emerald-50 border border-emerald-300 text-xs font-bold text-emerald-900 animate-fade-in shadow-xs">
+          <span className="flex items-center gap-2">
+            <Zap className="w-4 h-4 text-emerald-600 animate-pulse" />
+            {syncNotice}
+          </span>
+          <button
+            onClick={() => setSyncNotice(null)}
+            className="text-xs text-emerald-700 hover:text-emerald-900 cursor-pointer font-bold"
+          >
+            ✕
+          </button>
+        </div>
+      )}
+
+      {/* Brand Page Connection & Webhook Health Status */}
+      <div className="bg-white rounded-2xl p-5 border border-slate-300 shadow-xs space-y-3">
+        <div className="flex items-center justify-between">
+          <div className="flex items-center gap-2">
+            <ShieldCheck className="w-4 h-4 text-emerald-600" />
+            <h3 className="text-xs font-bold text-slate-800 uppercase tracking-wider">
+              Connected Brand Pages & Webhook Status
+            </h3>
+          </div>
+          <span className="text-[11px] font-semibold text-slate-400">
+            Real-Time Meta Graph API Health Monitor
+          </span>
+        </div>
+
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
+          {[
+            { slug: "tzar", label: "Tzar Agency", icon: Briefcase, color: "text-blue-700" },
+            { slug: "titepo", label: "Titepo Toy Store", icon: ShoppingBag, color: "text-amber-700" },
+            { slug: "adshalaa", label: "Adshalaa EdTech", icon: BookOpen, color: "text-emerald-700" },
+            { slug: "crownleaf", label: "CrownLeaf Luxury", icon: Gift, color: "text-purple-700" },
+          ].map((b) => {
+            const status = brandStatus[b.slug];
+            const isActive = status?.status === "ACTIVE";
+            const Icon = b.icon;
+
+            return (
+              <div
+                key={b.slug}
+                className={`p-3.5 rounded-xl border flex flex-col justify-between transition-all ${
+                  isActive
+                    ? "bg-slate-50/80 border-slate-200"
+                    : "bg-rose-50/50 border-rose-200"
+                }`}
+              >
+                <div className="flex items-center justify-between mb-2">
+                  <div className="flex items-center gap-2">
+                    <Icon className={`w-4 h-4 ${b.color}`} />
+                    <span className="text-xs font-bold text-slate-900">{b.label}</span>
+                  </div>
+                  {isActive ? (
+                    <span className="inline-flex items-center gap-1 text-[10px] font-extrabold px-2 py-0.5 rounded-full bg-emerald-100 text-emerald-800 border border-emerald-300">
+                      <CheckCircle2 className="w-3 h-3" /> ACTIVE
+                    </span>
+                  ) : (
+                    <span className="inline-flex items-center gap-1 text-[10px] font-extrabold px-2 py-0.5 rounded-full bg-rose-100 text-rose-800 border border-rose-300">
+                      <AlertCircle className="w-3 h-3" /> EXPIRED
+                    </span>
+                  )}
+                </div>
+
+                <div className="text-[11px] font-medium text-slate-500 space-y-0.5">
+                  <p className="truncate">
+                    Page: <span className="font-semibold text-slate-700">{status?.pageName || status?.title || b.label}</span>
+                  </p>
+                  <p>
+                    Forms: <span className="font-bold text-slate-900">{status?.formsCount !== undefined ? `${status.formsCount} Active Forms` : "N/A"}</span>
+                  </p>
+                  {!isActive && (
+                    <p className="text-rose-700 font-bold text-[10px] mt-1">
+                      Token expired. Update in .env.local
+                    </p>
+                  )}
+                </div>
+              </div>
+            );
+          })}
         </div>
       </div>
 

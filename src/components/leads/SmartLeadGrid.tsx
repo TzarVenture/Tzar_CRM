@@ -205,30 +205,72 @@ export function SmartLeadGrid({ initialLeads }: SmartLeadGridProps) {
     reader.readAsText(file);
   };
 
-  // 5-Second Real-Time Auto-Polling Engine
-  useEffect(() => {
-    const fetchLatestLeads = async () => {
+  // ─── Real Meta Graph API Auto-Sync & Database Heartbeat ─────────────────
+  const [metaSyncNotice, setMetaSyncNotice] = useState<string | null>(null);
+  const [isMetaAutoSyncing, setIsMetaAutoSyncing] = useState(false);
+
+  const fetchLatestLeadsFromDb = useCallback(async () => {
+    try {
+      setIsLiveSyncing(true);
+      const res = await fetch(`/api/v1/leads?business=${selectedBrand}`);
+      if (res.ok) {
+        const data = await res.json();
+        if (data.leads) {
+          setLeads(data.leads);
+        }
+      }
+    } catch (err) {
+      console.error("Live Polling Error:", err);
+    } finally {
+      setTimeout(() => setIsLiveSyncing(false), 500);
+    }
+  }, [selectedBrand]);
+
+  const triggerMetaAutoSync = useCallback(
+    async (force = false, includeArchived = false) => {
       try {
-        setIsLiveSyncing(true);
-        const res = await fetch(`/api/v1/leads?business=${selectedBrand}`);
+        setIsMetaAutoSyncing(true);
+        const brandParam = selectedBrand !== "all" ? `&business=${selectedBrand}` : "";
+        const res = await fetch(
+          `/api/v1/meta/auto-sync?force=${force}&includeArchived=${includeArchived}${brandParam}`
+        );
         if (res.ok) {
           const data = await res.json();
-          if (data.leads) {
-            setLeads(data.leads);
+          const synced = data.summary?.totalSynced || 0;
+          const skipped = data.summary?.totalSkipped || 0;
+
+          if (synced > 0) {
+            setMetaSyncNotice(`✨ ${synced} new Meta Lead Ads automatically ingested!`);
+            setTimeout(() => setMetaSyncNotice(null), 6000);
+            await fetchLatestLeadsFromDb();
+          } else if (force) {
+            setMetaSyncNotice(`All Meta Leads Up-To-Date (${skipped} duplicates verified on Facebook)`);
+            setTimeout(() => setMetaSyncNotice(null), 4000);
+            await fetchLatestLeadsFromDb();
           }
         }
       } catch (err) {
-        console.error("Live Polling Error:", err);
+        console.error("Meta Auto-Sync Error:", err);
       } finally {
-        setTimeout(() => setIsLiveSyncing(false), 600);
+        setIsMetaAutoSyncing(false);
       }
-    };
+    },
+    [selectedBrand, fetchLatestLeadsFromDb]
+  );
 
-    // Auto-fetch immediately on tab switch + poll every 5 seconds for instant real-time intake
-    fetchLatestLeads();
-    const interval = setInterval(fetchLatestLeads, 5000);
+  // Initial load + 25-second continuous background sync with Meta Graph API
+  useEffect(() => {
+    fetchLatestLeadsFromDb();
+    // Fire background reconciliation check with Meta on tab switch
+    triggerMetaAutoSync(false, false);
+
+    const interval = setInterval(() => {
+      triggerMetaAutoSync(false, false);
+      fetchLatestLeadsFromDb();
+    }, 25000);
+
     return () => clearInterval(interval);
-  }, [selectedBrand]);
+  }, [selectedBrand, fetchLatestLeadsFromDb, triggerMetaAutoSync]);
 
   // Pro Multi-Level Filtered Leads
   const filteredLeads = useMemo(() => {
@@ -505,33 +547,15 @@ export function SmartLeadGrid({ initialLeads }: SmartLeadGridProps) {
             <span className="hidden sm:inline">Refresh</span>
           </button>
 
-          {/* 2. Live Meta Graph API Auto-Sync Button */}
+          {/* 2. Real Live Meta Graph API Auto-Sync Button */}
           <button
-            onClick={async () => {
-              setIsLiveSyncing(true);
-              try {
-                await fetch("/api/v1/meta/sync-historical", {
-                  method: "POST",
-                  headers: { "Content-Type": "application/json" },
-                  body: JSON.stringify({
-                    business: selectedBrand === "all" ? "tzar" : selectedBrand,
-                  }),
-                }).then((r) => r.json());
-
-                const updated = await fetch(`/api/v1/leads?business=${selectedBrand}`).then((r) => r.json());
-                if (updated.leads) setLeads(updated.leads);
-              } catch (err: any) {
-                console.warn("Graph Sync Notice:", err);
-              } finally {
-                setTimeout(() => setIsLiveSyncing(false), 500);
-              }
-            }}
-            disabled={isLiveSyncing}
-            className="flex items-center gap-1.5 px-3.5 py-2 text-xs font-bold text-emerald-800 bg-emerald-50 hover:bg-emerald-100 border border-emerald-200 rounded-xl transition-all cursor-pointer shadow-2xs disabled:opacity-50"
-            title="Auto-discover & sync lead forms directly from Meta Graph API"
+            onClick={() => triggerMetaAutoSync(true, true)}
+            disabled={isMetaAutoSyncing || isLiveSyncing}
+            className="flex items-center gap-1.5 px-3.5 py-2 text-xs font-bold text-emerald-800 bg-emerald-50 hover:bg-emerald-100 border border-emerald-300 rounded-xl transition-all cursor-pointer shadow-2xs disabled:opacity-50"
+            title="Perform active reconciliation scan across Meta Graph API lead forms"
           >
-            <Zap className={`w-3.5 h-3.5 text-emerald-600 ${isLiveSyncing ? "animate-spin" : ""}`} />
-            <span>Sync Meta Leads</span>
+            <Zap className={`w-3.5 h-3.5 text-emerald-600 ${isMetaAutoSyncing ? "animate-spin" : ""}`} />
+            <span>{isMetaAutoSyncing ? "Scanning Meta..." : "Sync Meta Leads"}</span>
           </button>
 
           {/* 3. Improved Import Meta Leads Button */}
@@ -554,6 +578,22 @@ export function SmartLeadGrid({ initialLeads }: SmartLeadGridProps) {
             <Plus className="w-3.5 h-3.5" /> Add Lead
           </button>
         </div>
+
+        {/* Real-time Meta Sync Notification Banner */}
+        {metaSyncNotice && (
+          <div className="w-full flex items-center justify-between px-4 py-2.5 rounded-xl bg-emerald-500/10 border border-emerald-300 text-xs font-bold text-emerald-900 animate-fade-in">
+            <span className="flex items-center gap-2">
+              <Zap className="w-4 h-4 text-emerald-600 animate-pulse" />
+              {metaSyncNotice}
+            </span>
+            <button
+              onClick={() => setMetaSyncNotice(null)}
+              className="text-xs text-emerald-700 hover:text-emerald-900 cursor-pointer font-bold"
+            >
+              ✕
+            </button>
+          </div>
+        )}
 
         {/* Brand Switcher Bar (100% Responsive Grid - All 5 Brands Fit Within Mobile Screen) */}
         <div className="w-full">

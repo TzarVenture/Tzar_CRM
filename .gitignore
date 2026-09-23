@@ -43,3 +43,6 @@ Thumbs.db
 *.suo
 *.user
 
+
+.agent
+*.mjs

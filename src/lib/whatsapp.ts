@@ -260,3 +260,52 @@ export async function sendWhatsAppInteractiveButtonMessage(
     throw error;
   }
 }
+
+/**
+ * 6. Automated Lead Welcome Dispatcher (Approved Brand HSM Templates)
+ * Dispatches the corresponding pre-approved WhatsApp welcome template
+ * for incoming leads from Meta Lead Ads or Website Ingest.
+ */
+export async function sendAutoWelcomeWhatsApp(lead: {
+  leadId: string;
+  fullName: string;
+  phone: string;
+  business: "tzar" | "adshalaa" | "crownleaf" | "titepo";
+  service?: string;
+}) {
+  const templateMap: Record<string, string> = {
+    tzar: "tzar_lead_welcome_v1",
+    titepo: "titepo_inquiry_welcome_v1",
+    adshalaa: "adshalaa_course_inquiry_v1",
+    crownleaf: "crownleaf_welcome_lead_v1",
+  };
+
+  const templateName = templateMap[lead.business];
+  if (!templateName || !lead.phone) return { success: false, reason: "No template or phone" };
+
+  const leadName = lead.fullName?.split(" ")[0] || "there";
+  const serviceName = lead.service || "your recent inquiry";
+
+  try {
+    const res = await sendWhatsAppTemplateMessage(
+      lead.phone,
+      templateName,
+      "en_US",
+      [
+        {
+          type: "body",
+          parameters: [
+            { type: "text", text: leadName },
+            { type: "text", text: serviceName },
+          ],
+        },
+      ]
+    );
+
+    return res;
+  } catch (err: any) {
+    console.warn(`[Auto-WhatsApp Notice] Could not send welcome to ${lead.phone}:`, err.response?.data?.error?.message || err.message);
+    return { success: false, error: err.message };
+  }
+}
+
