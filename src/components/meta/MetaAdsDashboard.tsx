@@ -80,6 +80,8 @@ export default function MetaAdsDashboard() {
   const [campSpend, setCampSpend] = useState<number | "">(0);
   const [campLeads, setCampLeads] = useState<number | "">(0);
   const [campRevenue, setCampRevenue] = useState<number | "">(0);
+  const [campStatus, setCampStatus] = useState<"ACTIVE" | "PAUSED">("ACTIVE");
+  const [isSavingCamp, setIsSavingCamp] = useState(false);
   // Real Brand Token Health Status State
   const [brandStatus, setBrandStatus] = useState<Record<string, any>>({});
   const [syncNotice, setSyncNotice] = useState<string | null>(null);
