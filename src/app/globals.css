@@ -140,6 +140,15 @@ body {
   animation: scaleIn 0.2s cubic-bezier(0.16, 1, 0.3, 1) forwards;
 }
 
+/* Native modal dialogs: keep scroll gestures from reaching the page behind */
+dialog:modal {
+  overscroll-behavior: contain;
+}
+dialog::backdrop {
+  overflow: hidden;
+  overscroll-behavior: contain;
+}
+
 /* Hide scrollbar for smooth mobile swipeable tabs */
 .no-scrollbar::-webkit-scrollbar {
   display: none;

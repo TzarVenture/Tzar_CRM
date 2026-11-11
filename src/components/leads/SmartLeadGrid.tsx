@@ -258,9 +258,14 @@ export function SmartLeadGrid({ initialLeads }: SmartLeadGridProps) {
     [selectedBrand, fetchLatestLeadsFromDb]
   );
 
-  // Initial load + 25-second continuous background sync with Meta Graph API
+  // Initial load only. The 25-second background poll (Meta Graph API re-scan + full lead
+  // reload) is paused while the CRM is being fixed because it slows the whole site down.
+  // The manual Refresh / Sync buttons still work. Set to true to turn the poll back on.
   useEffect(() => {
+    const AUTO_FETCH_LEADS_ENABLED = false;
     fetchLatestLeadsFromDb();
+    if (!AUTO_FETCH_LEADS_ENABLED) return;
+
     // Fire background reconciliation check with Meta on tab switch
     triggerMetaAutoSync(false, false);
 

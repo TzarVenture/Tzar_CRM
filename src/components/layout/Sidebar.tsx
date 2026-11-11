@@ -13,6 +13,7 @@ import {
   MessageCircle,
   BarChart3,
   FolderOpen,
+  Receipt,
   Settings,
   LogOut,
   Building2,
@@ -53,6 +54,12 @@ const NAV_GROUPS: NavGroup[] = [
         roles: ["SUPER_ADMIN", "SALES_MANAGER"],
       },
       { label: "Files & Assets", href: "/files", icon: FolderOpen },
+      {
+        label: "Invoices",
+        href: "/invoices",
+        icon: Receipt,
+        roles: ["SUPER_ADMIN", "ADMIN"],
+      },
     ],
   },
   {

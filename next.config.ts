@@ -5,7 +5,14 @@ const nextConfig: NextConfig = {
   devIndicators: false,
 
   // Mongoose, bcryptjs use native Node modules — keep them server-side only
-  serverExternalPackages: ["mongoose", "bcryptjs"],
+  serverExternalPackages: ["mongoose", "bcryptjs", "@react-pdf/renderer"],
+
+  // Invoice PDF/DOCX rendering reads fonts and brand logos from disk at runtime,
+  // so they must be shipped with the serverless function
+  outputFileTracingIncludes: {
+    "/api/v1/invoices/[id]/download": ["./src/assets/invoice-fonts/*.woff", "./public/*.png"],
+    "/api/v1/invoices/preview": ["./src/assets/invoice-fonts/*.woff", "./public/*.png"],
+  },
 
   // Image domains (for avatars, etc.)
   images: {
