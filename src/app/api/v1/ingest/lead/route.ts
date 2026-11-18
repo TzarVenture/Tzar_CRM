@@ -112,10 +112,9 @@ export async function POST(req: Request) {
   try {
     // 1. API Key Authentication
     const apiKey = req.headers.get("x-tzar-api-key");
-    const expectedApiKey =
-      process.env.TZAR_INGEST_API_KEY || "tzar_live_ingest_key_demo";
+    const expectedApiKey = process.env.TZAR_INGEST_API_KEY;
 
-    if (apiKey !== expectedApiKey) {
+    if (!expectedApiKey || !apiKey || apiKey !== expectedApiKey) {
       return NextResponse.json(
         { error: "Unauthorized: Invalid API Key" },
         { status: 401 }
@@ -260,7 +259,7 @@ export async function POST(req: Request) {
       status: "DELIVERED",
     });
 
-    // ⚡ Industry Feature: Trigger Automated WhatsApp Welcome Template
+    // Industry Feature: Trigger Automated WhatsApp Welcome Template
     sendAutoWelcomeWhatsApp({
       leadId: newLead._id.toString(),
       fullName,

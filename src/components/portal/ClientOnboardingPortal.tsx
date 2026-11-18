@@ -2,18 +2,7 @@
 
 import { useState, useEffect, useCallback } from "react";
 import axios from "axios";
-import {
-  ShieldCheck,
-  Building,
-  Upload,
-  CheckCircle2,
-  Lock,
-  ArrowRight,
-  Sparkles,
-  FileText,
-  Globe,
-  Tag,
-} from "lucide-react";
+import { ShieldCheck, Building, UploadSimple as Upload, CheckCircle as CheckCircle2, Lock, ArrowRight, Sparkle as Sparkles, FileText, Globe, Tag } from "@phosphor-icons/react";
 
 interface ClientOnboardingPortalProps {
   clientId: string;
@@ -58,14 +47,19 @@ export default function ClientOnboardingPortal({
     fetchClientPortalData();
   }, [fetchClientPortalData]);
 
-  const handlePasscodeAuth = (e: React.FormEvent) => {
+  const handlePasscodeAuth = async (e: React.FormEvent) => {
     e.preventDefault();
     setAuthError(null);
-
-    if (client && (passcode === client.portalPasscode || passcode === "123456")) {
+    try {
+      await axios.post(`/api/v1/portal/${clientId}`, { passcode });
       setIsAuthenticated(true);
-    } else {
-      setAuthError("Invalid portal passcode. Please check your invitation email.");
+    } catch (err) {
+      const status = axios.isAxiosError(err) ? err.response?.status : undefined;
+      setAuthError(
+        status === 429
+          ? "Too many attempts. Please try again in 15 minutes."
+          : "Invalid portal passcode. Please check your invitation email."
+      );
     }
   };
 
@@ -78,6 +72,7 @@ export default function ClientOnboardingPortal({
         targetAudience,
         primaryGoal,
         brandNotes,
+        passcode,
       });
       setIsCompleted(true);
     } catch (err) {
@@ -89,9 +84,9 @@ export default function ClientOnboardingPortal({
 
   if (isLoading) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-slate-900 text-white">
+      <div className="min-h-screen flex items-center justify-center bg-hero [background-image:var(--hero-gradient)] text-white">
         <div className="flex items-center gap-3 text-sm font-semibold">
-          <div className="w-5 h-5 border-2 border-emerald-400 border-t-transparent rounded-full animate-spin" />
+          <div className="w-5 h-5 border-2 border-success border-t-transparent rounded-full animate-spin" />
           Loading Client Onboarding Portal...
         </div>
       </div>
@@ -101,17 +96,17 @@ export default function ClientOnboardingPortal({
   // Passcode Auth Screen
   if (!isAuthenticated && !isCompleted) {
     return (
-      <div className="min-h-screen flex items-center justify-center p-4 bg-slate-900 font-sans">
-        <div className="w-full max-w-md bg-white rounded-3xl p-8 border border-slate-300 shadow-2xl space-y-6">
+      <div className="min-h-screen flex items-center justify-center p-4 bg-hero [background-image:var(--hero-gradient)] font-sans">
+        <div className="w-full max-w-md bg-card rounded-3xl p-8 border border-input shadow-2xl space-y-6">
           <div className="flex items-center gap-3">
             <div className="w-10 h-10 rounded-xl bg-(--color-brand-green) flex items-center justify-center text-white">
               <Lock className="w-5 h-5" />
             </div>
             <div>
-              <h1 className="text-lg font-bold text-slate-900">
+              <h1 className="text-lg font-semibold text-foreground">
                 Tzar Agency Client Portal
               </h1>
-              <p className="text-xs font-semibold text-slate-500">
+              <p className="text-sm font-semibold text-muted-foreground">
                 {client?.companyName || "Client Onboarding"}
               </p>
             </div>
@@ -119,13 +114,13 @@ export default function ClientOnboardingPortal({
 
           <form onSubmit={handlePasscodeAuth} className="space-y-4">
             {authError && (
-              <div className="p-3.5 rounded-xl text-xs font-semibold bg-red-50 text-red-700 border border-red-200">
+              <div className="p-3.5 rounded-xl text-sm font-semibold bg-destructive-soft text-destructive border border-border">
                 {authError}
               </div>
             )}
 
             <div>
-              <label className="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-2">
+              <label className="block text-sm font-semibold text-foreground mb-2">
                 Enter 6-Digit Portal Passcode
               </label>
               <input
@@ -135,16 +130,16 @@ export default function ClientOnboardingPortal({
                 value={passcode}
                 onChange={(e) => setPasscode(e.target.value)}
                 placeholder="••••••"
-                className="w-full px-4 py-3 text-center text-lg font-mono font-bold tracking-widest rounded-xl border border-slate-300 bg-slate-50 focus:bg-white focus:border-(--color-brand-green) outline-none"
+                className="w-full px-4 py-3 text-center text-lg font-mono font-semibold rounded-xl border border-input bg-muted focus:bg-card focus:border-(--color-brand-green) outline-none"
               />
-              <p className="text-[11px] font-semibold text-slate-500 mt-2 text-center">
-                Demo passcode: <strong className="text-slate-900">{client?.portalPasscode || "123456"}</strong>
+              <p className="text-xs font-semibold text-muted-foreground mt-2 text-center">
+                Enter the 6-digit code from your invitation.
               </p>
             </div>
 
             <button
               type="submit"
-              className="w-full flex items-center justify-center gap-2 py-3 px-4 text-xs font-bold text-white rounded-xl shadow-md transition-all cursor-pointer hover:bg-(--color-brand-green-hover)"
+              className="w-full flex items-center justify-center gap-2 py-3 px-4 text-sm font-semibold text-white rounded-xl shadow-md transition-all cursor-pointer hover:bg-(--color-brand-green-hover)"
               style={{ backgroundColor: "var(--color-brand-green)" }}
             >
               Access Onboarding Wizard <ArrowRight className="w-4 h-4" />
@@ -158,33 +153,33 @@ export default function ClientOnboardingPortal({
   // Onboarding Completed View
   if (isCompleted) {
     return (
-      <div className="min-h-screen flex items-center justify-center p-4 bg-slate-900 font-sans">
-        <div className="w-full max-w-xl bg-white rounded-3xl p-10 border border-slate-300 shadow-2xl text-center space-y-5">
-          <div className="w-16 h-16 rounded-full bg-emerald-100 border border-emerald-200 text-emerald-600 flex items-center justify-center mx-auto">
+      <div className="min-h-screen flex items-center justify-center p-4 bg-hero [background-image:var(--hero-gradient)] font-sans">
+        <div className="w-full max-w-xl bg-card rounded-3xl p-10 border border-input shadow-2xl text-center space-y-5">
+          <div className="w-16 h-16 rounded-full bg-success-soft border border-border text-success flex items-center justify-center mx-auto">
             <CheckCircle2 className="w-8 h-8" />
           </div>
 
           <div>
-            <h1 className="text-2xl font-bold text-slate-900">
+            <h1 className="text-2xl font-semibold text-foreground">
               Onboarding Complete!
             </h1>
-            <p className="text-sm font-semibold text-slate-600 mt-1 max-w-md mx-auto">
+            <p className="text-sm font-semibold text-muted-foreground mt-1 max-w-md mx-auto">
               Thank you, {client?.companyName}! Your onboarding questionnaire and brand assets have been received. Your dedicated Account Manager is reviewing the scope.
             </p>
           </div>
 
-          <div className="p-5 rounded-2xl bg-slate-50 border border-slate-200 text-xs font-semibold text-slate-700 space-y-2 text-left">
+          <div className="p-5 rounded-2xl bg-muted border border-border text-sm font-semibold text-foreground space-y-2 text-left">
             <div className="flex justify-between">
-              <span className="text-slate-500">Account ID:</span>
-              <span className="font-mono text-slate-900 font-bold">{client?.clientCustomId}</span>
+              <span className="text-muted-foreground">Account ID:</span>
+              <span className="font-mono text-foreground font-semibold">{client?.clientCustomId}</span>
             </div>
             <div className="flex justify-between">
-              <span className="text-slate-500">Primary Contact:</span>
-              <span className="text-slate-900 font-bold">{client?.primaryContact?.name}</span>
+              <span className="text-muted-foreground">Primary Contact:</span>
+              <span className="text-foreground font-semibold">{client?.primaryContact?.name}</span>
             </div>
             <div className="flex justify-between">
-              <span className="text-slate-500">Service Scope:</span>
-              <span className="text-(--color-brand-green) font-bold">{primaryGoal}</span>
+              <span className="text-muted-foreground">Service Scope:</span>
+              <span className="text-(--color-brand-green) font-semibold">{primaryGoal}</span>
             </div>
           </div>
         </div>
@@ -194,15 +189,15 @@ export default function ClientOnboardingPortal({
 
   // Wizard Steps Container
   return (
-    <div className="min-h-screen bg-slate-900 py-10 px-4 font-sans flex items-center justify-center">
-      <div className="w-full max-w-3xl bg-white rounded-3xl border border-slate-300 shadow-2xl overflow-hidden">
+    <div className="min-h-screen bg-hero [background-image:var(--hero-gradient)] py-10 px-4 font-sans flex items-center justify-center">
+      <div className="w-full max-w-3xl bg-card rounded-3xl border border-input shadow-2xl overflow-hidden">
         {/* Top Header */}
-        <div className="p-8 border-b border-slate-200 bg-slate-50 flex flex-wrap items-center justify-between gap-4">
+        <div className="p-8 border-b border-border bg-muted flex flex-wrap items-center justify-between gap-4">
           <div>
-            <span className="text-xs font-mono font-bold px-2.5 py-0.5 rounded bg-emerald-100 text-emerald-800 border border-emerald-200">
+            <span className="text-sm font-mono font-semibold px-2.5 py-0.5 rounded bg-success-soft text-success border border-border">
               {client?.clientCustomId}
             </span>
-            <h1 className="text-xl font-bold text-slate-900 mt-1">
+            <h1 className="text-xl font-semibold text-foreground mt-1">
               {client?.companyName} — Client Onboarding
             </h1>
           </div>
@@ -212,10 +207,10 @@ export default function ClientOnboardingPortal({
             {[1, 2, 3].map((step) => (
               <div
                 key={step}
-                className={`w-8 h-8 rounded-full flex items-center justify-center text-xs font-bold transition-all ${
+                className={`w-8 h-8 rounded-full flex items-center justify-center text-sm font-semibold transition-all ${
                   currentStep >= step
                     ? "bg-(--color-brand-green) text-white"
-                    : "bg-slate-200 text-slate-500"
+                    : "bg-border text-muted-foreground"
                 }`}
               >
                 {step}
@@ -228,13 +223,13 @@ export default function ClientOnboardingPortal({
         <form onSubmit={handleCompleteOnboarding} className="p-8 space-y-6">
           {currentStep === 1 && (
             <div className="space-y-5 animate-fade-in">
-              <h2 className="text-base font-bold text-slate-900 flex items-center gap-2">
+              <h2 className="text-base font-semibold text-foreground flex items-center gap-2">
                 <Globe className="w-5 h-5 text-(--color-brand-green)" /> Step 1: Digital Presence & Brand Info
               </h2>
 
               <div className="space-y-4">
                 <div>
-                  <label className="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1.5">
+                  <label className="block text-sm font-semibold text-foreground mb-1.5">
                     Current Website URL
                   </label>
                   <input
@@ -242,12 +237,12 @@ export default function ClientOnboardingPortal({
                     value={websiteUrl}
                     onChange={(e) => setWebsiteUrl(e.target.value)}
                     placeholder="https://yourcompany.com"
-                    className="w-full px-4 py-3 text-xs font-medium rounded-xl border border-slate-300 outline-none"
+                    className="w-full px-4 py-3 text-sm font-medium rounded-xl border border-input outline-none"
                   />
                 </div>
 
                 <div>
-                  <label className="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1.5">
+                  <label className="block text-sm font-semibold text-foreground mb-1.5">
                     Target Audience / Ideal Customer Profile
                   </label>
                   <textarea
@@ -255,7 +250,7 @@ export default function ClientOnboardingPortal({
                     value={targetAudience}
                     onChange={(e) => setTargetAudience(e.target.value)}
                     placeholder="Describe your primary audience, target demographics, and key geographic markets..."
-                    className="w-full px-4 py-3 text-xs font-medium rounded-xl border border-slate-300 outline-none"
+                    className="w-full px-4 py-3 text-sm font-medium rounded-xl border border-input outline-none"
                   />
                 </div>
               </div>
@@ -264,7 +259,7 @@ export default function ClientOnboardingPortal({
                 <button
                   type="button"
                   onClick={() => setCurrentStep(2)}
-                  className="flex items-center gap-2 px-6 py-2.5 text-xs font-bold text-white rounded-xl shadow-xs cursor-pointer"
+                  className="flex items-center gap-2 px-6 py-2.5 text-sm font-semibold text-white rounded-xl shadow-xs cursor-pointer"
                   style={{ backgroundColor: "var(--color-brand-green)" }}
                 >
                   Next Step <ArrowRight className="w-4 h-4" />
@@ -275,12 +270,12 @@ export default function ClientOnboardingPortal({
 
           {currentStep === 2 && (
             <div className="space-y-5 animate-fade-in">
-              <h2 className="text-base font-bold text-slate-900 flex items-center gap-2">
+              <h2 className="text-base font-semibold text-foreground flex items-center gap-2">
                 <Sparkles className="w-5 h-5 text-(--color-brand-green)" /> Step 2: Primary Project Deliverables
               </h2>
 
               <div>
-                <label className="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-2">
+                <label className="block text-sm font-semibold text-foreground mb-2">
                   Select Primary Agency Objective
                 </label>
                 <div className="space-y-2">
@@ -293,10 +288,10 @@ export default function ClientOnboardingPortal({
                     <div
                       key={goal}
                       onClick={() => setPrimaryGoal(goal)}
-                      className={`p-4 rounded-xl border text-xs font-bold cursor-pointer transition-all ${
+                      className={`p-4 rounded-xl border text-sm font-semibold cursor-pointer transition-all ${
                         primaryGoal === goal
                           ? "border-(--color-brand-green) bg-(--color-brand-green-light) text-(--color-brand-green)"
-                          : "border-slate-300 bg-slate-50 text-slate-700"
+                          : "border-input bg-muted text-foreground"
                       }`}
                     >
                       {goal}
@@ -305,18 +300,18 @@ export default function ClientOnboardingPortal({
                 </div>
               </div>
 
-              <div className="flex justify-between pt-4 border-t border-slate-200">
+              <div className="flex justify-between pt-4 border-t border-border">
                 <button
                   type="button"
                   onClick={() => setCurrentStep(1)}
-                  className="px-5 py-2.5 text-xs font-bold text-slate-600 hover:bg-slate-100 rounded-xl"
+                  className="px-5 py-2.5 text-sm font-semibold text-muted-foreground hover:bg-muted rounded-xl"
                 >
                   Back
                 </button>
                 <button
                   type="button"
                   onClick={() => setCurrentStep(3)}
-                  className="flex items-center gap-2 px-6 py-2.5 text-xs font-bold text-white rounded-xl shadow-xs cursor-pointer"
+                  className="flex items-center gap-2 px-6 py-2.5 text-sm font-semibold text-white rounded-xl shadow-xs cursor-pointer"
                   style={{ backgroundColor: "var(--color-brand-green)" }}
                 >
                   Next Step <ArrowRight className="w-4 h-4" />
@@ -327,12 +322,12 @@ export default function ClientOnboardingPortal({
 
           {currentStep === 3 && (
             <div className="space-y-5 animate-fade-in">
-              <h2 className="text-base font-bold text-slate-900 flex items-center gap-2">
+              <h2 className="text-base font-semibold text-foreground flex items-center gap-2">
                 <FileText className="w-5 h-5 text-(--color-brand-green)" /> Step 3: Brand Assets & Final Notes
               </h2>
 
               <div>
-                <label className="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1.5">
+                <label className="block text-sm font-semibold text-foreground mb-1.5">
                   Brand Guidelines & Design Notes
                 </label>
                 <textarea
@@ -340,22 +335,22 @@ export default function ClientOnboardingPortal({
                   value={brandNotes}
                   onChange={(e) => setBrandNotes(e.target.value)}
                   placeholder="Share links to brand assets, Google Drive folders, or specific design preferences..."
-                  className="w-full px-4 py-3 text-xs font-medium rounded-xl border border-slate-300 outline-none"
+                  className="w-full px-4 py-3 text-sm font-medium rounded-xl border border-input outline-none"
                 />
               </div>
 
-              <div className="flex justify-between pt-4 border-t border-slate-200">
+              <div className="flex justify-between pt-4 border-t border-border">
                 <button
                   type="button"
                   onClick={() => setCurrentStep(2)}
-                  className="px-5 py-2.5 text-xs font-bold text-slate-600 hover:bg-slate-100 rounded-xl"
+                  className="px-5 py-2.5 text-sm font-semibold text-muted-foreground hover:bg-muted rounded-xl"
                 >
                   Back
                 </button>
                 <button
                   type="submit"
                   disabled={isSubmitting}
-                  className="flex items-center gap-2 px-8 py-3 text-xs font-bold text-white rounded-xl shadow-md cursor-pointer disabled:opacity-50"
+                  className="flex items-center gap-2 px-8 py-3 text-sm font-semibold text-white rounded-xl shadow-md cursor-pointer disabled:opacity-50"
                   style={{ backgroundColor: "var(--color-status-success)" }}
                 >
                   <CheckCircle2 className="w-4 h-4" /> Submit Onboarding

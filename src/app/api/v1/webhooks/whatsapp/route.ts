@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import { verifyMetaSignature } from "@/lib/meta-signature";
 import dbConnect from "@/lib/db";
 import Lead, { BusinessSlug } from "@/models/Lead";
 import Message from "@/models/Message";
@@ -26,12 +27,10 @@ export async function GET(req: Request) {
   const allowedTokens = [
     process.env.WHATSAPP_VERIFY_TOKEN,
     process.env.META_VERIFY_TOKEN,
-    "tzar_meta_webhook_verify_token_2026",
-    "tzar_whatsapp_webhook_verify_token_2026",
   ].filter(Boolean);
 
   if (mode === "subscribe" && token && allowedTokens.includes(token)) {
-    console.log("✅ Meta WhatsApp Cloud API Webhook verified successfully!");
+    console.log("Meta WhatsApp Cloud API Webhook verified successfully!");
     return new Response(challenge || "OK", { status: 200 });
   }
 
@@ -43,8 +42,12 @@ export async function GET(req: Request) {
  */
 export async function POST(req: Request) {
   try {
-    const body = await req.json();
-    console.log("📩 Incoming Meta WhatsApp Webhook Payload:", JSON.stringify(body));
+    const rawBody = await req.text();
+    if (!verifyMetaSignature(rawBody, req.headers.get("x-hub-signature-256"), process.env.META_APP_SECRET)) {
+      console.warn("WhatsApp webhook rejected: bad or missing signature");
+      return new Response("Invalid signature", { status: 401 });
+    }
+    const body = JSON.parse(rawBody);
     await dbConnect();
 
     const entry = body.entry?.[0];
@@ -183,7 +186,7 @@ export async function POST(req: Request) {
 
       const primaryLead = matchingLeads[0];
 
-      console.log(`💬 Inbound WhatsApp message received from ${primaryLead.fullName} (${rawPhone}): "${textContent}"`);
+      console.log(`Inbound WhatsApp message received from ${primaryLead.fullName} (${rawPhone}): "${textContent}"`);
 
       // C. Trigger AiSensy / ChatbotWonder Automated Keyword Engine
       if (textContent.trim()) {
@@ -198,7 +201,7 @@ export async function POST(req: Request) {
           if (rule.matchType === "CONTAINS" && cleanMsg.includes(kw)) isMatch = true;
 
           if (isMatch) {
-            console.log(`🤖 Chatbot Keyword Rule Matched: "${kw}" for primaryLead ${primaryLead.fullName}`);
+            console.log(`Chatbot Keyword Rule Matched: "${kw}" for primaryLead ${primaryLead.fullName}`);
 
             // Action 1: Reply Text
             if (rule.actionType === "REPLY_TEXT" && rule.replyContent) {
@@ -237,7 +240,7 @@ export async function POST(req: Request) {
 
     return NextResponse.json({ status: "processed_event" });
   } catch (error) {
-    console.error("❌ WhatsApp Webhook Inbound Error:", error);
+    console.error("WhatsApp Webhook Inbound Error:", error);
     return NextResponse.json(
       { error: "Failed to process WhatsApp webhook payload" },
       { status: 500 }

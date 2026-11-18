@@ -15,9 +15,8 @@ export default auth(function proxy(req: NextRequest & { auth: { user?: { role?: 
   if (
     pathname.startsWith("/api/v1/ingest") ||
     pathname.startsWith("/api/v1/webhooks") ||
-    pathname.startsWith("/api/v1/meta") ||
     pathname.startsWith("/api/auth") ||
-    pathname.startsWith("/api/seed")
+    pathname.startsWith("/api/v1/portal")
   ) {
     return NextResponse.next();
   }
@@ -39,6 +38,9 @@ export default auth(function proxy(req: NextRequest & { auth: { user?: { role?: 
   }
 
   // ─── 4. Block unauthenticated access ──────────────────────────────────────
+  if (!session && pathname.startsWith("/api/")) {
+    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  }
   if (!session) {
     const loginUrl = new URL("/login", req.url);
     loginUrl.searchParams.set("callbackUrl", pathname);
@@ -50,11 +52,6 @@ export default auth(function proxy(req: NextRequest & { auth: { user?: { role?: 
   // ─── 5. Settings — SUPER_ADMIN only ───────────────────────────────────────
   if (pathname.startsWith("/settings") && role !== "SUPER_ADMIN") {
     return NextResponse.redirect(new URL("/pipeline", req.url));
-  }
-
-  // ─── 6. Meta Ads — blocked for CLIENT ────────────────────────────────────
-  if (pathname.startsWith("/meta-ads") && role === "CLIENT") {
-    return NextResponse.redirect(new URL("/", req.url));
   }
 
   // ─── 7. Unauthenticated API calls ────────────────────────────────────────

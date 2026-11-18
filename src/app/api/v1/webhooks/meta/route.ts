@@ -11,6 +11,7 @@ import {
 } from "@/lib/lead-utils";
 import { parseMetaLeadPayload } from "@/lib/lead-field-normalizer";
 import { sendAutoWelcomeWhatsApp } from "@/lib/whatsapp";
+import { verifyMetaSignature } from "@/lib/meta-signature";
 
 /**
  * 1. GET: Verification Handler for Meta Webhook Setup
@@ -24,12 +25,10 @@ export async function GET(req: Request) {
   const allowedTokens = [
     process.env.META_VERIFY_TOKEN,
     process.env.WHATSAPP_VERIFY_TOKEN,
-    "tzar_meta_webhook_verify_token_2026",
-    "tzar_whatsapp_webhook_verify_token_2026",
   ].filter(Boolean);
 
   if (mode === "subscribe" && token && allowedTokens.includes(token)) {
-    console.log("✅ Meta Lead Ads Webhook verified successfully!");
+    console.log("Meta Lead Ads Webhook verified successfully!");
     return new Response(challenge || "OK", { status: 200 });
   }
 
@@ -41,8 +40,13 @@ export async function GET(req: Request) {
  */
 export async function POST(req: Request) {
   try {
-    const body = await req.json();
-    console.log("📩 Incoming Meta Lead Ad Payload:", JSON.stringify(body));
+    // Authenticate: Meta signs every delivery with the app secret.
+    const rawBody = await req.text();
+    if (!verifyMetaSignature(rawBody, req.headers.get("x-hub-signature-256"), process.env.META_APP_SECRET)) {
+      console.warn("Meta webhook rejected: bad or missing signature");
+      return new Response("Invalid signature", { status: 401 });
+    }
+    const body = JSON.parse(rawBody);
     await dbConnect();
 
     const entry = body.entry?.[0];
@@ -154,7 +158,7 @@ export async function POST(req: Request) {
     }
 
     if (isTestTool) {
-      console.log(`⚡ Meta Lead Ads Testing Tool event received for Page ID: ${pageId}. Created test lead for brand: ${business.toUpperCase()}`);
+      console.log(`Meta Lead Ads Testing Tool event received for Page ID: ${pageId}. Created test lead for brand: ${business.toUpperCase()}`);
     }
 
     // Deduplication check for real leads
@@ -255,7 +259,7 @@ export async function POST(req: Request) {
       status: "DELIVERED",
     });
 
-    // ⚡ Industry Feature: Trigger Automated WhatsApp Welcome Template
+    // Industry Feature: Trigger Automated WhatsApp Welcome Template
     sendAutoWelcomeWhatsApp({
       leadId: newLead._id.toString(),
       fullName,
@@ -264,7 +268,7 @@ export async function POST(req: Request) {
       service: normalized.interestLabel,
     }).catch((waErr) => console.warn("WhatsApp Auto-Welcome Notice:", waErr.message));
 
-    console.log(`🎯 Meta Lead Ad ingested for ${business.toUpperCase()}: ${fullName} (${leadCustomId})`);
+    console.log(`Meta Lead Ad ingested for ${business.toUpperCase()}: ${fullName} (${leadCustomId})`);
 
     return NextResponse.json(
       {
@@ -276,7 +280,7 @@ export async function POST(req: Request) {
       { status: 200 }
     );
   } catch (error: any) {
-    console.error("❌ Meta Lead Ads Webhook Error:", error);
+    console.error("Meta Lead Ads Webhook Error:", error);
     return NextResponse.json(
       { status: "error", message: error.message || "Processed with internal fallback" },
       { status: 200 }

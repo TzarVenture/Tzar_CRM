@@ -4,12 +4,10 @@
  * Mongoose and bcryptjs are NOT imported here — those stay in auth.ts (Node.js runtime only).
  */
 import NextAuth from "next-auth";
+import { getAuthSecret } from "@/lib/auth-secret";
 
 export const { auth } = NextAuth({
-  secret:
-    process.env.AUTH_SECRET ||
-    process.env.NEXTAUTH_SECRET ||
-    "tzar_crm_super_secret_auth_key_2026_dev_mode_secret",
+  secret: getAuthSecret(),
   session: { strategy: "jwt" },
   providers: [], // Providers not needed in edge — only for session reading
   callbacks: {
