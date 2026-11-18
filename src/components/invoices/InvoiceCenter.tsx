@@ -13,9 +13,9 @@ import { InvoiceRecord, InvoiceSettingsForm, SavedCustomer, CatalogItem } from "
 type Status = InvoiceRecord["status"];
 
 const STATUS_STYLES: Record<Status, string> = {
-  DRAFT: "bg-muted text-foreground",
-  ISSUED: "bg-success-soft text-success",
-  CANCELLED: "bg-destructive-soft text-destructive",
+  DRAFT: "text-muted-foreground",
+  ISSUED: "text-success",
+  CANCELLED: "text-destructive",
 };
 
 const STATUS_LABELS: Record<Status, string> = {
@@ -204,17 +204,9 @@ export default function InvoiceCenter() {
   );
 
   const statusBadge = (invoice: InvoiceRecord) => (
-    <span className="inline-flex flex-wrap items-center gap-1">
-      <span
-        className={`px-2 py-1 rounded-full text-xs font-semibold whitespace-nowrap ${STATUS_STYLES[invoice.status]}`}
-      >
-        {STATUS_LABELS[invoice.status]}
-      </span>
-      {invoice.documentType === "PROFORMA" && (
-        <span className="px-2 py-1 rounded-full text-xs font-semibold whitespace-nowrap bg-muted text-foreground">
-          Proforma
-        </span>
-      )}
+    <span className="inline-flex flex-wrap items-center gap-x-2 text-sm font-medium whitespace-nowrap">
+      <span className={STATUS_STYLES[invoice.status]}>{STATUS_LABELS[invoice.status]}</span>
+      {invoice.documentType === "PROFORMA" && <span className="text-muted-foreground">· Proforma</span>}
     </span>
   );
 
@@ -293,20 +285,14 @@ export default function InvoiceCenter() {
             key={tab.value}
             onClick={() => setStatus(tab.value)}
             aria-pressed={status === tab.value}
-            className={`flex items-center gap-1.5 px-3.5 py-2 text-sm font-semibold rounded-full border whitespace-nowrap transition-colors cursor-pointer ${
+            className={`flex h-10 items-center gap-2 px-4 text-sm font-medium rounded-lg border whitespace-nowrap transition-colors cursor-pointer ${
               status === tab.value
-                ? "bg-primary text-white border-ring"
-                : "bg-card text-muted-foreground border-input hover:bg-muted"
+                ? "bg-primary text-primary-foreground border-primary"
+                : "bg-card text-foreground border-input hover:bg-muted"
             }`}
           >
             {tab.label}
-            <span
-              className={`px-1.5 rounded-full text-xs ${
-                status === tab.value ? "bg-card" : "bg-muted text-muted-foreground"
-              }`}
-            >
-              {counts[tab.value]}
-            </span>
+            <span className="font-normal tabular-nums">{counts[tab.value]}</span>
           </button>
         ))}
       </div>

@@ -115,20 +115,14 @@ export default function ExpenseCenter() {
   );
 
   const tags = (expense: ExpenseRecord) => (
-    <span className="inline-flex flex-wrap items-center gap-1">
+    <span className="inline-flex flex-wrap items-center gap-x-3 gap-y-0.5 text-sm">
       {expense.recurring !== "NONE" && (
-        <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded-full bg-muted text-foreground text-xs font-semibold">
-          <Repeat className="w-3 h-3" /> {expense.recurring === "MONTHLY" ? "Monthly" : "Yearly"}
+        <span className="inline-flex items-center gap-1 text-muted-foreground">
+          <Repeat className="w-4 h-4" /> {expense.recurring === "MONTHLY" ? "Monthly" : "Yearly"}
         </span>
       )}
-      {expense.paymentStatus === "UNPAID" && (
-        <span className="px-1.5 py-0.5 rounded-full bg-warning-soft text-warning text-xs font-semibold">Unpaid</span>
-      )}
-      {expense.itcEligible && (
-        <span className="px-1.5 py-0.5 rounded-full bg-success-soft text-success text-xs font-semibold">
-          GST credit
-        </span>
-      )}
+      {expense.paymentStatus === "UNPAID" && <span className="font-semibold text-warning">Unpaid</span>}
+      {expense.itcEligible && <span className="font-medium text-success">GST credit</span>}
     </span>
   );
 

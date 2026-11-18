@@ -46,3 +46,8 @@ Thumbs.db
 docs
 
 .agent
+# Local tooling and AI assistant files (not part of the app)
+.claude/
+scripts/
+AGENTS.md
+CLAUDE.md
