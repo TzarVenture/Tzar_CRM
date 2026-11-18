@@ -81,7 +81,7 @@ export function formatFormFieldValue(val: string): string {
     marketing_head: "Marketing Head / CMO",
     "bootstrapped_(self-funded)_company": "Bootstrapped (Self-Funded)",
     funded_startup: "Funded Startup",
-    enterprise_corporate: "Enterprise / Corporate",
+    enterprise_corporate: "Corporate",
     "no_(need_new_website)": "No (Needs New Website)",
     yes_needs_redesign: "Yes (Needs Redesign)",
     working_professional: "Working Professional",

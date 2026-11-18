@@ -311,7 +311,7 @@ export async function runMetaAutoSync(
 
   summary.durationMs = Date.now() - startTime;
   console.log(
-    `✅ [Meta Auto-Sync Complete] Synced: ${summary.totalSynced} new leads, Skipped: ${summary.totalSkipped} in ${summary.durationMs}ms`
+    `[Meta Auto-Sync Complete] Synced: ${summary.totalSynced} new leads, Skipped: ${summary.totalSkipped} in ${summary.durationMs}ms`
   );
 
   return summary;

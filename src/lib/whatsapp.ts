@@ -54,7 +54,7 @@ export async function sendWhatsAppTextMessage(recipientPhone: string, text: stri
       data: response.data,
     };
   } catch (error: any) {
-    console.error("❌ Meta WhatsApp Send Text Error:", error.response?.data || error.message);
+    console.error("Meta WhatsApp Send Text Error:", error.response?.data || error.message);
     throw error;
   }
 }
@@ -104,7 +104,7 @@ export async function sendWhatsAppTemplateMessage(
       data: response.data,
     };
   } catch (error: any) {
-    console.error("❌ Meta WhatsApp Send Template Error:", error.response?.data || error.message);
+    console.error("Meta WhatsApp Send Template Error:", error.response?.data || error.message);
     throw error;
   }
 }
@@ -153,7 +153,7 @@ export async function sendWhatsAppDocumentMessage(
       data: response.data,
     };
   } catch (error: any) {
-    console.error("❌ Meta WhatsApp Send Document Error:", error.response?.data || error.message);
+    console.error("Meta WhatsApp Send Document Error:", error.response?.data || error.message);
     throw error;
   }
 }
@@ -200,7 +200,7 @@ export async function sendWhatsAppImageMessage(
       data: response.data,
     };
   } catch (error: any) {
-    console.error("❌ Meta WhatsApp Send Image Error:", error.response?.data || error.message);
+    console.error("Meta WhatsApp Send Image Error:", error.response?.data || error.message);
     throw error;
   }
 }
@@ -256,7 +256,7 @@ export async function sendWhatsAppInteractiveButtonMessage(
       data: response.data,
     };
   } catch (error: any) {
-    console.error("❌ Meta WhatsApp Send Interactive Button Error:", error.response?.data || error.message);
+    console.error("Meta WhatsApp Send Interactive Button Error:", error.response?.data || error.message);
     throw error;
   }
 }

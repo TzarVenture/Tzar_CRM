@@ -95,7 +95,7 @@ export async function POST(req: Request) {
 
           return uploadRes.data?.id || null;
         } catch (err: any) {
-          console.error("❌ Failed to upload media buffer to Meta API:", err.response?.data || err.message);
+          console.error("Failed to upload media buffer to Meta API:", err.response?.data || err.message);
           return null;
         }
       };
@@ -209,11 +209,11 @@ export async function POST(req: Request) {
               messageStatus = "SENT";
             }
           } catch (retryErr: any) {
-            console.error("❌ Meta Cloud API Outbound Template Error:", retryErr.response?.data?.error || retryErr.message);
+            console.error("Meta Cloud API Outbound Template Error:", retryErr.response?.data?.error || retryErr.message);
             messageStatus = "FAILED";
           }
         } else {
-          console.error("❌ Meta Cloud API Outbound Text/Media Error:", firstErr.response?.data?.error || firstErr.message);
+          console.error("Meta Cloud API Outbound Text/Media Error:", firstErr.response?.data?.error || firstErr.message);
           messageStatus = "FAILED";
         }
       }

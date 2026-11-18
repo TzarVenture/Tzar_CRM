@@ -32,7 +32,7 @@ export async function POST() {
       }
     );
 
-    console.log("✅ Meta WABA Subscribed Apps Response:", res.data);
+    console.log("Meta WABA Subscribed Apps Response:", res.data);
 
     return NextResponse.json(
       {
@@ -44,7 +44,7 @@ export async function POST() {
       { status: 200 }
     );
   } catch (error: any) {
-    console.error("❌ Failed to subscribe WABA account:", error.response?.data || error.message);
+    console.error("Failed to subscribe WABA account:", error.response?.data || error.message);
     return NextResponse.json(
       {
         error: "Failed to subscribe WABA account",

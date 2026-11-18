@@ -71,7 +71,7 @@ export async function GET(req: Request) {
       headers: responseHeaders,
     });
   } catch (error: any) {
-    console.error("❌ Media Proxy Error:", error);
+    console.error("Media Proxy Error:", error);
     return NextResponse.json(
       { error: "Failed to proxy media file" },
       { status: 500 }

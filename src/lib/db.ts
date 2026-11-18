@@ -47,12 +47,12 @@ async function dbConnect(): Promise<typeof mongoose> {
     cached.promise = mongoose
       .connect(MONGODB_URI, opts)
       .then((mongooseInstance) => {
-        console.log("✅ MongoDB connected successfully");
+        console.log("MongoDB connected successfully");
         return mongooseInstance;
       })
       .catch((err) => {
         cached.promise = null;
-        console.error("❌ MongoDB connection error:", err);
+        console.error("MongoDB connection error:", err);
         throw err;
       });
   }
