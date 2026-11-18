@@ -16,7 +16,7 @@ async function loadExpense(id: string) {
 // PATCH: Edit an expense
 export async function PATCH(req: Request, { params }: RouteContext) {
   try {
-    if (!(await requireInvoiceAdmin())) {
+    if (!(await requireInvoiceAdmin("accounts.expenses"))) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 403 });
     }
     const expense = await loadExpense((await params).id);
@@ -39,7 +39,7 @@ export async function PATCH(req: Request, { params }: RouteContext) {
 // DELETE: Remove an expense
 export async function DELETE(_req: Request, { params }: RouteContext) {
   try {
-    if (!(await requireInvoiceAdmin())) {
+    if (!(await requireInvoiceAdmin("accounts.expenses"))) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 403 });
     }
     const expense = await loadExpense((await params).id);

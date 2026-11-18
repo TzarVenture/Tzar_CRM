@@ -2,7 +2,7 @@
 
 import React, { useCallback, useEffect, useState } from "react";
 import axios from "axios";
-import { Plus, Search, Pencil, Trash2, Loader2, Wallet, Repeat } from "lucide-react";
+import { Plus, MagnifyingGlass as Search, Pencil, Trash as Trash2, SpinnerGap as Loader2, Wallet, Repeat } from "@phosphor-icons/react";
 import { formatINR } from "@/lib/invoice/calc";
 import { formatInvoiceDate } from "@/lib/invoice/config";
 import { EXPENSE_BRANDS, EXPENSE_BRAND_LABELS, EXPENSE_CATEGORIES } from "@/lib/expense/config";
@@ -34,7 +34,7 @@ function monthRange(month: string): { from: string; to: string } {
 }
 
 const selectClass =
-  "px-3 py-2.5 text-sm font-medium rounded-xl border border-slate-300 bg-white outline-none cursor-pointer";
+  "px-3 py-2.5 text-sm font-medium rounded-xl border border-input bg-card outline-none cursor-pointer";
 
 export default function ExpenseCenter() {
   const [expenses, setExpenses] = useState<ExpenseRecord[]>([]);
@@ -99,7 +99,7 @@ export default function ExpenseCenter() {
         onClick={() => setForm({ source: expense })}
         title="Edit expense"
         aria-label="Edit expense"
-        className="p-2 rounded-lg text-slate-500 hover:text-slate-900 hover:bg-slate-100 cursor-pointer"
+        className="p-2 rounded-lg text-muted-foreground hover:text-foreground hover:bg-muted cursor-pointer"
       >
         <Pencil className="w-4 h-4" />
       </button>
@@ -107,7 +107,7 @@ export default function ExpenseCenter() {
         onClick={() => setToDelete(expense)}
         title="Delete expense"
         aria-label="Delete expense"
-        className="p-2 rounded-lg text-slate-500 hover:text-rose-600 hover:bg-rose-50 cursor-pointer"
+        className="p-2 rounded-lg text-muted-foreground hover:text-destructive hover:bg-destructive-soft cursor-pointer"
       >
         <Trash2 className="w-4 h-4" />
       </button>
@@ -117,15 +117,15 @@ export default function ExpenseCenter() {
   const tags = (expense: ExpenseRecord) => (
     <span className="inline-flex flex-wrap items-center gap-1">
       {expense.recurring !== "NONE" && (
-        <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded-full bg-indigo-50 text-indigo-700 text-xs font-semibold">
+        <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded-full bg-muted text-foreground text-xs font-semibold">
           <Repeat className="w-3 h-3" /> {expense.recurring === "MONTHLY" ? "Monthly" : "Yearly"}
         </span>
       )}
       {expense.paymentStatus === "UNPAID" && (
-        <span className="px-1.5 py-0.5 rounded-full bg-amber-100 text-amber-800 text-xs font-semibold">Unpaid</span>
+        <span className="px-1.5 py-0.5 rounded-full bg-warning-soft text-warning text-xs font-semibold">Unpaid</span>
       )}
       {expense.itcEligible && (
-        <span className="px-1.5 py-0.5 rounded-full bg-emerald-50 text-emerald-700 text-xs font-semibold">
+        <span className="px-1.5 py-0.5 rounded-full bg-success-soft text-success text-xs font-semibold">
           GST credit
         </span>
       )}
@@ -136,40 +136,40 @@ export default function ExpenseCenter() {
     <div className="space-y-4">
       {/* Summary */}
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
-        <div className="col-span-2 bg-white rounded-2xl border border-slate-200 p-4">
-          <p className="text-xs font-semibold tracking-wider text-slate-500 uppercase">Total spent</p>
-          <p className="mt-1 text-2xl font-bold text-slate-900">₹{formatINR(summary.total)}</p>
-          <p className="text-xs font-medium text-slate-500">
+        <div className="col-span-2 bg-card rounded-2xl border border-border p-4">
+          <p className="text-xs font-semibold tracking-wider text-muted-foreground uppercase">Total spent</p>
+          <p className="mt-1 text-2xl font-bold text-foreground">₹{formatINR(summary.total)}</p>
+          <p className="text-xs font-medium text-muted-foreground">
             {summary.count} expense{summary.count === 1 ? "" : "s"}
             {month ? ` in ${formatInvoiceDate(`${month}-01`).slice(3)}` : " in all time"} · ₹
             {formatINR(summary.taxableValue)} before GST
           </p>
         </div>
-        <div className="bg-white rounded-2xl border border-slate-200 p-4">
-          <p className="text-xs font-semibold tracking-wider text-slate-500 uppercase">GST credit to claim</p>
-          <p className="mt-1 text-2xl font-bold text-emerald-700">₹{formatINR(summary.itc)}</p>
-          <p className="text-xs font-medium text-slate-500">of ₹{formatINR(summary.gstPaid)} GST paid</p>
+        <div className="bg-card rounded-2xl border border-border p-4">
+          <p className="text-xs font-semibold tracking-wider text-muted-foreground uppercase">GST credit to claim</p>
+          <p className="mt-1 text-2xl font-bold text-success">₹{formatINR(summary.itc)}</p>
+          <p className="text-xs font-medium text-muted-foreground">of ₹{formatINR(summary.gstPaid)} GST paid</p>
         </div>
-        <div className="bg-white rounded-2xl border border-slate-200 p-4">
-          <p className="text-xs font-semibold tracking-wider text-slate-500 uppercase">Still to pay</p>
-          <p className="mt-1 text-2xl font-bold text-slate-900">₹{formatINR(summary.unpaid)}</p>
-          <p className="text-xs font-medium text-slate-500">Bills marked not paid yet</p>
+        <div className="bg-card rounded-2xl border border-border p-4">
+          <p className="text-xs font-semibold tracking-wider text-muted-foreground uppercase">Still to pay</p>
+          <p className="mt-1 text-2xl font-bold text-foreground">₹{formatINR(summary.unpaid)}</p>
+          <p className="text-xs font-medium text-muted-foreground">Bills marked not paid yet</p>
         </div>
       </div>
 
       {topCategories.length > 0 && (
-        <div className="bg-white rounded-2xl border border-slate-200 p-4 space-y-2">
-          <p className="text-xs font-semibold tracking-wider text-slate-500 uppercase">Where the money went</p>
+        <div className="bg-card rounded-2xl border border-border p-4 space-y-2">
+          <p className="text-xs font-semibold tracking-wider text-muted-foreground uppercase">Where the money went</p>
           {topCategories.map(([name, amount]) => (
             <div key={name} className="flex items-center gap-3 text-sm font-medium">
-              <span className="w-44 shrink-0 truncate text-slate-700">{name}</span>
-              <span className="flex-1 h-2 rounded-full bg-slate-100 overflow-hidden">
+              <span className="w-44 shrink-0 truncate text-foreground">{name}</span>
+              <span className="flex-1 h-2 rounded-full bg-muted overflow-hidden">
                 <span
-                  className="block h-full rounded-full bg-slate-800"
+                  className="block h-full rounded-full bg-primary-hover"
                   style={{ width: `${summary.total ? Math.max((amount / summary.total) * 100, 2) : 0}%` }}
                 />
               </span>
-              <span className="w-28 shrink-0 text-right text-slate-900">₹{formatINR(amount)}</span>
+              <span className="w-28 shrink-0 text-right text-foreground">₹{formatINR(amount)}</span>
             </div>
           ))}
         </div>
@@ -178,14 +178,14 @@ export default function ExpenseCenter() {
       {/* Toolbar */}
       <div className="flex flex-col lg:flex-row lg:items-center gap-3">
         <div className="relative flex-1 lg:max-w-xs">
-          <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-500" />
+          <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
           <input
             type="search"
             value={search}
             onChange={(e) => setSearch(e.target.value)}
             placeholder="Search vendor, bill number or note"
             aria-label="Search expenses"
-            className="w-full pl-9 pr-3 py-2.5 text-sm font-medium rounded-xl border border-slate-300 bg-white outline-none focus:border-slate-800"
+            className="w-full pl-9 pr-3 py-2.5 text-sm font-medium rounded-xl border border-input bg-card outline-none focus:border-primary"
           />
         </div>
         <div className="flex flex-wrap gap-2">
@@ -197,7 +197,7 @@ export default function ExpenseCenter() {
             className={selectClass}
           />
           {month && (
-            <button onClick={() => setMonth("")} className="px-3 py-2.5 text-sm font-semibold text-slate-600 rounded-xl hover:bg-slate-200 cursor-pointer">
+            <button onClick={() => setMonth("")} className="px-3 py-2.5 text-sm font-semibold text-muted-foreground rounded-xl hover:bg-border cursor-pointer">
               Show all time
             </button>
           )}
@@ -220,28 +220,28 @@ export default function ExpenseCenter() {
         </div>
         <button
           onClick={() => setForm({ source: null })}
-          className="lg:ml-auto flex items-center justify-center gap-2 px-5 py-2.5 text-sm font-semibold text-white rounded-xl bg-slate-900 hover:bg-slate-800 cursor-pointer"
+          className="lg:ml-auto flex items-center justify-center gap-2 px-5 py-2.5 text-sm font-semibold text-white rounded-xl bg-primary hover:bg-primary-hover cursor-pointer"
         >
           <Plus className="w-4 h-4" /> Add Expense
         </button>
       </div>
 
       {error && (
-        <div role="alert" className="p-3.5 rounded-xl bg-rose-50 border border-rose-200 text-sm font-semibold text-rose-700">
+        <div role="alert" className="p-3.5 rounded-xl bg-destructive-soft border border-border text-sm font-semibold text-destructive">
           {error}
         </div>
       )}
 
       {/* List */}
       {isLoading ? (
-        <div className="flex items-center justify-center gap-2 p-16 bg-white rounded-2xl border border-slate-200 text-sm font-medium text-slate-500">
+        <div className="flex items-center justify-center gap-2 p-16 bg-card rounded-2xl border border-border text-sm font-medium text-muted-foreground">
           <Loader2 className="w-4 h-4 animate-spin" /> Loading expenses...
         </div>
       ) : expenses.length === 0 ? (
-        <div className="p-16 text-center space-y-2 bg-white rounded-2xl border border-slate-200">
-          <Wallet className="w-10 h-10 text-slate-300 mx-auto" />
-          <p className="text-base font-semibold text-slate-900">No expenses found</p>
-          <p className="text-sm font-medium text-slate-500">
+        <div className="p-16 text-center space-y-2 bg-card rounded-2xl border border-border">
+          <Wallet className="w-10 h-10 text-muted-foreground mx-auto" />
+          <p className="text-base font-semibold text-foreground">No expenses found</p>
+          <p className="text-sm font-medium text-muted-foreground">
             {search || brand !== "all" || category !== "all"
               ? "Try clearing the search or filters."
               : "Nothing recorded for this period. Add a bill or subscription with Add Expense."}
@@ -251,20 +251,20 @@ export default function ExpenseCenter() {
         <>
           <ul className="md:hidden space-y-2.5">
             {expenses.map((expense) => (
-              <li key={expense._id} className="bg-white rounded-2xl border border-slate-200 p-4 space-y-2.5">
+              <li key={expense._id} className="bg-card rounded-2xl border border-border p-4 space-y-2.5">
                 <div className="flex items-start justify-between gap-3">
                   <div className="min-w-0">
-                    <p className="text-base font-semibold text-slate-900 truncate">{expense.vendorName}</p>
-                    <p className="text-xs font-medium text-slate-500">
+                    <p className="text-base font-semibold text-foreground truncate">{expense.vendorName}</p>
+                    <p className="text-xs font-medium text-muted-foreground">
                       {formatInvoiceDate(expense.expenseDate)} · {expense.category}
                     </p>
                     {expense.description && (
-                      <p className="text-xs font-medium text-slate-500 truncate">{expense.description}</p>
+                      <p className="text-xs font-medium text-muted-foreground truncate">{expense.description}</p>
                     )}
                   </div>
-                  <p className="shrink-0 text-base font-bold text-slate-900">₹{formatINR(expense.total)}</p>
+                  <p className="shrink-0 text-base font-bold text-foreground">₹{formatINR(expense.total)}</p>
                 </div>
-                <div className="flex items-center justify-between gap-2 pt-2.5 border-t border-slate-100">
+                <div className="flex items-center justify-between gap-2 pt-2.5 border-t border-border">
                   {tags(expense)}
                   {renderActions(expense)}
                 </div>
@@ -272,10 +272,10 @@ export default function ExpenseCenter() {
             ))}
           </ul>
 
-          <div className="hidden md:block bg-white rounded-2xl border border-slate-200 overflow-x-auto">
+          <div className="hidden md:block bg-card rounded-2xl border border-border overflow-x-auto">
             <table className="w-full text-sm">
               <thead>
-                <tr className="text-left text-xs font-semibold tracking-wider text-slate-500 uppercase border-b border-slate-200 bg-slate-50/60">
+                <tr className="text-left text-xs font-semibold tracking-wider text-muted-foreground uppercase border-b border-border bg-muted">
                   <th className="px-4 py-3">Date</th>
                   <th className="px-4 py-3">Vendor</th>
                   <th className="px-4 py-3">Category</th>
@@ -288,28 +288,28 @@ export default function ExpenseCenter() {
               </thead>
               <tbody>
                 {expenses.map((expense) => (
-                  <tr key={expense._id} className="border-b border-slate-100 last:border-0 hover:bg-slate-50/70">
-                    <td className="px-4 py-3 font-medium text-slate-600 whitespace-nowrap">
+                  <tr key={expense._id} className="border-b border-border last:border-0 hover:bg-muted">
+                    <td className="px-4 py-3 font-medium text-muted-foreground whitespace-nowrap">
                       {formatInvoiceDate(expense.expenseDate)}
                     </td>
                     <td className="px-4 py-3 max-w-[260px]">
-                      <p className="font-semibold text-slate-900 truncate">{expense.vendorName}</p>
-                      <p className="font-medium text-slate-500 truncate">
+                      <p className="font-semibold text-foreground truncate">{expense.vendorName}</p>
+                      <p className="font-medium text-muted-foreground truncate">
                         {[expense.billNumber, expense.description].filter(Boolean).join(" · ")}
                       </p>
                       {tags(expense)}
                     </td>
-                    <td className="px-4 py-3 font-medium text-slate-600">{expense.category}</td>
-                    <td className="px-4 py-3 font-medium text-slate-600 whitespace-nowrap">
+                    <td className="px-4 py-3 font-medium text-muted-foreground">{expense.category}</td>
+                    <td className="px-4 py-3 font-medium text-muted-foreground whitespace-nowrap">
                       {EXPENSE_BRAND_LABELS[expense.brand]?.replace(" (whole business)", "")}
                     </td>
-                    <td className="px-4 py-3 font-medium text-slate-700 text-right whitespace-nowrap">
+                    <td className="px-4 py-3 font-medium text-foreground text-right whitespace-nowrap">
                       ₹{formatINR(expense.taxableValue)}
                     </td>
-                    <td className="px-4 py-3 font-medium text-slate-700 text-right whitespace-nowrap">
+                    <td className="px-4 py-3 font-medium text-foreground text-right whitespace-nowrap">
                       {expense.taxAmount ? `₹${formatINR(expense.taxAmount)}` : "-"}
                     </td>
-                    <td className="px-4 py-3 font-semibold text-slate-900 text-right whitespace-nowrap">
+                    <td className="px-4 py-3 font-semibold text-foreground text-right whitespace-nowrap">
                       ₹{formatINR(expense.total)}
                     </td>
                     <td className="px-4 py-3">{renderActions(expense)}</td>

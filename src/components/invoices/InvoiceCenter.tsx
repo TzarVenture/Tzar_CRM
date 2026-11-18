@@ -2,20 +2,7 @@
 
 import React, { useCallback, useEffect, useMemo, useState } from "react";
 import axios from "axios";
-import {
-  Plus,
-  Search,
-  Settings,
-  FileDown,
-  FileText,
-  Pencil,
-  Copy,
-  Trash2,
-  Ban,
-  Loader2,
-  CheckCircle2,
-  X,
-} from "lucide-react";
+import { Plus, MagnifyingGlass as Search, Gear as Settings, FileArrowDown as FileDown, FileText, Pencil, Copy, Trash as Trash2, Prohibit as Ban, SpinnerGap as Loader2, CheckCircle as CheckCircle2, X } from "@phosphor-icons/react";
 import { formatINR } from "@/lib/invoice/calc";
 import { BRAND_CONFIG, INVOICE_BRANDS, formatInvoiceDate } from "@/lib/invoice/config";
 import { InvoiceEditor } from "./InvoiceEditor";
@@ -26,9 +13,9 @@ import { InvoiceRecord, InvoiceSettingsForm, SavedCustomer, CatalogItem } from "
 type Status = InvoiceRecord["status"];
 
 const STATUS_STYLES: Record<Status, string> = {
-  DRAFT: "bg-slate-100 text-slate-700",
-  ISSUED: "bg-emerald-100 text-emerald-800",
-  CANCELLED: "bg-rose-100 text-rose-700",
+  DRAFT: "bg-muted text-foreground",
+  ISSUED: "bg-success-soft text-success",
+  CANCELLED: "bg-destructive-soft text-destructive",
 };
 
 const STATUS_LABELS: Record<Status, string> = {
@@ -44,16 +31,16 @@ const STATUS_TABS: { value: "all" | Status; label: string }[] = [
   { value: "CANCELLED", label: "Cancelled" },
 ];
 
-function downloadUrl(id: string, format: "pdf" | "docx") {
-  return `/api/v1/invoices/${id}/download?format=${format}`;
+function downloadUrl(id: string) {
+  return `/api/v1/invoices/${id}/download`;
 }
 
 const iconButton =
-  "p-2 rounded-lg text-slate-500 hover:text-slate-900 hover:bg-slate-100 cursor-pointer";
+  "p-2 rounded-lg text-muted-foreground hover:text-foreground hover:bg-muted cursor-pointer";
 const dangerIconButton =
-  "p-2 rounded-lg text-slate-500 hover:text-rose-600 hover:bg-rose-50 cursor-pointer";
+  "p-2 rounded-lg text-muted-foreground hover:text-destructive hover:bg-destructive-soft cursor-pointer";
 const downloadButton =
-  "flex items-center gap-1 px-2.5 py-1.5 text-sm font-semibold text-slate-700 rounded-lg border border-slate-300 hover:bg-slate-100";
+  "flex items-center gap-1 px-2.5 py-1.5 text-sm font-semibold text-foreground rounded-lg border border-input hover:bg-muted";
 
 export default function InvoiceCenter() {
   const [invoices, setInvoices] = useState<InvoiceRecord[]>([]);
@@ -176,12 +163,9 @@ export default function InvoiceCenter() {
 
   const renderActions = (invoice: InvoiceRecord) => (
     <div className="flex flex-wrap items-center justify-end gap-1">
-      {busyId === invoice._id && <Loader2 className="w-4 h-4 animate-spin text-slate-500" />}
-      <a href={downloadUrl(invoice._id, "pdf")} title="Download PDF" className={downloadButton}>
+      {busyId === invoice._id && <Loader2 className="w-4 h-4 animate-spin text-muted-foreground" />}
+      <a href={downloadUrl(invoice._id)} title="Download PDF" className={downloadButton}>
         <FileDown className="w-3.5 h-3.5" /> PDF
-      </a>
-      <a href={downloadUrl(invoice._id, "docx")} title="Download Word document" className={downloadButton}>
-        <FileDown className="w-3.5 h-3.5" /> DOCX
       </a>
       {invoice.status === "DRAFT" && (
         <button onClick={() => openEditor(invoice, "edit")} title="Edit draft" aria-label="Edit draft" className={iconButton}>
@@ -227,7 +211,7 @@ export default function InvoiceCenter() {
         {STATUS_LABELS[invoice.status]}
       </span>
       {invoice.documentType === "PROFORMA" && (
-        <span className="px-2 py-1 rounded-full text-xs font-semibold whitespace-nowrap bg-indigo-50 text-indigo-700">
+        <span className="px-2 py-1 rounded-full text-xs font-semibold whitespace-nowrap bg-muted text-foreground">
           Proforma
         </span>
       )}
@@ -238,44 +222,44 @@ export default function InvoiceCenter() {
     <div className="space-y-4">
       {/* Summary */}
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
-        <div className="col-span-2 bg-white rounded-2xl border border-slate-200 p-4">
-          <p className="text-xs font-semibold tracking-wider text-slate-500 uppercase">Total invoiced</p>
-          <p className="mt-1 text-2xl font-bold text-slate-900">₹{formatINR(stats.issuedValue)}</p>
-          <p className="text-xs font-medium text-slate-500">
+        <div className="col-span-2 bg-card rounded-2xl border border-border p-4">
+          <p className="text-xs font-semibold tracking-wider text-muted-foreground uppercase">Total invoiced</p>
+          <p className="mt-1 text-2xl font-bold text-foreground">₹{formatINR(stats.issuedValue)}</p>
+          <p className="text-xs font-medium text-muted-foreground">
             Across {stats.issuedCount} issued tax invoice{stats.issuedCount === 1 ? "" : "s"}
             {brand !== "all" ? ` for ${BRAND_CONFIG[brand as keyof typeof BRAND_CONFIG]?.name}` : ""}
           </p>
         </div>
-        <div className="bg-white rounded-2xl border border-slate-200 p-4">
-          <p className="text-xs font-semibold tracking-wider text-slate-500 uppercase">Drafts</p>
-          <p className="mt-1 text-2xl font-bold text-slate-900">{stats.draftCount}</p>
-          <p className="text-xs font-medium text-slate-500">Waiting to be issued</p>
+        <div className="bg-card rounded-2xl border border-border p-4">
+          <p className="text-xs font-semibold tracking-wider text-muted-foreground uppercase">Drafts</p>
+          <p className="mt-1 text-2xl font-bold text-foreground">{stats.draftCount}</p>
+          <p className="text-xs font-medium text-muted-foreground">Waiting to be issued</p>
         </div>
-        <div className="bg-white rounded-2xl border border-slate-200 p-4">
-          <p className="text-xs font-semibold tracking-wider text-slate-500 uppercase">Cancelled</p>
-          <p className="mt-1 text-2xl font-bold text-slate-900">{stats.cancelledCount}</p>
-          <p className="text-xs font-medium text-slate-500">Numbers stay used</p>
+        <div className="bg-card rounded-2xl border border-border p-4">
+          <p className="text-xs font-semibold tracking-wider text-muted-foreground uppercase">Cancelled</p>
+          <p className="mt-1 text-2xl font-bold text-foreground">{stats.cancelledCount}</p>
+          <p className="text-xs font-medium text-muted-foreground">Numbers stay used</p>
         </div>
       </div>
 
       {/* Toolbar */}
       <div className="flex flex-col lg:flex-row lg:items-center gap-3">
         <div className="relative flex-1 lg:max-w-sm">
-          <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-500" />
+          <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
           <input
             type="search"
             value={search}
             onChange={(e) => setSearch(e.target.value)}
             placeholder="Search invoice number, customer or phone"
             aria-label="Search invoices"
-            className="w-full pl-9 pr-3 py-2.5 text-sm font-medium rounded-xl border border-slate-300 bg-white outline-none focus:border-slate-800"
+            className="w-full pl-9 pr-3 py-2.5 text-sm font-medium rounded-xl border border-input bg-card outline-none focus:border-primary"
           />
         </div>
         <select
           value={brand}
           onChange={(e) => setBrand(e.target.value)}
           aria-label="Filter by brand"
-          className="px-3 py-2.5 text-sm font-medium rounded-xl border border-slate-300 bg-white outline-none cursor-pointer"
+          className="px-3 py-2.5 text-sm font-medium rounded-xl border border-input bg-card outline-none cursor-pointer"
         >
           <option value="all">All brands</option>
           {INVOICE_BRANDS.map((slug) => (
@@ -288,14 +272,14 @@ export default function InvoiceCenter() {
           <button
             onClick={() => setShowSettings(true)}
             disabled={!settings}
-            className="flex items-center justify-center gap-2 px-4 py-2.5 text-sm font-semibold text-slate-700 rounded-xl border border-slate-300 bg-white hover:bg-slate-100 disabled:opacity-50 cursor-pointer"
+            className="flex items-center justify-center gap-2 px-4 py-2.5 text-sm font-semibold text-foreground rounded-xl border border-input bg-card hover:bg-muted disabled:opacity-50 cursor-pointer"
           >
             <Settings className="w-4 h-4" /> Settings
           </button>
           <button
             onClick={() => setEditor({ mode: "new", source: null })}
             disabled={!settings}
-            className="flex-1 lg:flex-none flex items-center justify-center gap-2 px-5 py-2.5 text-sm font-semibold text-white rounded-xl bg-slate-900 hover:bg-slate-800 disabled:opacity-50 cursor-pointer"
+            className="flex-1 lg:flex-none flex items-center justify-center gap-2 px-5 py-2.5 text-sm font-semibold text-white rounded-xl bg-primary hover:bg-primary-hover disabled:opacity-50 cursor-pointer"
           >
             <Plus className="w-4 h-4" /> New Invoice
           </button>
@@ -311,14 +295,14 @@ export default function InvoiceCenter() {
             aria-pressed={status === tab.value}
             className={`flex items-center gap-1.5 px-3.5 py-2 text-sm font-semibold rounded-full border whitespace-nowrap transition-colors cursor-pointer ${
               status === tab.value
-                ? "bg-slate-900 text-white border-slate-900"
-                : "bg-white text-slate-600 border-slate-300 hover:bg-slate-100"
+                ? "bg-primary text-white border-ring"
+                : "bg-card text-muted-foreground border-input hover:bg-muted"
             }`}
           >
             {tab.label}
             <span
               className={`px-1.5 rounded-full text-xs ${
-                status === tab.value ? "bg-white/20" : "bg-slate-100 text-slate-500"
+                status === tab.value ? "bg-card" : "bg-muted text-muted-foreground"
               }`}
             >
               {counts[tab.value]}
@@ -330,23 +314,20 @@ export default function InvoiceCenter() {
       {justIssued && (
         <div
           role="status"
-          className="flex flex-wrap items-center gap-3 p-3.5 rounded-xl bg-emerald-50 border border-emerald-200 text-sm font-medium text-emerald-900"
+          className="flex flex-wrap items-center gap-3 p-3.5 rounded-xl bg-success-soft border border-border text-sm font-medium text-success"
         >
           <CheckCircle2 className="w-4 h-4 shrink-0" />
           <span>
             Invoice <span className="font-semibold">{justIssued.invoiceNumber}</span> issued for{" "}
             {justIssued.customer.name}.
           </span>
-          <a href={downloadUrl(justIssued._id, "pdf")} className="font-semibold underline">
+          <a href={downloadUrl(justIssued._id)} className="font-semibold underline">
             Download PDF
-          </a>
-          <a href={downloadUrl(justIssued._id, "docx")} className="font-semibold underline">
-            Download DOCX
           </a>
           <button
             onClick={() => setJustIssued(null)}
             aria-label="Dismiss"
-            className="ml-auto p-1 rounded-lg hover:bg-emerald-100 cursor-pointer"
+            className="ml-auto p-1 rounded-lg hover:bg-success-soft cursor-pointer"
           >
             <X className="w-4 h-4" />
           </button>
@@ -354,21 +335,21 @@ export default function InvoiceCenter() {
       )}
 
       {error && (
-        <div role="alert" className="p-3.5 rounded-xl bg-rose-50 border border-rose-200 text-sm font-semibold text-rose-700">
+        <div role="alert" className="p-3.5 rounded-xl bg-destructive-soft border border-border text-sm font-semibold text-destructive">
           {error}
         </div>
       )}
 
       {/* List */}
       {isLoading ? (
-        <div className="flex items-center justify-center gap-2 p-16 bg-white rounded-2xl border border-slate-200 text-sm font-medium text-slate-500">
+        <div className="flex items-center justify-center gap-2 p-16 bg-card rounded-2xl border border-border text-sm font-medium text-muted-foreground">
           <Loader2 className="w-4 h-4 animate-spin" /> Loading invoices...
         </div>
       ) : visible.length === 0 ? (
-        <div className="p-16 text-center space-y-2 bg-white rounded-2xl border border-slate-200">
-          <FileText className="w-10 h-10 text-slate-300 mx-auto" />
-          <p className="text-base font-semibold text-slate-900">No invoices found</p>
-          <p className="text-sm font-medium text-slate-500">
+        <div className="p-16 text-center space-y-2 bg-card rounded-2xl border border-border">
+          <FileText className="w-10 h-10 text-muted-foreground mx-auto" />
+          <p className="text-base font-semibold text-foreground">No invoices found</p>
+          <p className="text-sm font-medium text-muted-foreground">
             {search || brand !== "all" || status !== "all"
               ? "Try clearing the search or filters."
               : "Create the first invoice with the New Invoice button."}
@@ -379,30 +360,30 @@ export default function InvoiceCenter() {
           {/* Phones and small tablets: one card per invoice */}
           <ul className="md:hidden space-y-2.5">
             {visible.map((invoice) => (
-              <li key={invoice._id} className="bg-white rounded-2xl border border-slate-200 p-4 space-y-3">
+              <li key={invoice._id} className="bg-card rounded-2xl border border-border p-4 space-y-3">
                 <div className="flex items-start justify-between gap-3">
                   <div className="min-w-0">
-                    <p className="text-base font-semibold text-slate-900 truncate">{invoice.customer?.name}</p>
-                    <p className="text-xs font-medium text-slate-500">
+                    <p className="text-base font-semibold text-foreground truncate">{invoice.customer?.name}</p>
+                    <p className="text-xs font-medium text-muted-foreground">
                       {invoice.invoiceNumber || "Not numbered"} · {formatInvoiceDate(invoice.invoiceDate)}
                     </p>
-                    <p className="text-xs font-medium text-slate-500">{BRAND_CONFIG[invoice.brand]?.name}</p>
+                    <p className="text-xs font-medium text-muted-foreground">{BRAND_CONFIG[invoice.brand]?.name}</p>
                   </div>
                   <div className="text-right shrink-0 space-y-1.5">
-                    <p className="text-base font-bold text-slate-900">₹{formatINR(invoice.totals?.grandTotal || 0)}</p>
+                    <p className="text-base font-bold text-foreground">₹{formatINR(invoice.totals?.grandTotal || 0)}</p>
                     {statusBadge(invoice)}
                   </div>
                 </div>
-                <div className="pt-3 border-t border-slate-100">{renderActions(invoice)}</div>
+                <div className="pt-3 border-t border-border">{renderActions(invoice)}</div>
               </li>
             ))}
           </ul>
 
           {/* Wider screens: table */}
-          <div className="hidden md:block bg-white rounded-2xl border border-slate-200 overflow-x-auto">
+          <div className="hidden md:block bg-card rounded-2xl border border-border overflow-x-auto">
             <table className="w-full text-sm">
               <thead>
-                <tr className="text-left text-xs font-semibold tracking-wider text-slate-500 uppercase border-b border-slate-200 bg-slate-50/60">
+                <tr className="text-left text-xs font-semibold tracking-wider text-muted-foreground uppercase border-b border-border bg-muted">
                   <th className="px-4 py-3">Invoice No.</th>
                   <th className="px-4 py-3">Date</th>
                   <th className="px-4 py-3">Customer</th>
@@ -414,20 +395,20 @@ export default function InvoiceCenter() {
               </thead>
               <tbody>
                 {visible.map((invoice) => (
-                  <tr key={invoice._id} className="border-b border-slate-100 last:border-0 hover:bg-slate-50/70">
-                    <td className="px-4 py-3 font-semibold text-slate-900 whitespace-nowrap">
-                      {invoice.invoiceNumber || <span className="text-slate-500">Not numbered</span>}
+                  <tr key={invoice._id} className="border-b border-border last:border-0 hover:bg-muted">
+                    <td className="px-4 py-3 font-semibold text-foreground whitespace-nowrap">
+                      {invoice.invoiceNumber || <span className="text-muted-foreground">Not numbered</span>}
                     </td>
-                    <td className="px-4 py-3 font-medium text-slate-600 whitespace-nowrap">
+                    <td className="px-4 py-3 font-medium text-muted-foreground whitespace-nowrap">
                       {formatInvoiceDate(invoice.invoiceDate)}
                     </td>
-                    <td className="px-4 py-3 font-medium text-slate-900 max-w-[240px] truncate">
+                    <td className="px-4 py-3 font-medium text-foreground max-w-[240px] truncate">
                       {invoice.customer?.name}
                     </td>
-                    <td className="px-4 py-3 font-medium text-slate-600 whitespace-nowrap">
+                    <td className="px-4 py-3 font-medium text-muted-foreground whitespace-nowrap">
                       {BRAND_CONFIG[invoice.brand]?.name}
                     </td>
-                    <td className="px-4 py-3 font-semibold text-slate-900 text-right whitespace-nowrap">
+                    <td className="px-4 py-3 font-semibold text-foreground text-right whitespace-nowrap">
                       ₹{formatINR(invoice.totals?.grandTotal || 0)}
                     </td>
                     <td className="px-4 py-3">{statusBadge(invoice)}</td>

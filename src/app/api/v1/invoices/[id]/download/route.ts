@@ -4,13 +4,12 @@ import dbConnect from "@/lib/db";
 import Invoice from "@/models/Invoice";
 import { requireInvoiceAdmin, toRenderableInvoice } from "@/lib/invoice/service";
 import { renderInvoicePdf } from "@/lib/invoice/pdf";
-import { renderInvoiceDocx } from "@/lib/invoice/docx";
 
 // The renderers read font and logo files from disk, which needs the Node.js runtime
 export const runtime = "nodejs";
 
-// GET /api/v1/invoices/:id/download?format=pdf|docx
-export async function GET(req: Request, { params }: { params: Promise<{ id: string }> }) {
+// GET /api/v1/invoices/:id/download
+export async function GET(_req: Request, { params }: { params: Promise<{ id: string }> }) {
   try {
     if (!(await requireInvoiceAdmin())) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 403 });
@@ -27,9 +26,8 @@ export async function GET(req: Request, { params }: { params: Promise<{ id: stri
       return NextResponse.json({ error: "Invoice not found" }, { status: 404 });
     }
 
-    const format = new URL(req.url).searchParams.get("format") === "docx" ? "docx" : "pdf";
     const data = await toRenderableInvoice(invoice);
-    const buffer = format === "docx" ? await renderInvoiceDocx(data) : await renderInvoicePdf(data);
+    const buffer = await renderInvoicePdf(data);
 
     // Invoice numbers contain "/", which is not allowed in file names
     const baseName = (invoice.invoiceNumber || `Draft-${id.slice(-6)}`).replace(/\//g, "-");
@@ -37,11 +35,8 @@ export async function GET(req: Request, { params }: { params: Promise<{ id: stri
     return new Response(new Uint8Array(buffer), {
       status: 200,
       headers: {
-        "Content-Type":
-          format === "docx"
-            ? "application/vnd.openxmlformats-officedocument.wordprocessingml.document"
-            : "application/pdf",
-        "Content-Disposition": `attachment; filename="Invoice-${baseName}.${format}"`,
+        "Content-Type": "application/pdf",
+        "Content-Disposition": `attachment; filename="Invoice-${baseName}.pdf"`,
         "Cache-Control": "private, no-store",
       },
     });

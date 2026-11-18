@@ -14,7 +14,7 @@ function escapeRegex(value: string): string {
 // GET: Expenses in a date range, with totals and the list of known vendors
 export async function GET(req: Request) {
   try {
-    if (!(await requireInvoiceAdmin())) {
+    if (!(await requireInvoiceAdmin("accounts.expenses"))) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 403 });
     }
 
@@ -82,7 +82,7 @@ export async function GET(req: Request) {
 // POST: Record an expense
 export async function POST(req: Request) {
   try {
-    const session = await requireInvoiceAdmin();
+    const session = await requireInvoiceAdmin("accounts.expenses");
     if (!session) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 403 });
     }

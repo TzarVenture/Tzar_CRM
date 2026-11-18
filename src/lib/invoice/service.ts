@@ -1,5 +1,6 @@
 import { z } from "zod";
 import { auth } from "@/lib/auth";
+import { can, type PermissionKey } from "@/lib/permissions";
 import type { IInvoice, InvoiceData } from "@/models/Invoice";
 import InvoiceCounter from "@/models/InvoiceCounter";
 import InvoiceSettings, { InvoiceSettingsData } from "@/models/InvoiceSettings";
@@ -20,11 +21,10 @@ const ISO_DATE = /^\d{4}-\d{2}-\d{2}$/;
 
 const shortText = z.string().trim().max(200).optional().default("");
 
-/** Invoices are created by the owner only. */
-export async function requireInvoiceAdmin() {
+/** Returns the session when the signed-in user holds the given accounts permission, otherwise null. */
+export async function requireInvoiceAdmin(permission: PermissionKey = "accounts.invoices") {
   const session = await auth();
-  const role = session?.user?.role;
-  if (!session || (role !== "SUPER_ADMIN" && role !== "ADMIN")) return null;
+  if (!session || !can({ role: session.user.role, permissions: session.user.permissions }, permission)) return null;
   return session;
 }
 

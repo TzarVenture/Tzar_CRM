@@ -3,9 +3,10 @@
 import React, { useState } from "react";
 import { createPortal } from "react-dom";
 import axios from "axios";
-import { X, Landmark, Loader2, Save } from "lucide-react";
+import { X, Bank as Landmark, SpinnerGap as Loader2, FloppyDisk as Save } from "@phosphor-icons/react";
 import { SELLER } from "@/lib/invoice/config";
 import { InvoiceSettingsForm, inputClass, labelClass } from "./types";
+import { useDialogBehavior } from "@/hooks/use-dialog";
 
 interface InvoiceSettingsModalProps {
   settings: InvoiceSettingsForm;
@@ -14,6 +15,7 @@ interface InvoiceSettingsModalProps {
 }
 
 export function InvoiceSettingsModal({ settings, onClose, onSaved }: InvoiceSettingsModalProps) {
+  const dialogRef = useDialogBehavior(true, onClose);
   const [form, setForm] = useState<InvoiceSettingsForm>(settings);
   const [isSaving, setIsSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -39,16 +41,16 @@ export function InvoiceSettingsModal({ settings, onClose, onSaved }: InvoiceSett
 
   // Portalled to <body>: the animated page wrapper has a transform, which would trap position:fixed inside it
   return createPortal(
-    <div className="fixed inset-0 z-[60] flex items-center justify-center p-4 bg-slate-950/50 animate-fade-in">
-      <div className="relative w-full max-w-2xl max-h-[92vh] overflow-y-auto bg-white rounded-3xl border border-slate-300 shadow-2xl">
-        <div className="flex items-center justify-between px-6 py-4 border-b border-slate-200 bg-slate-50/60">
+    <div className="fixed inset-0 z-[60] flex items-center justify-center p-4 bg-foreground/50 animate-fade-in">
+      <div ref={dialogRef} role="dialog" aria-modal="true" aria-label="Invoice settings" tabIndex={-1} className="relative w-full max-w-2xl max-h-[92vh] overflow-y-auto bg-card rounded-3xl border border-input shadow-2xl">
+        <div className="flex items-center justify-between px-6 py-4 border-b border-border bg-muted">
           <div className="flex items-center gap-3">
-            <div className="p-2.5 rounded-2xl bg-emerald-100 text-emerald-800">
+            <div className="p-2.5 rounded-2xl bg-success-soft text-success">
               <Landmark className="w-5 h-5" />
             </div>
             <div>
-              <h2 className="text-lg font-semibold text-slate-900">Invoice Settings</h2>
-              <p className="text-sm font-medium text-slate-500">
+              <h2 className="text-lg font-semibold text-foreground">Invoice Settings</h2>
+              <p className="text-sm font-medium text-muted-foreground">
                 Printed on every new invoice. Issued invoices keep the details they were issued with.
               </p>
             </div>
@@ -56,7 +58,7 @@ export function InvoiceSettingsModal({ settings, onClose, onSaved }: InvoiceSett
           <button
             onClick={onClose}
             aria-label="Close"
-            className="p-2 rounded-xl text-slate-500 hover:bg-slate-200 hover:text-slate-800 transition-colors cursor-pointer"
+            className="p-2 rounded-xl text-muted-foreground hover:bg-border hover:text-foreground transition-colors cursor-pointer"
           >
             <X className="w-5 h-5" />
           </button>
@@ -64,17 +66,17 @@ export function InvoiceSettingsModal({ settings, onClose, onSaved }: InvoiceSett
 
         <form onSubmit={handleSubmit} className="p-6 space-y-5">
           {error && (
-            <div className="p-3 rounded-xl bg-rose-50 border border-rose-200 text-sm font-semibold text-rose-700">
+            <div className="p-3 rounded-xl bg-destructive-soft border border-border text-sm font-semibold text-destructive">
               {error}
             </div>
           )}
 
-          <div className="p-3.5 rounded-xl bg-slate-50 border border-slate-200 text-sm font-medium text-slate-600">
-            <span className="font-semibold text-slate-900">{SELLER.tradeName}</span> (Proprietor: {SELLER.legalName})
+          <div className="p-3.5 rounded-xl bg-muted border border-border text-sm font-medium text-muted-foreground">
+            <span className="font-semibold text-foreground">{SELLER.tradeName}</span> (Proprietor: {SELLER.legalName})
             <br />
             GSTIN {SELLER.gstin} · {SELLER.addressLines.join(", ")}
             <br />
-            <span className="text-slate-500">These come from the GST certificate and are fixed.</span>
+            <span className="text-muted-foreground">These come from the GST certificate and are fixed.</span>
           </div>
 
           <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
@@ -108,7 +110,7 @@ export function InvoiceSettingsModal({ settings, onClose, onSaved }: InvoiceSett
           </div>
 
           <div>
-            <p className="text-xs font-semibold tracking-wider text-slate-500 uppercase mb-2">
+            <p className="text-xs font-semibold tracking-wider text-muted-foreground uppercase mb-2">
               Bank Details
             </p>
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
@@ -163,18 +165,18 @@ export function InvoiceSettingsModal({ settings, onClose, onSaved }: InvoiceSett
             />
           </div>
 
-          <div className="flex items-center justify-end gap-3 pt-3 border-t border-slate-200">
+          <div className="flex items-center justify-end gap-3 pt-3 border-t border-border">
             <button
               type="button"
               onClick={onClose}
-              className="px-5 py-2.5 text-sm font-semibold text-slate-600 hover:bg-slate-200 rounded-xl transition-colors cursor-pointer"
+              className="px-5 py-2.5 text-sm font-semibold text-muted-foreground hover:bg-border rounded-xl transition-colors cursor-pointer"
             >
               Cancel
             </button>
             <button
               type="submit"
               disabled={isSaving}
-              className="flex items-center gap-2 px-6 py-2.5 text-sm font-semibold text-white rounded-xl bg-slate-900 hover:bg-slate-800 disabled:opacity-60 cursor-pointer"
+              className="flex items-center gap-2 px-6 py-2.5 text-sm font-semibold text-white rounded-xl bg-primary hover:bg-primary-hover disabled:opacity-60 cursor-pointer"
             >
               {isSaving ? <Loader2 className="w-4 h-4 animate-spin" /> : <Save className="w-4 h-4" />}
               Save Settings

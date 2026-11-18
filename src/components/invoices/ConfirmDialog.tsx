@@ -51,13 +51,13 @@ export function ConfirmDialog({
       onClose={handleClose}
       // Click-outside dismissal where supported; Esc works everywhere
       {...{ closedby: "any" }}
-      className="m-auto w-[min(92vw,26rem)] rounded-2xl border border-slate-300 bg-white p-0 shadow-2xl backdrop:bg-slate-950/50"
+      className="m-auto w-[min(92vw,26rem)] rounded-2xl border border-input bg-card p-0 shadow-2xl backdrop:bg-foreground/50"
     >
       <form method="dialog" className="p-6 space-y-4">
-        <h2 id="invoice-confirm-title" className="text-base font-semibold text-slate-900">
+        <h2 id="invoice-confirm-title" className="text-base font-semibold text-foreground">
           {title}
         </h2>
-        <p className="text-sm font-medium text-slate-600 leading-relaxed">{message}</p>
+        <p className="text-sm font-medium text-muted-foreground leading-relaxed">{message}</p>
 
         {reasonLabel && (
           <div>
@@ -79,13 +79,13 @@ export function ConfirmDialog({
           <button
             value="cancel"
             autoFocus
-            className="px-4 py-2.5 text-sm font-semibold text-slate-700 rounded-xl border border-slate-300 bg-white hover:bg-slate-100 cursor-pointer"
+            className="px-4 py-2.5 text-sm font-semibold text-foreground rounded-xl border border-input bg-card hover:bg-muted cursor-pointer"
           >
             {cancelLabel}
           </button>
           <button
             value="confirm"
-            className="px-4 py-2.5 text-sm font-semibold text-white rounded-xl bg-rose-600 hover:bg-rose-700 cursor-pointer"
+            className="px-4 py-2.5 text-sm font-semibold text-white rounded-xl bg-destructive hover:bg-destructive cursor-pointer"
           >
             {confirmLabel}
           </button>

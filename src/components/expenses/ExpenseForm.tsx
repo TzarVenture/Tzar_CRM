@@ -2,7 +2,7 @@
 
 import React, { useEffect, useMemo, useRef, useState } from "react";
 import axios from "axios";
-import { Loader2, Save, X } from "lucide-react";
+import { SpinnerGap as Loader2, FloppyDisk as Save, X } from "@phosphor-icons/react";
 import { formatINR } from "@/lib/invoice/calc";
 import { SELLER, INDIAN_STATES, GST_RATES, toIsoDate } from "@/lib/invoice/config";
 import { computeExpense } from "@/lib/expense/calc";
@@ -53,8 +53,8 @@ interface ExpenseFormProps {
   onSaved: () => void;
 }
 
-const invalidClass = "peer user-invalid:border-rose-500 user-invalid:bg-rose-50";
-const fieldErrorClass = "hidden peer-user-invalid:block mt-1 text-xs font-medium text-rose-600";
+const invalidClass = "peer user-invalid:border-destructive user-invalid:bg-destructive-soft";
+const fieldErrorClass = "hidden peer-user-invalid:block mt-1 text-xs font-medium text-destructive";
 
 function todayIso(): string {
   const now = new Date();
@@ -171,15 +171,15 @@ export function ExpenseForm({ source, vendors, onClose, onSaved }: ExpenseFormPr
       ref={dialogRef}
       aria-labelledby="expense-form-title"
       onClose={onClose}
-      className="m-auto w-[min(96vw,44rem)] max-h-[94vh] rounded-3xl border border-slate-300 bg-white p-0 shadow-2xl backdrop:bg-slate-950/50"
+      className="m-auto w-[min(96vw,44rem)] max-h-[94vh] rounded-3xl border border-input bg-card p-0 shadow-2xl backdrop:bg-foreground/50"
     >
       <form onSubmit={handleSubmit}>
-        <div className="sticky top-0 z-10 flex items-center justify-between gap-3 px-6 py-4 border-b border-slate-200 bg-white">
+        <div className="sticky top-0 z-10 flex items-center justify-between gap-3 px-6 py-4 border-b border-border bg-card">
           <div>
-            <h2 id="expense-form-title" className="text-lg font-semibold text-slate-900">
+            <h2 id="expense-form-title" className="text-lg font-semibold text-foreground">
               {source ? "Edit Expense" : "Add Expense"}
             </h2>
-            <p className="text-sm font-medium text-slate-500">
+            <p className="text-sm font-medium text-muted-foreground">
               Supplier bills, subscriptions and any other business spend
             </p>
           </div>
@@ -187,7 +187,7 @@ export function ExpenseForm({ source, vendors, onClose, onSaved }: ExpenseFormPr
             type="button"
             onClick={onClose}
             aria-label="Close"
-            className="p-2 rounded-xl text-slate-500 hover:bg-slate-200 hover:text-slate-800 cursor-pointer"
+            className="p-2 rounded-xl text-muted-foreground hover:bg-border hover:text-foreground cursor-pointer"
           >
             <X className="w-5 h-5" />
           </button>
@@ -195,7 +195,7 @@ export function ExpenseForm({ source, vendors, onClose, onSaved }: ExpenseFormPr
 
         <div className="p-6 space-y-5">
           {error && (
-            <div role="alert" className="p-3 rounded-xl bg-rose-50 border border-rose-200 text-sm font-semibold text-rose-700">
+            <div role="alert" className="p-3 rounded-xl bg-destructive-soft border border-border text-sm font-semibold text-destructive">
               {error}
             </div>
           )}
@@ -306,8 +306,8 @@ export function ExpenseForm({ source, vendors, onClose, onSaved }: ExpenseFormPr
             </div>
           </div>
 
-          <fieldset className="rounded-2xl border border-slate-200 p-4 space-y-3">
-            <legend className="px-1.5 text-xs font-semibold tracking-wider text-slate-500 uppercase">
+          <fieldset className="rounded-2xl border border-border p-4 space-y-3">
+            <legend className="px-1.5 text-xs font-semibold tracking-wider text-muted-foreground uppercase">
               Amount & GST
             </legend>
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
@@ -359,7 +359,7 @@ export function ExpenseForm({ source, vendors, onClose, onSaved }: ExpenseFormPr
                 <select
                   id="exp-rate"
                   disabled={gstDisabled}
-                  className={`${inputClass} cursor-pointer disabled:bg-slate-100 disabled:text-slate-400`}
+                  className={`${inputClass} cursor-pointer disabled:bg-muted disabled:text-muted-foreground`}
                   value={gstRate}
                   onChange={(e) => changeGstRate(e.target.value)}
                 >
@@ -370,14 +370,14 @@ export function ExpenseForm({ source, vendors, onClose, onSaved }: ExpenseFormPr
                   ))}
                 </select>
                 {gstDisabled && (
-                  <p className="mt-1 text-xs font-medium text-slate-500">
+                  <p className="mt-1 text-xs font-medium text-muted-foreground">
                     Enter the vendor&apos;s GSTIN to record GST on this bill.
                   </p>
                 )}
               </div>
             </div>
 
-            <label className="flex items-start gap-2 text-sm font-medium text-slate-700 cursor-pointer">
+            <label className="flex items-start gap-2 text-sm font-medium text-foreground cursor-pointer">
               <input
                 type="checkbox"
                 className="mt-0.5 w-4 h-4 accent-slate-900"
@@ -387,14 +387,14 @@ export function ExpenseForm({ source, vendors, onClose, onSaved }: ExpenseFormPr
               />
               <span>
                 Claim this GST as input credit
-                <span className="block text-xs text-slate-500">
+                <span className="block text-xs text-muted-foreground">
                   Untick for personal use, food, or anything GST credit is not allowed on.
                 </span>
               </span>
             </label>
 
-            <div className="flex flex-wrap items-end justify-between gap-3 pt-3 border-t border-slate-200">
-              <div className="text-sm font-medium text-slate-600 space-y-0.5">
+            <div className="flex flex-wrap items-end justify-between gap-3 pt-3 border-t border-border">
+              <div className="text-sm font-medium text-muted-foreground space-y-0.5">
                 {amounts.isInterState ? (
                   <p>IGST: ₹{formatINR(amounts.igst)}</p>
                 ) : (
@@ -402,15 +402,15 @@ export function ExpenseForm({ source, vendors, onClose, onSaved }: ExpenseFormPr
                     CGST: ₹{formatINR(amounts.cgst)} · SGST: ₹{formatINR(amounts.sgst)}
                   </p>
                 )}
-                <p className="text-xs text-slate-500">
+                <p className="text-xs text-muted-foreground">
                   {amounts.isInterState
                     ? "Vendor is outside Maharashtra, so the bill carries IGST."
                     : "Vendor is in Maharashtra, so the bill carries CGST + SGST."}
                 </p>
               </div>
               <div className="text-right">
-                <p className="text-xs font-semibold text-slate-500 uppercase tracking-wider">Bill Total</p>
-                <p className="text-2xl font-bold text-slate-900">₹{formatINR(amounts.total)}</p>
+                <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">Bill Total</p>
+                <p className="text-2xl font-bold text-foreground">₹{formatINR(amounts.total)}</p>
               </div>
             </div>
           </fieldset>
@@ -447,18 +447,18 @@ export function ExpenseForm({ source, vendors, onClose, onSaved }: ExpenseFormPr
 
         </div>
 
-        <div className="sticky bottom-0 flex items-center justify-end gap-3 px-6 py-4 border-t border-slate-200 bg-white">
+        <div className="sticky bottom-0 flex items-center justify-end gap-3 px-6 py-4 border-t border-border bg-card">
           <button
             type="button"
             onClick={onClose}
-            className="px-5 py-2.5 text-sm font-semibold text-slate-600 hover:bg-slate-200 rounded-xl cursor-pointer"
+            className="px-5 py-2.5 text-sm font-semibold text-muted-foreground hover:bg-border rounded-xl cursor-pointer"
           >
             Cancel
           </button>
           <button
             type="submit"
             disabled={saving}
-            className="flex items-center gap-2 px-6 py-2.5 text-sm font-semibold text-white rounded-xl bg-slate-900 hover:bg-slate-800 disabled:opacity-60 cursor-pointer"
+            className="flex items-center gap-2 px-6 py-2.5 text-sm font-semibold text-white rounded-xl bg-primary hover:bg-primary-hover disabled:opacity-60 cursor-pointer"
           >
             {saving ? <Loader2 className="w-4 h-4 animate-spin" /> : <Save className="w-4 h-4" />}
             {source ? "Save Changes" : "Save Expense"}
