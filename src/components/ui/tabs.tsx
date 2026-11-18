@@ -38,7 +38,7 @@ export function TabsList({
     <div
       className={twMerge(
         clsx(
-          "inline-flex h-10 items-center justify-center rounded-xl bg-slate-100 p-1 text-slate-500",
+          "inline-flex h-10 items-center justify-center rounded-xl bg-muted p-1 text-muted-foreground",
           className
         )
       )}
@@ -68,10 +68,10 @@ export function TabsTrigger({
       onClick={() => context.onValueChange(value)}
       className={twMerge(
         clsx(
-          "inline-flex items-center justify-center whitespace-nowrap rounded-lg px-3 py-1.5 text-xs font-bold ring-offset-white transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-slate-900 disabled:pointer-events-none disabled:opacity-50 cursor-pointer",
+          "inline-flex items-center justify-center whitespace-nowrap rounded-lg px-3 py-1.5 text-xs font-bold ring-offset-white transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:pointer-events-none disabled:opacity-50 cursor-pointer",
           isActive
-            ? "bg-white text-slate-900 shadow-2xs"
-            : "text-slate-600 hover:text-slate-900 hover:bg-slate-200/60",
+            ? "bg-card text-foreground shadow-2xs"
+            : "text-muted-foreground hover:text-foreground hover:bg-muted",
           className
         )
       )}

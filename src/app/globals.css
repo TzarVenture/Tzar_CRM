@@ -1,71 +1,259 @@
 @import "tailwindcss";
 
 /* ============================================================
-   TZAR ENTERPRISE CRM — DESIGN SYSTEM TOKENS (Tailwind v4)
-   BagUI & Vercel Clean SaaS Aesthetics: Sleek, high-contrast, modern
+   TZAR CRM DESIGN TOKENS (Tailwind v4)
+
+   Three layers, from raw to specific:
+   1. Brand palette   --brand-*     raw colours taken from tzar.co
+   2. Semantic tokens --background, --foreground, --primary ...
+                      what components use. Light values live in :root,
+                      dark values in .dark (see the end of this block).
+   3. Utilities       bg-background, text-foreground, bg-primary ...
+                      generated from the semantic tokens by @theme inline.
+
+   Components should use layer 3 (or the semantic variables). They should
+   never hard-code a hex value. Switching the theme means switching the
+   class on <html>; nothing else has to change.
    ============================================================ */
 
+/* Enables dark: utilities when <html class="dark"> is set */
+@custom-variant dark (&:where(.dark, .dark *));
+
+:root {
+  /* ---- 1. Brand palette (tzar.co) ---- */
+  --brand-ink: #0e2015;
+  --brand-forest: #1d4224;
+  --brand-forest-deep: #0e2914;
+  --brand-forest-hero: #1b4d25;
+  --brand-gold: #ffae00;
+  --brand-gold-hover: #e69d00;
+  --brand-paper: #efe8e0;
+  --brand-mint: #b6f8dd;
+
+  /* ---- 2. Semantic tokens: light theme ---- */
+  --background: #f5f2ed; /* app canvas: a lighter paper */
+  --foreground: #0e2015;
+  --card: #ffffff;
+  --card-foreground: #0e2015;
+  --popover: #ffffff;
+  --popover-foreground: #0e2015;
+
+  --primary: #1d4224; /* buttons, active states */
+  --primary-hover: #163419;
+  --primary-foreground: #ffffff;
+  --accent: #ffae00; /* the brand gold: highlights and main calls to action */
+  --accent-hover: #e69d00;
+  --accent-foreground: #0e2015;
+
+  --muted: #efebe4; /* quiet surfaces: hover, table headers, chips */
+  --muted-foreground: #55625a; /* secondary text, 6:1 on white */
+  --border: #ddd7cc;
+  --input: #c9c2b4;
+  --ring: #1d4224;
+
+  --success: #2a6337;
+  --success-soft: #eaf3ec;
+  --warning: #8a5a00;
+  --warning-soft: #fff4d6;
+  --destructive: #b42318;
+  --destructive-soft: #fdecea;
+  --info: #1d5fa8;
+  --info-soft: #e8f1fb;
+
+  /* Dark brand surface, used for the login hero and other brand panels */
+  /* Chart series colours */
+  --chart-1: #1d4224;
+  --chart-2: #e69d00;
+  --chart-3: #1d5fa8;
+  --chart-4: #b42318;
+
+  --hero: #061309;
+  --hero-foreground: #ffffff;
+  --hero-muted: #b6f8dd;
+  --hero-gradient: radial-gradient(85% 70% at 75% 30%, #1b4d25 0%, #0e2914 45%, #061309 80%, #030a05 100%);
+
+  /* Layout */
+  --sidebar-width: 248px;
+  --header-height: 64px;
+
+  /* Elevation (tinted with the ink colour, not pure black) */
+  --shadow-card: 0 1px 2px 0 rgb(14 32 21 / 0.06), 0 1px 3px 0 rgb(14 32 21 / 0.05);
+  --shadow-modal: 0 25px 50px -12px rgb(14 32 21 / 0.3);
+  --shadow-dropdown: 0 10px 25px -5px rgb(14 32 21 / 0.15);
+
+  /* ---- Legacy names, kept as aliases so older components keep working ---- */
+  --color-brand-green: var(--primary);
+  --color-brand-green-hover: var(--primary-hover);
+  --color-brand-green-light: var(--success-soft);
+  --color-brand-mustard: var(--accent);
+  --color-brand-mustard-hover: var(--accent-hover);
+  --color-brand-mustard-bg: var(--warning-soft);
+  --color-bg-app: var(--background);
+  --color-bg-surface: var(--card);
+  --color-bg-subtle: var(--muted);
+  --color-bg-hover: var(--border);
+  --color-text-primary: var(--foreground);
+  --color-text-secondary: var(--muted-foreground);
+  --color-text-muted: var(--muted-foreground);
+  --color-text-inverse: var(--primary-foreground);
+  --color-border-light: var(--border);
+  --color-border-medium: var(--input);
+  --color-border-focus: var(--ring);
+  --color-status-success: var(--success);
+  --color-status-success-bg: var(--success-soft);
+  --color-status-warning: var(--warning);
+  --color-status-warning-bg: var(--warning-soft);
+  --color-status-danger: var(--destructive);
+  --color-status-danger-bg: var(--destructive-soft);
+  --color-status-info: var(--info);
+  --color-status-info-bg: var(--info-soft);
+}
+
+/* ---- 3. Utilities generated from the semantic tokens ---- */
+@theme inline {
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  --color-card: var(--card);
+  --color-card-foreground: var(--card-foreground);
+  --color-popover: var(--popover);
+  --color-popover-foreground: var(--popover-foreground);
+  --color-primary: var(--primary);
+  --color-primary-hover: var(--primary-hover);
+  --color-primary-foreground: var(--primary-foreground);
+  --color-accent: var(--accent);
+  --color-accent-hover: var(--accent-hover);
+  --color-accent-foreground: var(--accent-foreground);
+  --color-muted: var(--muted);
+  --color-muted-foreground: var(--muted-foreground);
+  --color-border: var(--border);
+  --color-input: var(--input);
+  --color-ring: var(--ring);
+  --color-success: var(--success);
+  --color-success-soft: var(--success-soft);
+  --color-warning: var(--warning);
+  --color-warning-soft: var(--warning-soft);
+  --color-destructive: var(--destructive);
+  --color-destructive-soft: var(--destructive-soft);
+  --color-info: var(--info);
+  --color-info-soft: var(--info-soft);
+  --color-hero: var(--hero);
+  --color-hero-foreground: var(--hero-foreground);
+  --color-hero-muted: var(--hero-muted);
+}
+
+/* ---- Fonts, radii and the neutral scale ---- */
 @theme {
-  /* --- Typography (Geist Typeface) --- */
-  --font-sans: var(--font-geist-sans), -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
-  --font-mono: var(--font-geist-mono), monospace;
-  --font-display: var(--font-geist-sans), sans-serif;
+  --font-sans: var(--font-manrope), -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+  --font-mono: var(--font-geist-mono), ui-monospace, monospace;
+  --font-display: var(--font-manrope), sans-serif;
 
-  /* --- Brand Colors (Tzar Palette) --- */
-  --color-brand-green:           #0D4733;
-  --color-brand-green-hover:     #082F22;
-  --color-brand-green-light:     #EBF5F1;
-  --color-brand-mustard:         #D97706;
-  --color-brand-mustard-hover:   #B45309;
-  --color-brand-mustard-bg:      #FFFBEB;
+  --radius-sm: 6px;
+  --radius-md: 8px;
+  --radius-lg: 12px;
+  --radius-xl: 16px;
+  --radius-full: 9999px;
 
-  /* --- Enterprise Neutral Surfaces --- */
-  --color-bg-app:                #F1F5F9; /* Slate 100 */
-  --color-bg-surface:            #FFFFFF;
-  --color-bg-subtle:             #F8FAFC; /* Slate 50 */
-  --color-bg-hover:              #E2E8F0; /* Slate 200 */
+  /*
+   * Older pages still use Tailwind's slate-* and emerald-* classes. Redefining
+   * the scales here gives them the brand's warm paper and forest-green
+   * neutrals without editing every file, and the .dark block below can invert
+   * them in one place. New code should use the semantic utilities instead.
+   */
+  --color-slate-50: #f8f6f2;
+  --color-slate-100: #f0ece5;
+  --color-slate-200: #e3ded3;
+  --color-slate-300: #cfc9bb;
+  --color-slate-400: #9aa297;
+  --color-slate-500: #626d65;
+  --color-slate-600: #4f5b53;
+  --color-slate-700: #3b4840;
+  --color-slate-800: #25342b;
+  --color-slate-900: #14241a;
+  --color-slate-950: #0e2015;
 
-  /* --- Typography & Text --- */
-  --color-text-primary:          #0F172A; /* Slate 900 */
-  --color-text-secondary:        #334155; /* Slate 700 - high contrast readability */
-  --color-text-muted:            #64748B; /* Slate 500 */
-  --color-text-inverse:          #FFFFFF;
+  --color-emerald-50: #eef6ef;
+  --color-emerald-100: #d9eadb;
+  --color-emerald-200: #b6d6bb;
+  --color-emerald-300: #8bbd93;
+  --color-emerald-400: #5a9d68;
+  --color-emerald-500: #3a8049;
+  --color-emerald-600: #2a6337;
+  --color-emerald-700: #1d4a28;
+  --color-emerald-800: #163a1f;
+  --color-emerald-900: #0f2a16;
+}
 
-  /* --- Borders & Dividers --- */
-  --color-border-light:          #CBD5E1; /* Slate 300 - crisp defined borders */
-  --color-border-medium:         #94A3B8;
-  --color-border-focus:          #0D4733;
+/* ---- Dark theme (prepared, not switched on yet) ----
+   Add class="dark" to <html> to try it. The semantic tokens flip here, and the
+   legacy neutral scale is mirrored so older pages follow. Review each screen
+   before shipping it. */
+.dark {
+  color-scheme: dark;
 
-  /* --- Status Colors --- */
-  --color-status-success:        #059669; /* Emerald 600 */
-  --color-status-success-bg:     #ECFDF5;
-  --color-status-warning:        #D97706; /* Amber 600 */
-  --color-status-warning-bg:     #FFFBEB;
-  --color-status-danger:         #DC2626; /* Red 600 */
-  --color-status-danger-bg:      #FEF2F2;
-  --color-status-info:           #2563EB; /* Blue 600 */
-  --color-status-info-bg:        #EFF6FF;
+  --background: #0a140d;
+  --foreground: #efe8e0;
+  --card: #112017;
+  --card-foreground: #efe8e0;
+  --popover: #112017;
+  --popover-foreground: #efe8e0;
 
-  /* --- Layout Dimensions --- */
-  --sidebar-width:               260px;
-  --header-height:               64px;
+  --primary: #3f8f52;
+  --primary-hover: #4aa05e;
+  --primary-foreground: #ffffff;
+  --accent: #ffae00;
+  --accent-hover: #ffbe33;
+  --accent-foreground: #0e2015;
 
-  /* --- Border Radius --- */
-  --radius-sm:                   6px;
-  --radius-md:                   8px;
-  --radius-lg:                   12px;
-  --radius-xl:                   16px;
-  --radius-full:                 9999px;
+  --muted: #1a2b20;
+  --muted-foreground: #a3b2a8;
+  --border: #25402f;
+  --input: #34503f;
+  --ring: #7ccf92;
 
-  /* --- Enterprise Shadows --- */
-  --shadow-card:                 0 1px 3px 0 rgb(15 23 42 / 0.08), 0 1px 2px -1px rgb(15 23 42 / 0.04);
-  --shadow-modal:                0 25px 50px -12px rgb(15 23 42 / 0.25);
-  --shadow-dropdown:             0 10px 25px -5px rgb(15 23 42 / 0.12);
-  --shadow-sidebar:              1px 0 3px 0 rgb(15 23 42 / 0.06);
+  --success: #6bc17f;
+  --success-soft: #12301b;
+  --warning: #ffc84d;
+  --warning-soft: #3a2b05;
+  --destructive: #f08a80;
+  --destructive-soft: #3a1512;
+  --info: #7fb6ec;
+  --info-soft: #11263b;
+
+  --chart-1: #6bc17f;
+  --chart-2: #ffc84d;
+  --chart-3: #7fb6ec;
+  --chart-4: #f08a80;
+
+  --shadow-card: 0 1px 2px 0 rgb(0 0 0 / 0.4);
+  --shadow-modal: 0 25px 50px -12px rgb(0 0 0 / 0.6);
+  --shadow-dropdown: 0 10px 25px -5px rgb(0 0 0 / 0.5);
+
+  --color-slate-50: #0e1a12;
+  --color-slate-100: #14241a;
+  --color-slate-200: #1f3326;
+  --color-slate-300: #2e4a38;
+  --color-slate-400: #5f7667;
+  --color-slate-500: #8fa397;
+  --color-slate-600: #a9b9ae;
+  --color-slate-700: #c4d0c8;
+  --color-slate-800: #dbe3dd;
+  --color-slate-900: #efe8e0;
+  --color-slate-950: #f7f3ee;
+
+  --color-emerald-50: #0f2a16;
+  --color-emerald-100: #163a1f;
+  --color-emerald-200: #1d4a28;
+  --color-emerald-300: #2a6337;
+  --color-emerald-400: #3a8049;
+  --color-emerald-500: #5a9d68;
+  --color-emerald-600: #6bc17f;
+  --color-emerald-700: #8bd49b;
+  --color-emerald-800: #b6e6c0;
+  --color-emerald-900: #d9f2df;
 }
 
 /* ============================================================
-   BASE & TYPOGRAPHY ENHANCEMENTS
+   BASE
    ============================================================ */
 
 *, *::before, *::after {
@@ -75,44 +263,48 @@
 html {
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
-  font-feature-settings: "cv02", "cv03", "cv04", "cv11";
 }
 
 body {
-  background-color: var(--color-bg-app);
-  color: var(--color-text-primary);
+  background-color: var(--background);
+  color: var(--foreground);
   font-family: var(--font-sans);
   font-size: 14px;
   line-height: 1.5;
   margin: 0;
 }
 
-/* Ensure no text falls below 12px for maximum legibility */
+/* Keyboard focus is always visible */
+:focus-visible {
+  outline-color: var(--ring);
+}
+
+/* Ensure no text falls below 12px for legibility */
 .text-micro {
   font-size: 12px;
   line-height: 1.4;
 }
 
-/* Scrollbar styling */
+/* Scrollbars */
 ::-webkit-scrollbar {
-  width: 7px;
-  height: 7px;
+  width: 8px;
+  height: 8px;
 }
 
 ::-webkit-scrollbar-track {
-  background: var(--color-bg-app);
+  background: var(--background);
 }
 
 ::-webkit-scrollbar-thumb {
-  background-color: #CBD5E1;
+  background-color: var(--input);
   border-radius: 9999px;
 }
 
 ::-webkit-scrollbar-thumb:hover {
-  background-color: #94A3B8;
+  background-color: var(--muted-foreground);
 }
 
-/* Smooth Keyframe Animations & Transitions */
+/* Animations (respect the user's reduced-motion setting) */
 @keyframes fadeIn {
   from { opacity: 0; transform: translateY(4px); }
   to { opacity: 1; transform: translateY(0); }
@@ -140,6 +332,17 @@ body {
   animation: scaleIn 0.2s cubic-bezier(0.16, 1, 0.3, 1) forwards;
 }
 
+@media (prefers-reduced-motion: reduce) {
+  .animate-fade-in,
+  .animate-slide-up,
+  .animate-scale-in {
+    animation: none;
+  }
+  * {
+    scroll-behavior: auto !important;
+  }
+}
+
 /* Native modal dialogs: keep scroll gestures from reaching the page behind */
 dialog:modal {
   overscroll-behavior: contain;
@@ -149,7 +352,7 @@ dialog::backdrop {
   overscroll-behavior: contain;
 }
 
-/* Hide scrollbar for smooth mobile swipeable tabs */
+/* Hide scrollbar for swipeable tabs */
 .no-scrollbar::-webkit-scrollbar {
   display: none;
 }
@@ -158,3 +361,16 @@ dialog::backdrop {
   scrollbar-width: none;
 }
 
+/* A dialog panel receives focus when it opens; it should not show a focus ring around the whole panel */
+[role="dialog"]:focus {
+  outline: none;
+}
+
+/* Brand logos are dark artwork. In the dark theme they sit on a light chip, so they stay as designed.
+   The light-on-dark wordmark used on the login hero is left alone. */
+.dark img[src*="logo" i]:not([src*="logo-main" i]) {
+  box-sizing: content-box;
+  background-color: var(--brand-paper);
+  padding: 3px 8px;
+  border-radius: 8px;
+}

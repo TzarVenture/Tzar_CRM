@@ -1,33 +1,39 @@
 "use client";
 
 import Link from "next/link";
+import Image from "next/image";
 import { usePathname } from "next/navigation";
 import { signOut, useSession } from "next-auth/react";
 import { useEffect, useMemo, useSyncExternalStore } from "react";
 import {
-  ChevronLeft,
-  ChevronRight,
-  LayoutDashboard,
-  KanbanSquare,
-  Users,
-  MessageCircle,
-  BarChart3,
-  FolderOpen,
+  Buildings,
+  ChartPieSlice,
+  ChartLineUp,
+  Gear,
+  Kanban,
   Receipt,
+  CaretLeft,
+  CaretRight,
+  SignOut,
+  Table,
+  UsersThree,
   Wallet,
-  Settings,
-  LogOut,
-  Building2,
   X,
-} from "lucide-react";
+  BookOpenText,
+  type Icon,
+} from "@phosphor-icons/react";
 import { UserRole } from "@/models/User";
+import { can, type PermissionKey } from "@/lib/permissions";
 import { useMobileNav } from "./MobileNavContext";
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 
 interface NavItem {
   label: string;
   href: string;
-  icon: React.ElementType;
-  badge?: string;
+  icon: Icon;
+  /** Page permission needed to see this item */
+  permission?: PermissionKey;
+  /** Role-only areas (team, settings) */
   roles?: UserRole[];
 }
 
@@ -38,51 +44,40 @@ interface NavGroup {
 
 const NAV_GROUPS: NavGroup[] = [
   {
-    heading: "MAIN MENU",
+    heading: "Accounts",
     items: [
-      { label: "Dashboard", href: "/", icon: LayoutDashboard },
-      { label: "Pipeline", href: "/pipeline", icon: KanbanSquare },
+      { label: "Overview", href: "/accounts", icon: ChartPieSlice, permission: "accounts.overview" },
+      { label: "Invoices", href: "/invoices", icon: Receipt, permission: "accounts.invoices" },
+      { label: "Customer Ledger", href: "/ledger", icon: BookOpenText, permission: "accounts.ledger" },
+      { label: "Expenses", href: "/expenses", icon: Wallet, permission: "accounts.expenses" },
+      { label: "GST Reports", href: "/gst-reports", icon: Table, permission: "accounts.gst" },
     ],
   },
   {
-    heading: "CUSTOMERS & COMMS",
+    heading: "Leads & Clients",
     items: [
-      { label: "Clients", href: "/clients", icon: Building2 },
-      { label: "Messages", href: "/messages", icon: MessageCircle, badge: "Live" },
-      {
-        label: "Meta Ads",
-        href: "/meta-ads",
-        icon: BarChart3,
-        roles: ["SUPER_ADMIN", "SALES_MANAGER"],
-      },
-      { label: "Files & Assets", href: "/files", icon: FolderOpen },
+      { label: "Lead Dashboard", href: "/lead-dashboard", icon: ChartLineUp, permission: "leads.dashboard" },
+      { label: "Pipeline", href: "/pipeline", icon: Kanban, permission: "leads.pipeline" },
+      { label: "Clients", href: "/clients", icon: Buildings, permission: "clients" },
     ],
   },
   {
-    heading: "ACCOUNTS",
+    heading: "Administration",
     items: [
-      { label: "Invoices", href: "/invoices", icon: Receipt, roles: ["SUPER_ADMIN", "ADMIN"] },
-      { label: "Expenses", href: "/expenses", icon: Wallet, roles: ["SUPER_ADMIN", "ADMIN"] },
-    ],
-  },
-  {
-    heading: "MANAGEMENT",
-    items: [
-      {
-        label: "Team Members",
-        href: "/team",
-        icon: Users,
-        roles: ["SUPER_ADMIN"], // Strictly Owner Only!
-      },
-      {
-        label: "Settings",
-        href: "/settings",
-        icon: Settings,
-        roles: ["SUPER_ADMIN", "SALES_MANAGER"],
-      },
+      { label: "Team", href: "/team", icon: UsersThree, roles: ["SUPER_ADMIN"] },
+      { label: "Settings", href: "/settings", icon: Gear, roles: ["SUPER_ADMIN"] },
     ],
   },
 ];
+
+const ROLE_LABEL: Record<string, string> = {
+  SUPER_ADMIN: "Super Admin",
+  ADMIN: "Admin",
+  ACCOUNTANT: "Accountant",
+  SALES_MANAGER: "Manager",
+  BDE: "BDE",
+  CLIENT: "Client",
+};
 
 // ─── Collapsed state, remembered across visits ─────────────────────────────
 // Kept in localStorage and read through useSyncExternalStore, so the server
@@ -116,7 +111,9 @@ function writeCollapsed(collapsed: boolean) {
   window.dispatchEvent(new Event(COLLAPSE_EVENT));
 }
 
-const focusRing = "outline-none focus-visible:ring-2 focus-visible:ring-slate-900/40";
+const focusRing = "outline-none focus-visible:ring-2 focus-visible:ring-ring/40";
+const EXPANDED_WIDTH = 248;
+const COLLAPSED_WIDTH = 72;
 
 export default function Sidebar() {
   const pathname = usePathname();
@@ -124,6 +121,7 @@ export default function Sidebar() {
   const { isMobileMenuOpen, closeMobileMenu } = useMobileNav();
   const isCollapsed = useSyncExternalStore(subscribeToCollapse, readCollapsed, () => false);
   const userRole = (session?.user?.role || "BDE") as UserRole;
+  const permissions = session?.user?.permissions ?? [];
 
   // Page content is offset by --sidebar-width. A media-query listener updates it
   // only when the desktop breakpoint is crossed, not on every resize pixel.
@@ -132,18 +130,21 @@ export default function Sidebar() {
     const apply = () =>
       document.documentElement.style.setProperty(
         "--sidebar-width",
-        desktop.matches ? (isCollapsed ? "68px" : "240px") : "0px"
+        desktop.matches ? `${isCollapsed ? COLLAPSED_WIDTH : EXPANDED_WIDTH}px` : "0px"
       );
     apply();
     desktop.addEventListener("change", apply);
     return () => desktop.removeEventListener("change", apply);
   }, [isCollapsed]);
 
-  // Esc closes the mobile drawer
+  // Ctrl/Cmd + B toggles the sidebar; Esc closes the mobile drawer
   useEffect(() => {
-    if (!isMobileMenuOpen) return;
     const onKey = (e: KeyboardEvent) => {
-      if (e.key === "Escape") closeMobileMenu();
+      if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === "b") {
+        e.preventDefault();
+        writeCollapsed(!readCollapsed());
+      }
+      if (e.key === "Escape" && isMobileMenuOpen) closeMobileMenu();
     };
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
@@ -153,30 +154,28 @@ export default function Sidebar() {
     () =>
       NAV_GROUPS.map((group) => ({
         ...group,
-        items: group.items.filter((item) => !item.roles || item.roles.includes(userRole)),
+        items: group.items.filter((item) => {
+          if (item.roles) return item.roles.includes(userRole);
+          if (item.permission) return can({ role: userRole, permissions }, item.permission);
+          return true;
+        }),
       })).filter((group) => group.items.length > 0),
-    [userRole]
+    [userRole, permissions]
   );
 
-  const isActive = (href: string) => {
-    if (href === "/") return pathname === "/";
-    return pathname === href || pathname.startsWith(`${href}/`);
-  };
+  const isActive = (href: string) => pathname === href || pathname.startsWith(`${href}/`);
 
   const renderNavItems = (isMobile = false) => {
     const compact = isCollapsed && !isMobile;
 
     return (
-      <nav aria-label="Main" className="flex-1 overflow-y-auto overscroll-contain px-3 py-4 space-y-5">
+      <nav aria-label="Main" className={`flex-1 overflow-y-auto overflow-x-hidden overscroll-contain py-4 ${compact ? "no-scrollbar px-3" : "px-3"}`}>
         {visibleGroups.map((group, groupIndex) => (
-          <div key={group.heading} className="space-y-1">
+          <div key={group.heading} className={groupIndex > 0 ? "mt-5" : ""}>
             {compact ? (
-              // Icon-only mode keeps the grouping visible as a thin divider
-              groupIndex > 0 && <div className="mx-2 mb-2 border-t border-slate-200" aria-hidden="true" />
+              groupIndex > 0 && <div className="mx-3 mb-3 border-t border-border" aria-hidden="true" />
             ) : (
-              <p className="px-3 pb-0.5 text-xs font-semibold tracking-wider text-slate-500 uppercase">
-                {group.heading}
-              </p>
+              <p className="px-3 pb-1.5 text-xs font-semibold tracking-wide text-muted-foreground">{group.heading}</p>
             )}
             <ul className="space-y-0.5">
               {group.items.map((item) => {
@@ -185,35 +184,42 @@ export default function Sidebar() {
 
                 return (
                   <li key={item.href}>
-                    <Link
-                      href={item.href}
-                      prefetch={true}
-                      onClick={isMobile ? closeMobileMenu : undefined}
-                      title={compact ? item.label : undefined}
-                      aria-label={compact ? item.label : undefined}
-                      aria-current={active ? "page" : undefined}
-                      className={`group relative flex items-center gap-3 rounded-xl text-sm font-semibold transition-colors duration-150 ${focusRing} ${
-                        compact ? "justify-center px-0 py-2.5" : "px-3 py-2.5"
-                      } ${
-                        active
-                          ? "bg-slate-900 text-white shadow-sm"
-                          : "text-slate-600 hover:text-slate-900 hover:bg-slate-100 active:bg-slate-200"
-                      }`}
-                    >
-                      <Icon
-                        className={`w-4 h-4 shrink-0 ${
-                          active ? "text-white" : "text-slate-500 group-hover:text-slate-900"
-                        }`}
-                      />
-
-                      {!compact && <span className="flex-1 truncate">{item.label}</span>}
-
-                      {!compact && item.badge && (
-                        <span className="text-xs font-semibold px-1.5 py-0.5 rounded-full bg-emerald-100 text-emerald-800">
-                          {item.badge}
-                        </span>
-                      )}
-                    </Link>
+                    {(() => {
+                      const link = (
+                        <Link
+                          href={item.href}
+                          prefetch={true}
+                          onClick={isMobile ? closeMobileMenu : undefined}
+                          aria-label={compact ? item.label : undefined}
+                          aria-current={active ? "page" : undefined}
+                          className={`relative flex items-center gap-3 h-10 rounded-lg text-sm font-medium transition-colors duration-150 ${focusRing} ${
+                            compact ? "justify-center" : "px-3"
+                          } ${
+                            active
+                              ? "bg-muted text-foreground"
+                              : "text-muted-foreground hover:text-foreground hover:bg-muted"
+                          }`}
+                        >
+                          {active && (
+                            <span className="absolute left-0 top-2 bottom-2 w-[3px] rounded-full bg-accent" aria-hidden="true" />
+                          )}
+                          <Icon
+                            size={20}
+                            weight={active ? "fill" : "regular"}
+                            className={`shrink-0 ${active ? "text-foreground" : "text-muted-foreground"}`}
+                          />
+                          {!compact && <span className="flex-1 truncate">{item.label}</span>}
+                        </Link>
+                      );
+                      return compact ? (
+                        <Tooltip>
+                          <TooltipTrigger asChild>{link}</TooltipTrigger>
+                          <TooltipContent side="right">{item.label}</TooltipContent>
+                        </Tooltip>
+                      ) : (
+                        link
+                      );
+                    })()}
                   </li>
                 );
               })}
@@ -224,148 +230,126 @@ export default function Sidebar() {
     );
   };
 
-  const userInitial = session?.user?.name?.[0]?.toUpperCase() || "U";
+  const userName = session?.user?.name || "Team member";
+  const userInitial = userName[0]?.toUpperCase() || "U";
+
+  const signOutButton = (compact: boolean) => {
+    const button = (
+      <button
+        onClick={() => signOut({ callbackUrl: "/login" })}
+        className={`p-2 rounded-lg text-muted-foreground hover:text-destructive hover:bg-destructive-soft transition-colors cursor-pointer ${focusRing}`}
+        aria-label="Sign out"
+      >
+        <SignOut size={18} />
+      </button>
+    );
+    return compact ? (
+      <Tooltip>
+        <TooltipTrigger asChild>{button}</TooltipTrigger>
+        <TooltipContent side="right">Sign out</TooltipContent>
+      </Tooltip>
+    ) : (
+      button
+    );
+  };
+
+  const userBlock = (compact: boolean) =>
+    compact ? (
+      <div className="flex flex-col items-center gap-2">
+        <Tooltip>
+          <TooltipTrigger asChild>
+            <div className="w-9 h-9 rounded-full bg-primary text-primary-foreground flex items-center justify-center font-semibold text-sm">
+              {userInitial}
+            </div>
+          </TooltipTrigger>
+          <TooltipContent side="right">
+            {userName} · {ROLE_LABEL[userRole] || userRole}
+          </TooltipContent>
+        </Tooltip>
+        {signOutButton(true)}
+      </div>
+    ) : (
+      <div className="flex items-center gap-3">
+        <div className="w-9 h-9 rounded-full bg-primary text-primary-foreground flex items-center justify-center font-semibold text-sm shrink-0">
+          {userInitial}
+        </div>
+        <div className="min-w-0 flex-1">
+          <p className="text-sm font-semibold text-foreground truncate">{userName}</p>
+          <p className="text-xs text-muted-foreground truncate">{ROLE_LABEL[userRole] || userRole}</p>
+        </div>
+        {signOutButton(false)}
+      </div>
+    );
+
+  const brand = (compact: boolean) => (
+    <Link href="/accounts" prefetch={true} className={`flex items-center gap-3 min-w-0 rounded-lg ${focusRing}`} aria-label="Tzar CRM home">
+      <Image src="/TzarLogo-09.png" alt="Tzar" width={36} height={40} priority className="h-10 w-auto shrink-0" />
+      {!compact && (
+        <div className="min-w-0">
+          <p className="text-base font-bold tracking-tight text-foreground leading-tight">Tzar CRM</p>
+          <p className="text-xs text-muted-foreground leading-tight">Digital Agency</p>
+        </div>
+      )}
+    </Link>
+  );
 
   return (
     <>
-      {/* ─── 1. DESKTOP SIDEBAR (Visible on md+ screens) ────────────────── */}
-      <aside
-        className={`hidden md:flex fixed top-0 left-0 h-screen flex-col bg-white border-r border-slate-200/90 z-40 transition-[width] duration-200 ease-out ${
-          isCollapsed ? "w-[68px]" : "w-[240px]"
-        }`}
-        style={{ boxShadow: "0 1px 3px 0 rgb(15 23 42 / 0.04)" }}
-      >
-        {/* Brand Header */}
-        <div
-          className={`flex items-center border-b border-slate-100 py-4 ${
-            isCollapsed ? "flex-col gap-3 px-2" : "justify-between px-4"
-          }`}
+      {/* ─── Desktop sidebar ────────────────────────────────────────────── */}
+      <TooltipProvider delayDuration={150}>
+        <aside
+          className="hidden md:flex fixed top-0 left-0 h-screen flex-col bg-card border-r border-border z-40 transition-[width] duration-200 ease-out"
+          style={{ width: isCollapsed ? COLLAPSED_WIDTH : EXPANDED_WIDTH }}
         >
-          <Link href="/" prefetch={true} className={`flex items-center gap-3 overflow-hidden rounded-xl ${focusRing}`}>
-            <div className="flex items-center justify-center shrink-0 w-8 h-8 rounded-xl bg-slate-900 text-white font-bold text-base">
-              TZ
-            </div>
-            {!isCollapsed && (
-              <div>
-                <p className="text-base font-bold tracking-tight text-slate-900 leading-none">TZAR CRM</p>
-                <p className="text-xs font-semibold text-slate-500 tracking-wider uppercase leading-none mt-1">
-                  Enterprise Suite
-                </p>
-              </div>
-            )}
-          </Link>
-
-          {/* Collapse Toggle */}
-          <button
-            onClick={() => writeCollapsed(!isCollapsed)}
-            aria-label={isCollapsed ? "Expand sidebar" : "Collapse sidebar"}
-            aria-expanded={!isCollapsed}
-            title={isCollapsed ? "Expand sidebar" : "Collapse sidebar"}
-            className={`p-1.5 rounded-lg border border-slate-200 hover:bg-slate-100 text-slate-500 hover:text-slate-700 transition-colors cursor-pointer ${focusRing}`}
-          >
-            {isCollapsed ? <ChevronRight className="w-3.5 h-3.5" /> : <ChevronLeft className="w-3.5 h-3.5" />}
-          </button>
-        </div>
-
-        {/* Navigation Links */}
-        {renderNavItems(false)}
-
-        {/* User Footer Card */}
-        <div className="p-3 border-t border-slate-100 bg-slate-50/50">
-          <div className={`flex items-center gap-2 p-1.5 ${isCollapsed ? "justify-center" : "justify-between"}`}>
-            <div className="flex items-center gap-2.5 overflow-hidden">
-              <div
-                className="w-8 h-8 rounded-xl bg-slate-900 text-white flex items-center justify-center font-semibold text-sm shrink-0 shadow-2xs"
-                title={isCollapsed ? session?.user?.name || "Team Member" : undefined}
-              >
-                {userInitial}
-              </div>
-              {!isCollapsed && (
-                <div className="overflow-hidden">
-                  <p className="text-sm font-semibold text-slate-900 truncate">
-                    {session?.user?.name || "Team Member"}
-                  </p>
-                  <p className="text-xs font-medium text-slate-500 truncate">{userRole}</p>
-                </div>
-              )}
-            </div>
-
-            {!isCollapsed && (
+          {/* Edge toggle: sits on the sidebar's right border so it is always in the same place */}
+          <Tooltip>
+            <TooltipTrigger asChild>
               <button
-                onClick={() => signOut({ callbackUrl: "/login" })}
-                className={`p-1.5 rounded-lg text-slate-500 hover:text-rose-600 hover:bg-rose-50 transition-colors cursor-pointer ${focusRing}`}
-                title="Sign Out"
-                aria-label="Sign Out"
+                onClick={() => writeCollapsed(!isCollapsed)}
+                aria-label={isCollapsed ? "Expand sidebar" : "Collapse sidebar"}
+                aria-expanded={!isCollapsed}
+                className={`absolute -right-3.5 top-[22px] z-50 grid size-7 place-items-center rounded-full border border-border bg-card text-muted-foreground shadow-sm transition-colors hover:bg-muted hover:text-foreground cursor-pointer ${focusRing}`}
               >
-                <LogOut className="w-3.5 h-3.5" />
+                {isCollapsed ? <CaretRight size={14} weight="bold" /> : <CaretLeft size={14} weight="bold" />}
               </button>
-            )}
-          </div>
-        </div>
-      </aside>
+            </TooltipTrigger>
+            <TooltipContent side="right">{isCollapsed ? "Expand sidebar" : "Collapse sidebar"} (Ctrl+B)</TooltipContent>
+          </Tooltip>
 
-      {/* ─── 2. MOBILE SLIDE-OVER DRAWER (Visible on < md screens when open) ─ */}
+          <div className={`flex items-center h-16 border-b border-border shrink-0 ${isCollapsed ? "justify-center" : "px-4"}`}>
+            {brand(isCollapsed)}
+          </div>
+
+          {renderNavItems(false)}
+
+          <div className="p-3 border-t border-border">{userBlock(isCollapsed)}</div>
+        </aside>
+      </TooltipProvider>
+
+      {/* ─── Mobile drawer ──────────────────────────────────────────────── */}
       {isMobileMenuOpen && (
         <div className="md:hidden fixed inset-0 z-50 flex animate-fade-in">
-          {/* Backdrop Overlay */}
-          <div
-            onClick={closeMobileMenu}
-            className="fixed inset-0 bg-slate-950/60 backdrop-blur-xs transition-opacity cursor-pointer"
-          />
-
-          {/* Slide-in Sheet Panel */}
-          <aside className="relative w-72 max-w-[85vw] bg-white h-full flex flex-col shadow-2xl border-r border-slate-200 z-50 animate-slide-up">
-            {/* Mobile Header with Close Button */}
-            <div className="flex items-center justify-between px-5 py-4 border-b border-slate-100">
-              <div className="flex items-center gap-3">
-                <div className="flex items-center justify-center shrink-0 w-8 h-8 rounded-xl bg-slate-900 text-white font-bold text-base">
-                  TZ
-                </div>
-                <div>
-                  <p className="text-base font-bold tracking-tight text-slate-900 leading-none">TZAR CRM</p>
-                  <p className="text-xs font-semibold text-slate-500 tracking-wider uppercase leading-none mt-1">
-                    Multi-Brand Suite
-                  </p>
-                </div>
-              </div>
-
+          <div onClick={closeMobileMenu} className="fixed inset-0 bg-foreground/50 backdrop-blur-xs cursor-pointer" />
+          <aside
+            role="dialog"
+            aria-modal="true"
+            aria-label="Navigation"
+            className="relative w-72 max-w-[85vw] bg-card h-full flex flex-col shadow-2xl z-50 animate-slide-up"
+          >
+            <div className="flex items-center justify-between px-4 h-16 border-b border-border shrink-0">
+              {brand(false)}
               <button
                 onClick={closeMobileMenu}
-                className={`p-2 rounded-xl text-slate-500 hover:text-slate-900 hover:bg-slate-100 transition-colors cursor-pointer ${focusRing}`}
-                title="Close Menu"
-                aria-label="Close Menu"
+                className={`p-2 rounded-lg text-muted-foreground hover:text-foreground hover:bg-muted transition-colors cursor-pointer ${focusRing}`}
+                title="Close menu"
+                aria-label="Close menu"
               >
-                <X className="w-5 h-5" />
+                <X size={20} />
               </button>
             </div>
-
-            {/* Navigation List */}
             {renderNavItems(true)}
-
-            {/* User Footer Card */}
-            <div className="p-4 border-t border-slate-100 bg-slate-50">
-              <div className="flex items-center justify-between gap-3">
-                <div className="flex items-center gap-2.5 overflow-hidden">
-                  <div className="w-9 h-9 rounded-xl bg-slate-900 text-white flex items-center justify-center font-semibold text-base shrink-0 shadow-2xs">
-                    {userInitial}
-                  </div>
-                  <div className="overflow-hidden">
-                    <p className="text-sm font-semibold text-slate-900 truncate">
-                      {session?.user?.name || "Team Member"}
-                    </p>
-                    <p className="text-xs font-medium text-slate-500 truncate">{userRole}</p>
-                  </div>
-                </div>
-
-                <button
-                  onClick={() => signOut({ callbackUrl: "/login" })}
-                  className={`p-2 rounded-xl text-slate-500 hover:text-rose-600 hover:bg-rose-50 transition-colors cursor-pointer ${focusRing}`}
-                  title="Sign Out"
-                  aria-label="Sign Out"
-                >
-                  <LogOut className="w-4 h-4" />
-                </button>
-              </div>
+            <div className="p-4 border-t border-border">
+              <TooltipProvider>{userBlock(false)}</TooltipProvider>
             </div>
           </aside>
         </div>

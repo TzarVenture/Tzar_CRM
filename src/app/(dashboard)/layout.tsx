@@ -6,9 +6,10 @@ import Header from "@/components/layout/Header";
 import AuthProvider from "@/components/providers/AuthProvider";
 import { MobileNavProvider } from "@/components/layout/MobileNavContext";
 import { MobileBottomNav } from "@/components/layout/MobileBottomNav";
+import { ToastProvider } from "@/components/ui/toast";
 
 export const metadata: Metadata = {
-  title: "Dashboard",
+  title: "Tzar CRM",
 };
 
 export default async function DashboardLayout({
@@ -21,7 +22,8 @@ export default async function DashboardLayout({
   if (!session) redirect("/login");
 
   return (
-    <AuthProvider>
+    <AuthProvider session={session}>
+      <ToastProvider>
       <MobileNavProvider>
         <div className="min-h-screen" style={{ backgroundColor: "var(--color-bg-app)" }}>
           {/* Responsive Sidebar (Fixed on Desktop, Slide-over Sheet on Mobile) */}
@@ -48,6 +50,7 @@ export default async function DashboardLayout({
           <MobileBottomNav />
         </div>
       </MobileNavProvider>
+      </ToastProvider>
     </AuthProvider>
   );
 }
