@@ -1,17 +1,19 @@
 import type { Metadata } from "next";
+import { denyUnlessAllowed } from "@/lib/page-access";
 import dbConnect from "@/lib/db";
-import Lead from "@/models/Lead";
 import { SmartLeadGrid } from "@/components/leads/SmartLeadGrid";
-
 import { auth } from "@/lib/auth";
+import { parseLeadListParams, queryLeads } from "@/lib/leads-query";
 
 export const metadata: Metadata = {
-  title: "Multi-Brand Sales Pipeline Grid",
+  title: "Pipeline",
 };
 
-export const revalidate = 0; // Fresh real-time data
+export const revalidate = 0; // Always fresh
 
 export default async function PipelinePage() {
+  const denied = await denyUnlessAllowed("leads.pipeline");
+  if (denied) return denied;
   const session = await auth();
   await dbConnect();
 
@@ -19,21 +21,18 @@ export default async function PipelinePage() {
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const allowedBusinesses: string[] = (session?.user as any)?.allowedBusinesses || ["tzar", "titepo", "adshalaa", "crownleaf"];
 
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const query: any = { status: "ACTIVE" };
-  if (userRole !== "SUPER_ADMIN" && userRole !== "ADMIN") {
-    query.business = { $in: allowedBusinesses };
-  }
+  // Only the first page is loaded here. The grid asks the server for other pages, filters and searches.
+  const firstPage = await queryLeads(parseLeadListParams(new URLSearchParams()), {
+    seesAllBrands: userRole === "SUPER_ADMIN" || userRole === "ADMIN",
+    allowedBusinesses,
+  });
 
-  const rawLeads = await Lead.find(query).sort({ createdAt: -1 }).lean();
-
-  // Serialize MongoDB BSON documents for React Client Component (strips nested ObjectId buffers)
-  const serializedLeads = JSON.parse(JSON.stringify(rawLeads));
+  // Serialize MongoDB documents for the client component (strips ObjectId and Date objects)
+  const initialPage = JSON.parse(JSON.stringify(firstPage));
 
   return (
     <div className="animate-fade-in space-y-6">
-      <SmartLeadGrid initialLeads={serializedLeads} />
+      <SmartLeadGrid initialPage={initialPage} />
     </div>
   );
 }
-

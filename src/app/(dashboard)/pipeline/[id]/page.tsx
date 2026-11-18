@@ -3,34 +3,9 @@
 import React, { useState, useEffect } from "react";
 import { useParams, useRouter } from "next/navigation";
 import { useSession } from "next-auth/react";
-import {
-  ArrowLeft,
-  Building2,
-  Mail,
-  Phone,
-  MapPin,
-  Calendar,
-  DollarSign,
-  Clock,
-  Send,
-  FileText,
-  MessageSquare,
-  CheckCircle2,
-  AlertTriangle,
-  UserCheck,
-  ExternalLink,
-  BookOpen,
-  ShoppingBag,
-  Gift,
-  Briefcase,
-  Edit2,
-  Save,
-  PlusCircle,
-  Loader2,
-  Trash2,
-  ChevronRight,
-} from "lucide-react";
+import { ArrowLeft, Buildings, Envelope, Phone, MapPin, CalendarBlank, Clock, PaperPlaneTilt, ChatText, Warning, UserCheck, PencilSimple, FloppyDisk, SpinnerGap, Trash, Check, WhatsappLogo } from "@phosphor-icons/react";
 import { ILead, BusinessSlug, KanbanStage } from "@/models/Lead";
+import { ConfirmDialog } from "@/components/invoices/ConfirmDialog";
 import {
   TitepoSpecsCard,
   TzarSpecsCard,
@@ -38,22 +13,11 @@ import {
   CrownleafSpecsCard,
 } from "@/components/leads/brand-specs";
 
-function FacebookIcon(props: React.SVGProps<SVGSVGElement>) {
-  return (
-    <svg viewBox="0 0 24 24" width="1em" height="1em" fill="currentColor" {...props}>
-      <path d="M24 12.073c0-6.627-5.373-12-12-12s-12 5.373-12 12c0 5.99 4.388 10.954 10.125 11.854v-8.385H7.078v-3.47h3.047V9.43c0-3.007 1.792-4.669 4.533-4.669 1.312 0 2.686.235 2.686.235v2.953H15.83c-1.491 0-1.956.925-1.956 1.874v2.25h3.328l-.532 3.47h-2.796v8.385C19.612 23.027 24 18.062 24 12.073z" />
-    </svg>
-  );
-}
-
-const BRAND_CONFIG: Record<
-  BusinessSlug,
-  { label: string; bg: string; text: string; logo: string }
-> = {
-  tzar: { label: "Tzar Agency", bg: "bg-emerald-700", text: "text-white", logo: "/tzar-logo.png" },
-  adshalaa: { label: "Adshalaa EdTech", bg: "bg-blue-700", text: "text-white", logo: "/adshalaa-logo.png" },
-  crownleaf: { label: "CrownLeaf Gifting", bg: "bg-amber-600", text: "text-white", logo: "/Crownleaf-logo.png" },
-  titepo: { label: "Titepo Toys", bg: "bg-pink-600", text: "text-white", logo: "/titepo-logo.png" },
+const BRAND_CONFIG: Record<BusinessSlug, { label: string; logo: string }> = {
+  tzar: { label: "Tzar Digital Agency", logo: "/tzar-logo.png" },
+  adshalaa: { label: "Adshalaa Edutech", logo: "/adshalaa-logo.png" },
+  crownleaf: { label: "Crownleaf Luxury Gifting", logo: "/Crownleaf-logo.png" },
+  titepo: { label: "Titepo", logo: "/titepo-logo.png" },
 };
 
 const STAGES: { id: KanbanStage; name: string }[] = [
@@ -85,6 +49,8 @@ export default function LeadDetailPage() {
   const [isSavingDetails, setIsSavingDetails] = useState(false);
   const [isConverting, setIsConverting] = useState(false);
   const [isDeleting, setIsDeleting] = useState(false);
+  const [deleteOpen, setDeleteOpen] = useState(false);
+  const [notice, setNotice] = useState<{ kind: "ok" | "error"; text: string } | null>(null);
 
   // Timeline Notes State
   const [notesList, setNotesList] = useState<any[]>([]);
@@ -208,10 +174,10 @@ export default function LeadDetailPage() {
       });
       const data = await res.json();
       if (data.client) {
-        alert(`Successfully converted ${lead.fullName} to Client Account!`);
+        setNotice({ kind: "ok", text: `${lead.fullName} is now a client.` });
         setLead((prev) => (prev ? { ...prev, status: "CONVERTED" } : null));
       } else {
-        alert(`Conversion error: ${data.error || "Failed"}`);
+        setNotice({ kind: "error", text: data.error || "Could not convert this lead." });
       }
     } catch (err) {
       console.error("Convert to client error:", err);
@@ -223,14 +189,13 @@ export default function LeadDetailPage() {
   // Delete Lead Handler (Admin Only)
   const handleDeleteLead = async () => {
     if (!lead || !lead._id) return;
-    if (!confirm(`Are you sure you want to permanently delete lead ${lead.fullName}?`)) return;
     setIsDeleting(true);
     try {
       const res = await fetch(`/api/v1/leads/${lead._id}`, { method: "DELETE" });
       if (res.ok) {
         router.push("/pipeline");
       } else {
-        alert("Failed to delete lead document.");
+        setNotice({ kind: "error", text: "Could not delete this lead." });
       }
     } catch (err) {
       console.error("Delete error:", err);
@@ -239,23 +204,24 @@ export default function LeadDetailPage() {
     }
   };
 
+
   if (isLoading) {
     return (
       <div className="flex items-center justify-center min-h-[60vh]">
-        <Loader2 className="w-8 h-8 text-emerald-600 animate-spin" />
+        <SpinnerGap className="w-8 h-8 text-muted-foreground animate-spin" />
       </div>
     );
   }
 
   if (errorMsg || !lead) {
     return (
-      <div className="p-8 text-center space-y-4">
-        <p className="text-rose-600 font-bold text-lg">{errorMsg || "Lead not found"}</p>
+      <div className="mx-auto my-12 max-w-md rounded-xl border border-border bg-card p-8 text-center shadow-xs">
+        <p className="text-base font-semibold text-foreground">{errorMsg || "Lead not found"}</p>
         <button
           onClick={() => router.push("/pipeline")}
-          className="px-4 py-2 bg-slate-900 text-white font-bold text-xs rounded-xl hover:bg-slate-800"
+          className="mt-4 h-10 rounded-lg bg-primary px-4 text-sm font-medium text-primary-foreground hover:bg-primary-hover cursor-pointer"
         >
-          Back to Pipeline
+          Back to pipeline
         </button>
       </div>
     );
@@ -263,52 +229,71 @@ export default function LeadDetailPage() {
 
   const currentBrand = BRAND_CONFIG[(lead.business || "tzar") as BusinessSlug] || BRAND_CONFIG.tzar;
   const isOverdue = lead.slaDeadline ? new Date(lead.slaDeadline) < new Date() : false;
+  const currentStageId = lead.stageId || "new-lead";
+  const currentIdx = STAGES.findIndex((st) => st.id === currentStageId);
+  const submitted = lead.createdAt ? new Date(lead.createdAt) : null;
+
+  const card = "rounded-xl border border-border bg-card p-5 shadow-xs";
+  const cardTitle = "text-base font-semibold text-foreground";
+  const fieldLabel = "text-sm text-muted-foreground";
+  const fieldValue = "mt-0.5 text-sm font-medium text-foreground break-words";
+  const outlineButton =
+    "inline-flex h-10 items-center justify-center gap-2 rounded-lg border border-input bg-card px-4 text-sm font-medium text-foreground hover:bg-muted transition-colors cursor-pointer";
+  const primaryButton =
+    "inline-flex h-10 items-center justify-center gap-2 rounded-lg bg-primary px-4 text-sm font-medium text-primary-foreground hover:bg-primary-hover transition-colors cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed";
 
   return (
-    <div className="space-y-6 max-w-7xl mx-auto pb-12 animate-fade-in">
-      {/* ─── TOP BREADCRUMB & ACTION HEADER BAR ───────────────────────────── */}
-      <div className="bg-white p-5 rounded-2xl border border-slate-300 shadow-2xs space-y-4">
-        <div className="flex flex-wrap items-center justify-between gap-4">
-          <div className="flex items-center gap-3">
+    <div className="space-y-5 max-w-7xl mx-auto pb-12 animate-fade-in">
+      {notice && (
+        <div
+          role={notice.kind === "error" ? "alert" : "status"}
+          className={`flex items-center justify-between gap-3 rounded-lg border px-4 py-3 text-sm font-medium ${
+            notice.kind === "ok" ? "border-success bg-success-soft text-success" : "border-destructive bg-destructive-soft text-destructive"
+          }`}
+        >
+          {notice.text}
+          <button onClick={() => setNotice(null)} className="text-sm underline cursor-pointer">
+            Dismiss
+          </button>
+        </div>
+      )}
+
+      {/* Header: who the lead is, what to do with it, and where it is in the pipeline */}
+      <section className={card + " space-y-5"}>
+        <div className="flex flex-wrap items-start justify-between gap-4">
+          <div className="flex items-start gap-3 min-w-0">
             <button
               onClick={() => router.push("/pipeline")}
-              className="p-2 rounded-xl bg-slate-100 hover:bg-slate-200 border border-slate-300 text-slate-700 transition-all cursor-pointer"
-              title="Back to Pipeline Grid"
+              className="mt-1 grid size-10 shrink-0 place-items-center rounded-lg border border-input bg-card text-foreground hover:bg-muted cursor-pointer"
+              aria-label="Back to pipeline"
+              title="Back to pipeline"
             >
-              <ArrowLeft className="w-4 h-4" />
+              <ArrowLeft size={18} />
             </button>
 
-            <div>
-              <div className="flex items-center gap-2.5 flex-wrap">
-                <span className="text-xs font-mono font-bold px-2.5 py-1 rounded-md bg-slate-900 text-white">
-                  {lead.leadCustomId || "TZ-LD-TEMP"}
-                </span>
-
+            <div className="min-w-0">
+              <div className="flex flex-wrap items-center gap-x-4 gap-y-1 text-sm">
+                <span className="font-mono font-semibold text-foreground">{lead.leadCustomId || "New lead"}</span>
                 {currentBrand.logo ? (
-                  <img src={currentBrand.logo} alt={currentBrand.label} className="h-7 w-auto object-contain max-h-7" />
+                  <img src={currentBrand.logo} alt={currentBrand.label} className="h-6 w-auto max-w-[120px] object-contain" />
                 ) : (
-                  <span className={`inline-flex items-center gap-1.5 text-xs font-bold px-3 py-1 rounded-xl ${currentBrand.bg} ${currentBrand.text}`}>
-                    {currentBrand.label}
-                  </span>
+                  <span className="font-medium text-foreground">{currentBrand.label}</span>
                 )}
-
                 {isOverdue ? (
-                  <span className="inline-flex items-center gap-1 text-[11px] font-extrabold px-2.5 py-0.5 rounded-full bg-rose-100 text-rose-700 animate-pulse">
-                    <AlertTriangle className="w-3 h-3" /> SLA Overdue
+                  <span className="inline-flex items-center gap-1.5 font-semibold text-destructive">
+                    <Warning size={16} weight="fill" /> SLA overdue
                   </span>
                 ) : (
-                  <span className="inline-flex items-center gap-1 text-[11px] font-bold px-2.5 py-0.5 rounded-full bg-emerald-50 text-emerald-700 border border-emerald-200">
-                    <Clock className="w-3 h-3 text-emerald-600" /> Active SLA
+                  <span className="inline-flex items-center gap-1.5 text-muted-foreground">
+                    <Clock size={16} /> Within SLA
                   </span>
                 )}
               </div>
 
-              <h1 className="text-2xl font-bold text-slate-900 mt-1">
-                {lead.fullName || "Anonymous Lead"}
-              </h1>
+              <h1 className="mt-1 text-2xl font-semibold tracking-tight text-foreground">{lead.fullName || "Unnamed lead"}</h1>
               {lead.companyName && (
-                <p className="text-xs font-medium text-slate-600 flex items-center gap-1">
-                  <Building2 className="w-3.5 h-3.5 text-slate-400" /> {lead.companyName}
+                <p className="mt-0.5 flex items-center gap-1.5 text-sm text-muted-foreground">
+                  <Buildings size={16} /> {lead.companyName}
                 </p>
               )}
             </div>
@@ -318,158 +303,134 @@ export default function LeadDetailPage() {
             <button
               onClick={handleConvertToClient}
               disabled={isConverting || lead.status === "CONVERTED"}
-              className={`px-4 py-2 text-xs font-bold rounded-xl transition-all flex items-center gap-1.5 cursor-pointer ${
-                lead.status === "CONVERTED"
-                  ? "bg-emerald-100 text-emerald-800 cursor-default"
-                  : "bg-emerald-600 hover:bg-emerald-700 text-white shadow-xs"
-              }`}
+              className={lead.status === "CONVERTED" ? outlineButton + " cursor-default" : primaryButton}
             >
-              {isConverting ? <Loader2 className="w-4 h-4 animate-spin" /> : <UserCheck className="w-4 h-4" />}
-              {lead.status === "CONVERTED" ? "Converted Client" : "Convert to Client Account"}
+              {isConverting ? <SpinnerGap size={18} className="animate-spin" /> : lead.status === "CONVERTED" ? <Check size={18} /> : <UserCheck size={18} />}
+              {lead.status === "CONVERTED" ? "Converted to client" : "Convert to client"}
             </button>
 
             {isSuperAdmin && (
               <button
-                onClick={handleDeleteLead}
+                onClick={() => setDeleteOpen(true)}
                 disabled={isDeleting}
-                className="p-2.5 rounded-xl text-rose-600 hover:text-rose-700 hover:bg-rose-50 border border-rose-200 transition-colors cursor-pointer"
-                title="Delete Lead Document (Admin Only)"
+                className="grid size-10 place-items-center rounded-lg border border-input bg-card text-destructive hover:bg-destructive-soft cursor-pointer"
+                title="Delete lead"
+                aria-label="Delete lead"
               >
-                {isDeleting ? <Loader2 className="w-4 h-4 animate-spin" /> : <Trash2 className="w-4 h-4" />}
+                {isDeleting ? <SpinnerGap size={18} className="animate-spin" /> : <Trash size={18} />}
               </button>
             )}
           </div>
         </div>
 
-        {/* ─── SALESFORCE STAGE PROGRESSION STEPPER ──────────────────────── */}
-        <div className="bg-slate-900 p-4 rounded-xl space-y-2 border border-slate-800">
-          <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">
-            Pipeline Stage Progression (Click to Change Stage)
-          </p>
-          <div className="grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-7 gap-1.5">
+        <div>
+          <p className={fieldLabel + " mb-2"}>Stage</p>
+          <ol className="grid grid-cols-2 gap-2 sm:grid-cols-4 lg:grid-cols-7">
             {STAGES.map((stg, idx) => {
-              const currentIdx = STAGES.findIndex((s) => s.id === (lead.stageId || "new-lead"));
-              const isCurrent = stg.id === (lead.stageId || "new-lead");
+              const isCurrent = idx === currentIdx;
               const isPast = idx < currentIdx;
-
               return (
-                <button
-                  key={stg.id}
-                  onClick={() => handleUpdateStage(stg.id)}
-                  className={`py-2 px-2 text-[11px] font-extrabold rounded-lg transition-all text-center truncate cursor-pointer ${
-                    isCurrent
-                      ? "bg-emerald-500 text-white shadow-md ring-2 ring-emerald-400/50"
-                      : isPast
-                      ? "bg-slate-700 text-emerald-400 hover:bg-slate-600"
-                      : "bg-slate-800 text-slate-400 hover:text-slate-200 hover:bg-slate-700/80"
-                  }`}
-                  title={`Change lead stage to ${stg.name}`}
-                >
-                  {stg.name}
-                </button>
+                <li key={stg.id}>
+                  <button
+                    onClick={() => handleUpdateStage(stg.id)}
+                    aria-current={isCurrent ? "step" : undefined}
+                    className={`flex h-10 w-full items-center justify-center gap-1.5 rounded-lg border px-2 text-sm font-medium transition-colors cursor-pointer ${
+                      isCurrent
+                        ? "border-primary bg-primary text-primary-foreground"
+                        : isPast
+                        ? "border-input bg-muted text-foreground hover:bg-border"
+                        : "border-input bg-card text-muted-foreground hover:bg-muted hover:text-foreground"
+                    }`}
+                    title={`Move this lead to ${stg.name}`}
+                  >
+                    {isPast && <Check size={14} weight="bold" />}
+                    <span className="truncate">{stg.name}</span>
+                  </button>
+                </li>
               );
             })}
-          </div>
+          </ol>
         </div>
-      </div>
+      </section>
 
-      {/* ─── MAIN 360 WORKSPACE CONTENT (2-COLUMN SALESFORCE/ZOHO LAYOUT) ──── */}
-      <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
-        {/* LEFT COLUMN (40% WIDTH): Contact Info, Facebook Date, Titepo Specs, Form Q&A */}
-        <div className="lg:col-span-5 space-y-6">
-          {/* Primary Contact Details */}
-          <div className="bg-white p-5 rounded-2xl border border-slate-300 space-y-4 shadow-2xs">
-            <h3 className="text-xs font-extrabold uppercase tracking-wider text-slate-700">
-              Primary Contact Details
-            </h3>
-
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 text-xs">
+      <div className="grid grid-cols-1 gap-5 lg:grid-cols-12">
+        <div className="space-y-5 lg:col-span-5">
+          <section className={card + " space-y-4"}>
+            <h2 className={cardTitle}>Contact details</h2>
+            <dl className="grid grid-cols-1 gap-4 sm:grid-cols-2">
               <div className="min-w-0">
-                <p className="text-slate-500 font-medium">Email Address</p>
-                <a href={`mailto:${lead.email}`} className="font-bold text-slate-900 hover:underline flex items-center gap-1.5 mt-0.5 break-all">
-                  <Mail className="w-3.5 h-3.5 text-slate-400 shrink-0" /> {lead.email || "N/A"}
-                </a>
+                <dt className={fieldLabel}>Email</dt>
+                <dd className={fieldValue}>
+                  <a href={`mailto:${lead.email}`} className="inline-flex items-center gap-1.5 hover:underline">
+                    <Envelope size={16} className="shrink-0 text-muted-foreground" /> {lead.email || "Not given"}
+                  </a>
+                </dd>
               </div>
-
               <div className="min-w-0">
-                <p className="text-slate-500 font-medium">Phone Number</p>
-                <a href={`tel:${lead.phone}`} className="font-bold text-slate-900 hover:underline flex items-center gap-1.5 mt-0.5 break-words">
-                  <Phone className="w-3.5 h-3.5 text-slate-400 shrink-0" /> {lead.phone}
-                </a>
+                <dt className={fieldLabel}>Phone</dt>
+                <dd className={fieldValue}>
+                  <a href={`tel:${lead.phone}`} className="inline-flex items-center gap-1.5 hover:underline">
+                    <Phone size={16} className="shrink-0 text-muted-foreground" /> {lead.phone || "Not given"}
+                  </a>
+                </dd>
               </div>
-
               <div className="min-w-0">
-                <p className="text-slate-500 font-medium">City & Location</p>
-                <p className="font-bold text-slate-900 flex items-center gap-1.5 mt-0.5 break-words">
-                  <MapPin className="w-3.5 h-3.5 text-slate-400 shrink-0" />
-                  {lead.city || lead.titepoData?.streetAddress || [lead.country].filter(Boolean).join(", ") || "N/A"}
-                </p>
+                <dt className={fieldLabel}>Location</dt>
+                <dd className={fieldValue}>
+                  <span className="inline-flex items-center gap-1.5">
+                    <MapPin size={16} className="shrink-0 text-muted-foreground" />
+                    {lead.city || lead.titepoData?.streetAddress || [lead.country].filter(Boolean).join(", ") || "Not given"}
+                  </span>
+                </dd>
               </div>
-
               <div className="min-w-0">
-                <p className="text-slate-500 font-medium">Facebook Submitted Date</p>
-                <p className="font-bold text-emerald-800 flex items-center gap-1.5 mt-0.5 break-words">
-                  <Calendar className="w-3.5 h-3.5 text-emerald-600 shrink-0" />
-                  {lead.createdAt ? new Date(lead.createdAt).toLocaleString("en-GB", { dateStyle: "medium", timeStyle: "short" }) : "N/A"}
-                </p>
+                <dt className={fieldLabel}>Received</dt>
+                <dd className={fieldValue}>
+                  <span className="inline-flex items-center gap-1.5">
+                    <CalendarBlank size={16} className="shrink-0 text-muted-foreground" />
+                    {submitted ? submitted.toLocaleString("en-GB", { dateStyle: "medium", timeStyle: "short" }) : "Unknown"}
+                  </span>
+                </dd>
               </div>
-            </div>
-          </div>
+            </dl>
+          </section>
 
-          {/* Dynamic Brand-Specific Specification Cards (Honest Data, No Fake Fallbacks) */}
           {lead.business === "titepo" && <TitepoSpecsCard lead={lead} />}
           {lead.business === "tzar" && <TzarSpecsCard lead={lead} />}
           {lead.business === "adshalaa" && <AdshalaaSpecsCard lead={lead} />}
           {lead.business === "crownleaf" && <CrownleafSpecsCard lead={lead} />}
 
-          {/* Facebook Lead Form Submitted Questions & Answers Card */}
           {lead.metaFormFields && lead.metaFormFields.length > 0 && (
-            <div className="bg-slate-900 text-white p-5 rounded-2xl space-y-3 shadow-md border border-slate-800">
-              <div className="flex items-center justify-between border-b border-slate-800 pb-2">
-                <h4 className="text-xs font-extrabold uppercase tracking-wider text-emerald-400 flex items-center gap-1.5">
-                  <FacebookIcon className="w-4 h-4 fill-emerald-400" /> Facebook Lead Form Questions & Answers
-                </h4>
-                <span className="text-[10px] font-mono font-bold px-2 py-0.5 rounded bg-slate-800 text-slate-300">
-                  {lead.metaFormFields.length} Form Fields Captured
-                </span>
+            <section className={card + " space-y-3"}>
+              <div className="flex items-baseline justify-between gap-2">
+                <h2 className={cardTitle}>Facebook form answers</h2>
+                <span className="text-sm text-muted-foreground">{lead.metaFormFields.length} answers</span>
               </div>
-
-              <div className="space-y-2 text-xs">
+              <dl className="divide-y divide-border">
                 {lead.metaFormFields.map((field, idx) => (
-                  <div key={idx} className="bg-slate-800/80 p-3 rounded-xl border border-slate-700/60 space-y-0.5">
-                    <p className="text-[11px] font-bold text-slate-400 capitalize">{field.label}</p>
-                    <p className="text-xs font-bold text-emerald-300">{field.value}</p>
+                  <div key={idx} className="py-2.5 first:pt-0 last:pb-0">
+                    <dt className={fieldLabel + " capitalize"}>{field.label}</dt>
+                    <dd className={fieldValue}>{field.value}</dd>
                   </div>
                 ))}
-              </div>
-            </div>
+              </dl>
+            </section>
           )}
 
-          {/* Deal Value & BDE Editor */}
-          <div className="bg-white p-5 rounded-2xl border border-slate-300 space-y-4 shadow-2xs">
-            <div className="flex items-center justify-between">
-              <h3 className="text-xs font-extrabold uppercase tracking-wider text-slate-700 flex items-center gap-1.5">
-                <DollarSign className="w-4 h-4 text-emerald-600" /> Deal Value & Requirements
-              </h3>
-
+          <section className={card + " space-y-4"}>
+            <div className="flex items-center justify-between gap-2">
+              <h2 className={cardTitle}>Deal value and requirements</h2>
               {!isEditing ? (
-                <button
-                  onClick={() => setIsEditing(true)}
-                  className="px-3 py-1.5 text-xs font-bold bg-slate-900 text-white rounded-xl hover:bg-slate-800 transition-all flex items-center gap-1 cursor-pointer"
-                >
-                  <Edit2 className="w-3.5 h-3.5" /> Edit
+                <button onClick={() => setIsEditing(true)} className={outlineButton + " h-9 px-3"}>
+                  <PencilSimple size={16} /> Edit
                 </button>
               ) : (
                 <div className="flex items-center gap-2">
-                  <button onClick={() => setIsEditing(false)} className="px-3 py-1.5 text-xs font-bold bg-slate-200 text-slate-700 rounded-xl cursor-pointer">
+                  <button onClick={() => setIsEditing(false)} className={outlineButton + " h-9 px-3"}>
                     Cancel
                   </button>
-                  <button
-                    onClick={handleSaveDetails}
-                    disabled={isSavingDetails}
-                    className="px-3 py-1.5 text-xs font-bold bg-emerald-600 text-white rounded-xl hover:bg-emerald-700 transition-all flex items-center gap-1 cursor-pointer"
-                  >
-                    {isSavingDetails ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Save className="w-3.5 h-3.5" />}
+                  <button onClick={handleSaveDetails} disabled={isSavingDetails} className={primaryButton + " h-9 px-3"}>
+                    {isSavingDetails ? <SpinnerGap size={16} className="animate-spin" /> : <FloppyDisk size={16} />}
                     Save
                   </button>
                 </div>
@@ -477,135 +438,129 @@ export default function LeadDetailPage() {
             </div>
 
             {!isEditing ? (
-              <div className="space-y-3 text-xs">
-                <div className="bg-slate-50 p-3.5 rounded-xl border border-slate-200">
-                  <span className="text-[11px] font-semibold text-slate-500 uppercase">Estimated Budget</span>
-                  <p className="text-lg font-extrabold text-slate-900">₹{(lead.estimatedBudget || 0).toLocaleString()}</p>
+              <dl className="space-y-3">
+                <div>
+                  <dt className={fieldLabel}>Estimated budget</dt>
+                  <dd className="text-xl font-semibold text-foreground">₹{(lead.estimatedBudget || 0).toLocaleString("en-IN")}</dd>
                 </div>
                 {lead.requirementsMessage && (
-                  <div className="bg-slate-50 p-3.5 rounded-xl border border-slate-200">
-                    <span className="text-[11px] font-semibold text-slate-500 uppercase">Requirement Notes</span>
-                    <p className="text-xs font-medium text-slate-800 mt-1 whitespace-pre-wrap">"{lead.requirementsMessage}"</p>
+                  <div>
+                    <dt className={fieldLabel}>Requirement notes</dt>
+                    <dd className="mt-0.5 whitespace-pre-wrap text-sm text-foreground">{lead.requirementsMessage}</dd>
                   </div>
                 )}
-              </div>
+              </dl>
             ) : (
-              <div className="space-y-3 text-xs">
-                <div>
-                  <label className="text-xs font-bold text-slate-700 block mb-1">Estimated Budget (INR)</label>
+              <div className="space-y-3">
+                <div className="space-y-1.5">
+                  <label htmlFor="budget" className="text-sm font-medium text-foreground">
+                    Estimated budget (₹)
+                  </label>
                   <input
+                    id="budget"
                     type="number"
                     value={budgetInput}
                     onChange={(e) => setBudgetInput(e.target.value)}
-                    className="w-full p-2.5 rounded-xl border border-slate-300 outline-none focus:border-emerald-600 font-bold"
+                    className="h-10 w-full rounded-lg border border-input bg-card px-3 text-sm text-foreground outline-none focus-visible:border-ring focus-visible:ring-2 focus-visible:ring-ring/20"
                   />
                 </div>
-                <div>
-                  <label className="text-xs font-bold text-slate-700 block mb-1">Requirements Note</label>
+                <div className="space-y-1.5">
+                  <label htmlFor="req" className="text-sm font-medium text-foreground">
+                    Requirement notes
+                  </label>
                   <textarea
+                    id="req"
                     rows={3}
                     value={requirementsInput}
                     onChange={(e) => setRequirementsInput(e.target.value)}
-                    className="w-full p-2.5 rounded-xl border border-slate-300 outline-none focus:border-emerald-600 font-semibold"
+                    className="w-full rounded-lg border border-input bg-card px-3 py-2 text-sm text-foreground outline-none focus-visible:border-ring focus-visible:ring-2 focus-visible:ring-ring/20"
                   />
                 </div>
               </div>
             )}
-          </div>
+          </section>
         </div>
 
-        {/* RIGHT COLUMN (60% WIDTH): Zoho Activity Hub & Communication Stream */}
-        <div className="lg:col-span-7 space-y-6">
-          {/* Communication & Actions Hub */}
-          <div className="bg-white p-5 rounded-2xl border border-slate-300 space-y-4 shadow-2xs">
-            <div className="flex items-center justify-between border-b border-slate-100 pb-3">
-              <div>
-                <h3 className="text-xs font-extrabold uppercase tracking-wider text-slate-700 flex items-center gap-2">
-                  <Send className="w-4 h-4 text-emerald-600" /> Communication Launcher
-                </h3>
-                <p className="text-[11px] text-slate-500 font-medium mt-0.5">
-                  Direct 1-click WhatsApp messaging and call action launcher
-                </p>
-              </div>
-
+        <div className="space-y-5 lg:col-span-7">
+          <section className={card + " space-y-4"}>
+            <h2 className={cardTitle}>Contact this lead</h2>
+            <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
               <a
                 href={`https://wa.me/${(lead.phone || "").replace(/[^0-9]/g, "")}?text=${encodeURIComponent(
-                  `Hello ${lead.fullName || ""}, thank you for contacting ${currentBrand.label}!`
+                  `Hello ${lead.fullName || ""}, thank you for contacting ${currentBrand.label}.`
                 )}`}
                 target="_blank"
                 rel="noreferrer"
-                className="px-4 py-2 text-xs font-bold bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl shadow-xs transition-all flex items-center gap-1.5 cursor-pointer"
+                className={primaryButton}
               >
-                <Send className="w-3.5 h-3.5" /> Launch WhatsApp Direct
+                <WhatsappLogo size={18} /> WhatsApp
+              </a>
+              <a href={`tel:${lead.phone}`} className={outlineButton}>
+                <Phone size={18} /> Call
+              </a>
+              <a href={`mailto:${lead.email}`} className={outlineButton}>
+                <Envelope size={18} /> Email
               </a>
             </div>
+          </section>
 
-            <div className="grid grid-cols-2 gap-3 text-xs">
-              <a
-                href={`tel:${lead.phone}`}
-                className="p-3.5 bg-slate-50 hover:bg-slate-100 border border-slate-200 rounded-xl transition-all font-bold text-slate-900 flex items-center gap-2 justify-center"
-              >
-                <Phone className="w-4 h-4 text-blue-600" /> Call {lead.phone}
-              </a>
-              <a
-                href={`mailto:${lead.email}`}
-                className="p-3.5 bg-slate-50 hover:bg-slate-100 border border-slate-200 rounded-xl transition-all font-bold text-slate-900 flex items-center gap-2 justify-center"
-              >
-                <Mail className="w-4 h-4 text-purple-600" /> Email {lead.email || "Lead"}
-              </a>
-            </div>
-          </div>
+          <section className={card + " space-y-4"}>
+            <h2 className={cardTitle + " flex items-center gap-2"}>
+              <ChatText size={18} className="text-muted-foreground" /> Activity notes ({notesList.length})
+            </h2>
 
-          {/* Timeline & BDE Activity Log */}
-          <div className="bg-white p-5 rounded-2xl border border-slate-300 space-y-4 shadow-2xs">
-            <h3 className="text-xs font-extrabold uppercase tracking-wider text-slate-700 flex items-center gap-2">
-              <MessageSquare className="w-4 h-4 text-slate-500" /> Executive Activity Timeline & Notes ({notesList.length})
-            </h3>
-
-            {/* Post Activity Form */}
             <form onSubmit={handleAddNote} className="space-y-2">
+              <label htmlFor="note" className="sr-only">
+                New note
+              </label>
               <textarea
+                id="note"
                 rows={3}
                 value={newNoteContent}
                 onChange={(e) => setNewNoteContent(e.target.value)}
-                placeholder="Log call outcome, client discovery notes, or follow-up tasks..."
-                className="w-full text-xs font-semibold p-3 rounded-xl border border-slate-300 outline-none focus:border-emerald-600 bg-slate-50/50"
+                placeholder="Write what happened on the call, or what to do next"
+                className="w-full rounded-lg border border-input bg-card px-3 py-2 text-sm text-foreground placeholder:text-muted-foreground outline-none focus-visible:border-ring focus-visible:ring-2 focus-visible:ring-ring/20"
               />
               <div className="flex justify-end">
-                <button
-                  type="submit"
-                  disabled={isSubmittingNote || !newNoteContent.trim()}
-                  className="px-4 py-2 text-xs font-bold bg-slate-900 hover:bg-slate-800 text-white rounded-xl shadow-2xs transition-all flex items-center gap-1.5 cursor-pointer disabled:opacity-50"
-                >
-                  {isSubmittingNote ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Send className="w-3.5 h-3.5 text-emerald-400" />}
-                  Post Activity Note
+                <button type="submit" disabled={isSubmittingNote || !newNoteContent.trim()} className={primaryButton}>
+                  {isSubmittingNote ? <SpinnerGap size={16} className="animate-spin" /> : <PaperPlaneTilt size={16} />}
+                  Add note
                 </button>
               </div>
             </form>
 
-            {/* Activity Stream */}
-            <div className="space-y-3 pt-2 max-h-[450px] overflow-y-auto">
+            <ul className="max-h-[450px] divide-y divide-border overflow-y-auto">
               {notesList.length === 0 ? (
-                <p className="text-center text-xs font-semibold text-slate-500 py-8">
-                  No activity notes logged yet. Log the first call outcome above!
-                </p>
+                <li className="py-8 text-center text-sm text-muted-foreground">No notes yet. Add the first one above.</li>
               ) : (
                 notesList.map((n) => (
-                  <div key={n._id} className="p-4 bg-slate-50 rounded-xl border border-slate-200 space-y-1.5">
-                    <div className="flex items-center justify-between text-[11px]">
-                      <span className="font-extrabold text-slate-900">{n.senderName || "BDE Executive"}</span>
-                      <span className="text-slate-400 font-mono">
-                        {n.createdAt ? new Date(n.createdAt).toLocaleString() : "Just now"}
-                      </span>
+                  <li key={n._id} className="py-3 first:pt-0">
+                    <div className="flex items-baseline justify-between gap-3 text-sm">
+                      <span className="font-semibold text-foreground">{n.senderName || "Team member"}</span>
+                      <span className="text-muted-foreground">{n.createdAt ? new Date(n.createdAt).toLocaleString("en-GB", { dateStyle: "medium", timeStyle: "short" }) : "Just now"}</span>
                     </div>
-                    <p className="text-xs text-slate-800 font-medium whitespace-pre-wrap">{n.content}</p>
-                  </div>
+                    <p className="mt-1 whitespace-pre-wrap text-sm text-foreground">{n.content}</p>
+                  </li>
                 ))
               )}
-            </div>
-          </div>
+            </ul>
+          </section>
         </div>
       </div>
+
+      {deleteOpen && (
+        <ConfirmDialog
+          title={`Delete ${lead.fullName || "this lead"}?`}
+          message="The lead and its notes are removed for good. This cannot be undone."
+          confirmLabel="Delete lead"
+          cancelLabel="Keep lead"
+          onConfirm={() => {
+            setDeleteOpen(false);
+            handleDeleteLead();
+          }}
+          onClose={() => setDeleteOpen(false)}
+        />
+      )}
     </div>
   );
 }

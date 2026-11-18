@@ -11,7 +11,7 @@ import {
   CartesianGrid,
   Cell,
 } from "recharts";
-import { Sparkles, ChevronDown, X, TrendingUp, ShieldAlert, CheckCircle2 } from "lucide-react";
+import { Sparkle as Sparkles, CaretDown as ChevronDown, X, TrendUp as TrendingUp, ShieldWarning as ShieldAlert, CheckCircle as CheckCircle2 } from "@phosphor-icons/react";
 import { BusinessSlug } from "@/models/Lead";
 
 interface BrandMetricItem {
@@ -35,7 +35,6 @@ export function RevenueBreakdownChart({
 }: RevenueBreakdownChartProps) {
   const [selectedRange, setSelectedRange] = useState<"All Quarters" | "Q1 (Jan-Mar)" | "Q2 (Apr-Jun)" | "Q3 (Jul-Sep)" | "Q4 (Oct-Dec)">("All Quarters");
   const [isRangeDropdownOpen, setIsRangeDropdownOpen] = useState(false);
-  const [isAiModalOpen, setIsAiModalOpen] = useState(false);
 
   const brandData: BrandMetricItem[] = [
     {
@@ -44,7 +43,7 @@ export function RevenueBreakdownChart({
       logo: "/tzar-logo.png",
       count: brandMetrics.tzar?.count || 0,
       value: brandMetrics.tzar?.value || 0,
-      color: "#047857",
+      color: "var(--chart-1)",
       share: totalRevenue > 0 ? ((brandMetrics.tzar?.value || 0) / totalRevenue) * 100 : 25,
     },
     {
@@ -53,7 +52,7 @@ export function RevenueBreakdownChart({
       logo: "/titepo-logo.png",
       count: brandMetrics.titepo?.count || 0,
       value: brandMetrics.titepo?.value || 0,
-      color: "#E11D48",
+      color: "var(--chart-4)",
       share: totalRevenue > 0 ? ((brandMetrics.titepo?.value || 0) / totalRevenue) * 100 : 25,
     },
     {
@@ -62,7 +61,7 @@ export function RevenueBreakdownChart({
       logo: "/Crownleaf-logo.png",
       count: brandMetrics.crownleaf?.count || 0,
       value: brandMetrics.crownleaf?.value || 0,
-      color: "#D97706",
+      color: "var(--chart-2)",
       share: totalRevenue > 0 ? ((brandMetrics.crownleaf?.value || 0) / totalRevenue) * 100 : 25,
     },
     {
@@ -71,7 +70,7 @@ export function RevenueBreakdownChart({
       logo: "/adshalaa-logo.png",
       count: brandMetrics.adshalaa?.count || 0,
       value: brandMetrics.adshalaa?.value || 0,
-      color: "#2563EB",
+      color: "var(--chart-3)",
       share: totalRevenue > 0 ? ((brandMetrics.adshalaa?.value || 0) / totalRevenue) * 100 : 25,
     },
   ];
@@ -81,13 +80,13 @@ export function RevenueBreakdownChart({
 
   return (
     <>
-      <div className="bg-white p-5 rounded-2xl border border-slate-200/90 shadow-2xs space-y-4 flex flex-col justify-between">
+      <div className="bg-card p-5 rounded-2xl border border-border shadow-2xs space-y-4 flex flex-col justify-between">
         {/* Header with Title, Total & Functional Date Range Dropdown */}
         <div className="flex items-start justify-between">
           <div>
-            <h2 className="text-base font-bold text-slate-900">Revenue & Lead Breakdown</h2>
-            <p className="text-xs text-slate-500 font-medium">Revenue by Business Entity</p>
-            <div className="text-xl sm:text-2xl font-black text-slate-900 mt-1">
+            <h2 className="text-base font-semibold text-foreground">Revenue & Lead Breakdown</h2>
+            <p className="text-sm text-muted-foreground font-medium">Pipeline value by brand</p>
+            <div className="text-xl sm:text-2xl font-semibold text-foreground mt-1">
               ₹{(totalRevenue || 0).toLocaleString("en-IN")}
             </div>
           </div>
@@ -96,14 +95,14 @@ export function RevenueBreakdownChart({
           <div className="relative">
             <button
               onClick={() => setIsRangeDropdownOpen(!isRangeDropdownOpen)}
-              className="flex items-center gap-1.5 px-3 py-1.5 bg-slate-50 hover:bg-slate-100 border border-slate-200 rounded-xl text-slate-700 font-bold text-xs transition-all cursor-pointer"
+              className="flex items-center gap-1.5 px-3 py-1.5 bg-muted hover:bg-muted border border-border rounded-xl text-foreground font-semibold text-sm transition-all cursor-pointer"
             >
               <span>{selectedRange}</span>
-              <ChevronDown className="w-3.5 h-3.5 text-slate-400" />
+              <ChevronDown className="w-3.5 h-3.5 text-muted-foreground" />
             </button>
 
             {isRangeDropdownOpen && (
-              <div className="absolute right-0 mt-1.5 w-40 bg-white border border-slate-200 rounded-xl shadow-lg z-20 py-1 overflow-hidden animate-fade-in">
+              <div className="absolute right-0 mt-1.5 w-40 bg-card border border-border rounded-xl shadow-lg z-20 py-1 overflow-hidden animate-fade-in">
                 {(["All Quarters", "Q1 (Jan-Mar)", "Q2 (Apr-Jun)", "Q3 (Jul-Sep)", "Q4 (Oct-Dec)"] as const).map((q) => (
                   <button
                     key={q}
@@ -111,8 +110,8 @@ export function RevenueBreakdownChart({
                       setSelectedRange(q);
                       setIsRangeDropdownOpen(false);
                     }}
-                    className={`w-full text-left px-3 py-1.5 text-xs font-semibold hover:bg-slate-50 cursor-pointer ${
-                      selectedRange === q ? "text-emerald-700 font-bold bg-emerald-50/60" : "text-slate-700"
+                    className={`w-full text-left px-3 py-1.5 text-sm font-semibold hover:bg-muted cursor-pointer ${
+                      selectedRange === q ? "text-success font-semibold bg-success-soft" : "text-foreground"
                     }`}
                   >
                     {q}
@@ -127,33 +126,33 @@ export function RevenueBreakdownChart({
         <div className="w-full h-[180px]">
           <ResponsiveContainer width="100%" height="100%">
             <BarChart data={brandData} margin={{ top: 10, right: 10, left: -25, bottom: 0 }}>
-              <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#F1F5F9" />
+              <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="var(--border)" />
               <XAxis
                 dataKey="name"
                 axisLine={false}
                 tickLine={false}
-                tick={{ fontSize: 10, fill: "#64748B", fontWeight: 700 }}
+                tick={{ fontSize: 10, fill: "var(--muted-foreground)", fontWeight: 700 }}
                 dy={6}
               />
               <YAxis
                 axisLine={false}
                 tickLine={false}
-                tick={{ fontSize: 10, fill: "#94A3B8" }}
+                tick={{ fontSize: 10, fill: "var(--muted-foreground)" }}
               />
               <Tooltip
-                cursor={{ fill: "#F8FAFC", opacity: 0.8 }}
+                cursor={{ fill: "var(--muted)", opacity: 0.8 }}
                 content={({ active, payload }) => {
                   if (active && payload && payload.length) {
                     const item = payload[0].payload as BrandMetricItem;
                     return (
-                      <div className="bg-slate-950 text-white p-2.5 rounded-xl text-xs space-y-1 shadow-lg border border-slate-800">
-                        <div className="flex items-center gap-2 pb-1 border-b border-slate-800">
+                      <div className="bg-popover text-popover-foreground p-2.5 rounded-xl text-sm space-y-1 shadow-lg border border-border">
+                        <div className="flex items-center gap-2 pb-1 border-b border-border">
                           {/* eslint-disable-next-line @next/next/no-img-element */}
-                          <img src={item.logo} alt={item.name} className="h-3.5 w-auto object-contain bg-white/10 rounded px-1" />
-                          <span className="font-extrabold text-slate-200">{item.name}</span>
+                          <img src={item.logo} alt={item.name} className="h-3.5 w-auto object-contain bg-card rounded px-1" />
+                          <span className="font-semibold text-foreground">{item.name}</span>
                         </div>
-                        <p className="text-slate-400">Total Leads: <span className="font-bold text-white">{item.count}</span></p>
-                        <p className="text-slate-400">Pipeline Value: <span className="font-bold text-emerald-400">₹{item.value.toLocaleString("en-IN")}</span></p>
+                        <p className="text-muted-foreground">Total Leads: <span className="font-semibold text-foreground">{item.count}</span></p>
+                        <p className="text-muted-foreground">Pipeline Value: <span className="font-semibold text-success">₹{item.value.toLocaleString("en-IN")}</span></p>
                       </div>
                     );
                   }
@@ -170,9 +169,9 @@ export function RevenueBreakdownChart({
         </div>
 
         {/* Brand Shares Progress Rows with ONLY Official Logos */}
-        <div className="grid grid-cols-2 gap-2.5 text-xs">
+        <div className="grid grid-cols-2 gap-2.5 text-sm">
           {brandData.map((b) => (
-            <div key={b.id} className="p-3 rounded-xl bg-slate-50 border border-slate-100 flex items-center justify-between hover:bg-slate-100/80 transition-colors">
+            <div key={b.id} className="p-3 rounded-xl bg-muted border border-border flex items-center justify-between hover:bg-muted transition-colors">
               <div className="flex items-center">
                 {/* eslint-disable-next-line @next/next/no-img-element */}
                 <img
@@ -181,90 +180,11 @@ export function RevenueBreakdownChart({
                   className="h-5 w-auto max-w-[90px] object-contain shrink-0"
                 />
               </div>
-              <span className="font-black text-slate-900 shrink-0 text-xs sm:text-sm">{b.count} leads</span>
+              <span className="font-semibold text-foreground shrink-0 text-sm sm:text-sm">{b.count} leads</span>
             </div>
           ))}
         </div>
-
-        {/* Functional BagUI AI Insight Button */}
-        <button
-          onClick={() => setIsAiModalOpen(true)}
-          className="w-full text-left p-3 rounded-xl bg-slate-50 hover:bg-slate-100 border border-slate-200 flex items-center gap-2.5 text-xs text-slate-700 transition-all cursor-pointer group"
-        >
-          <Sparkles className="w-4 h-4 text-amber-500 shrink-0 group-hover:scale-110 transition-transform" />
-          <div className="flex items-center gap-1.5 flex-1 truncate">
-            <span className="font-bold text-slate-900">AI Growth Insight: </span>
-            {/* eslint-disable-next-line @next/next/no-img-element */}
-            <img src={topBrand.logo} alt="Top Brand" className="h-4 w-auto object-contain inline shrink-0" />
-            <span className="text-slate-600 font-medium truncate">
-              leads volume with {topBrand.count} active inquiries.
-            </span>
-          </div>
-          <span className="text-[10px] font-bold text-slate-400 group-hover:text-slate-900 underline shrink-0">
-            View Details →
-          </span>
-        </button>
       </div>
-
-      {/* Interactive AI Intelligence Modal */}
-      {isAiModalOpen && (
-        <div className="fixed inset-0 z-50 bg-slate-950/60 backdrop-blur-xs flex items-center justify-center p-4 animate-fade-in">
-          <div className="bg-white rounded-3xl max-w-lg w-full p-6 border border-slate-200 shadow-2xl space-y-5">
-            <div className="flex items-center justify-between border-b border-slate-100 pb-3">
-              <div className="flex items-center gap-2">
-                <div className="p-2 rounded-xl bg-amber-50 text-amber-600">
-                  <Sparkles className="w-5 h-5" />
-                </div>
-                <div>
-                  <h3 className="text-base font-black text-slate-900">
-                    AI Multi-Brand Strategic Intelligence
-                  </h3>
-                  <p className="text-xs font-semibold text-slate-500">
-                    Autonomous pipeline velocity and conversion diagnostics
-                  </p>
-                </div>
-              </div>
-              <button
-                onClick={() => setIsAiModalOpen(false)}
-                className="p-1.5 rounded-xl text-slate-400 hover:text-slate-900 hover:bg-slate-100 transition-colors cursor-pointer"
-              >
-                <X className="w-5 h-5" />
-              </button>
-            </div>
-
-            <div className="space-y-3 text-xs">
-              <div className="p-3.5 rounded-2xl bg-emerald-50 border border-emerald-200/80 space-y-1">
-                <div className="flex items-center gap-2 font-black text-emerald-900">
-                  <TrendingUp className="w-4 h-4 text-emerald-600" />
-                  <span>Lead Acquisition Velocity</span>
-                </div>
-                <p className="text-emerald-800 font-medium">
-                  {topBrand.name} is generating the highest inbound inquiry volume ({topBrand.count} leads). Ad recall and instant form completion rates are performing in the top 10th percentile.
-                </p>
-              </div>
-
-              <div className="p-3.5 rounded-2xl bg-blue-50 border border-blue-200/80 space-y-1">
-                <div className="flex items-center gap-2 font-black text-blue-900">
-                  <CheckCircle2 className="w-4 h-4 text-blue-600" />
-                  <span>BDE Conversion SLA Recommendation</span>
-                </div>
-                <p className="text-blue-800 font-medium">
-                  Leads contacted within 15 minutes via automated WhatsApp template workflows have a 3.4× higher closing rate. Ensure all newly ingested Meta leads trigger the auto-welcome template.
-                </p>
-              </div>
-            </div>
-
-            <div className="pt-2 flex justify-end">
-              <button
-                onClick={() => setIsAiModalOpen(false)}
-                className="px-5 py-2 rounded-xl bg-slate-900 hover:bg-slate-800 text-white font-bold text-xs transition-all cursor-pointer"
-              >
-                Close Intelligence
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
     </>
   );
 }

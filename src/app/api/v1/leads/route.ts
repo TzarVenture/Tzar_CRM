@@ -4,6 +4,8 @@ import dbConnect from "@/lib/db";
 import Lead, { BusinessSlug, LeadSource } from "@/models/Lead";
 import Message from "@/models/Message";
 import { auth } from "@/lib/auth";
+import { can } from "@/lib/permissions";
+import { parseLeadListParams, queryLeads } from "@/lib/leads-query";
 import {
   getDefaultPipeline,
   getAssignedBDE,
@@ -40,66 +42,28 @@ const CreateManualLeadSchema = z.object({
   assignedTo: z.string().optional(),
 });
 
-// GET: Fetch all active leads for Kanban or list
+// GET: one page of active leads, filtered, sorted and counted in the database.
+// Query: page, limit (max 200), business, stage, source, sla, from, to, search, service, assignedTo, sortBy, sortOrder
 export async function GET(req: Request) {
   try {
     const session = await auth();
     if (!session) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
-
-    const { searchParams } = new URL(req.url);
-    const search = searchParams.get("search");
-    const service = searchParams.get("service");
-    const assignedTo = searchParams.get("assignedTo");
-    const business = searchParams.get("business");
+    const person = { role: session.user.role, permissions: session.user.permissions };
+    if (!can(person, "leads.pipeline") && !can(person, "leads.dashboard")) {
+      return NextResponse.json({ error: "You do not have access to leads" }, { status: 403 });
+    }
 
     await dbConnect();
-
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const filter: any = {
-      status: "ACTIVE",
-    };
 
     const userRole = session.user?.role;
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const allowedBusinesses: string[] = (session.user as any)?.allowedBusinesses || ["tzar", "titepo", "adshalaa", "crownleaf"];
+    const scope = { seesAllBrands: userRole === "SUPER_ADMIN" || userRole === "ADMIN", allowedBusinesses };
 
-    // Non-admin roles (BDE, Sales Reps) are strictly scoped to their allowed businesses
-    if (userRole !== "SUPER_ADMIN" && userRole !== "ADMIN") {
-      if (business && business !== "all") {
-        filter.business = allowedBusinesses.includes(business) ? business : "NONE";
-      } else {
-        filter.business = { $in: allowedBusinesses };
-      }
-    } else if (business && business !== "all") {
-      filter.business = business;
-    }
-
-    if (search) {
-      filter.$or = [
-        { fullName: { $regex: search, $options: "i" } },
-        { email: { $regex: search, $options: "i" } },
-        { phone: { $regex: search, $options: "i" } },
-        { companyName: { $regex: search, $options: "i" } },
-        { leadCustomId: { $regex: search, $options: "i" } },
-      ];
-    }
-
-    if (service) {
-      filter.interestedServices = service;
-    }
-
-    if (assignedTo) {
-      filter.assignedTo = assignedTo;
-    }
-
-    const leads = await Lead.find(filter)
-      .populate("assignedTo", "name email avatarUrl role")
-      .sort({ createdAt: -1 })
-      .lean();
-
-    return NextResponse.json({ leads }, { status: 200 });
+    const result = await queryLeads(parseLeadListParams(new URL(req.url).searchParams), scope);
+    return NextResponse.json(result, { status: 200 });
   } catch (error) {
     console.error("GET Leads Error:", error);
     return NextResponse.json(

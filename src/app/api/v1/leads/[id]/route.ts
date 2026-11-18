@@ -20,7 +20,7 @@ const UpdateLeadSchema = z.object({
   status: z.enum(["ACTIVE", "CONVERTED", "ARCHIVED", "LOST"]).optional(),
 });
 
-// GET: 360° Lead Profile
+// GET: Lead Profile
 export async function GET(
   req: Request,
   { params }: { params: Promise<{ id: string }> }

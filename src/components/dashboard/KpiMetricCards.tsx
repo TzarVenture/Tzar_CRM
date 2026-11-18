@@ -1,7 +1,7 @@
 "use client";
 
 import React from "react";
-import { TrendingUp, ArrowUpRight, DollarSign, Users, CheckCircle2, Award } from "lucide-react";
+import { TrendUp as TrendingUp, ArrowUpRight, CurrencyDollar as DollarSign, Users, CheckCircle as CheckCircle2, Medal as Award } from "@phosphor-icons/react";
 
 interface KpiMetricCardsProps {
   totalRevenue: number;
@@ -29,19 +29,19 @@ export function KpiMetricCards({
       isPositive: true,
       sparklineHeights: [30, 45, 60, 40, 75, 90, 100],
       icon: DollarSign,
-      color: "text-emerald-700",
-      bg: "bg-emerald-50",
+      color: "text-success",
+      bg: "bg-success-soft",
     },
     {
       title: "Total Inquiries & Leads",
       value: `${(totalLeads || 0).toLocaleString("en-IN")}`,
       delta: "+8.5%",
-      deltaLabel: "inbound velocity",
+      deltaLabel: "new enquiries",
       isPositive: true,
       sparklineHeights: [40, 55, 35, 70, 65, 85, 95],
       icon: Users,
-      color: "text-blue-700",
-      bg: "bg-blue-50",
+      color: "text-info",
+      bg: "bg-info-soft",
     },
     {
       title: "Closed Won Revenue",
@@ -52,8 +52,8 @@ export function KpiMetricCards({
       isPositive: true,
       sparklineHeights: [25, 40, 50, 65, 70, 80, 100],
       icon: Award,
-      color: "text-purple-700",
-      bg: "bg-purple-50",
+      color: "text-foreground",
+      bg: "bg-muted",
     },
     {
       title: "Lead Conversion Rate",
@@ -64,8 +64,8 @@ export function KpiMetricCards({
       isPositive: true,
       sparklineHeights: [50, 45, 60, 55, 75, 80, 90],
       icon: CheckCircle2,
-      color: "text-amber-700",
-      bg: "bg-amber-50",
+      color: "text-warning",
+      bg: "bg-warning-soft",
     },
   ];
 
@@ -75,52 +75,24 @@ export function KpiMetricCards({
         return (
           <div
             key={idx}
-            className="bg-white p-5 rounded-2xl border border-slate-200/90 shadow-2xs hover:border-slate-300 transition-all flex flex-col justify-between space-y-4"
+            className="bg-card p-5 rounded-2xl border border-border shadow-2xs hover:border-input transition-all flex flex-col justify-between space-y-4"
           >
             {/* Card Header: Title & Mini Bar Sparkline */}
             <div className="flex items-start justify-between">
-              <span className="text-xs font-bold text-slate-500">{card.title}</span>
-              {/* Mini Sparkline Chart (BagUI Signature Style) */}
-              <div className="flex items-end gap-1 h-5 w-12 justify-end opacity-70">
-                {card.sparklineHeights.map((h, sIdx) => (
-                  <div
-                    key={sIdx}
-                    className={`w-1 rounded-xs transition-all ${
-                      sIdx === card.sparklineHeights.length - 1
-                        ? "bg-slate-900"
-                        : "bg-slate-300"
-                    }`}
-                    style={{ height: `${h}%` }}
-                  />
-                ))}
-              </div>
+              <span className="text-sm font-semibold text-muted-foreground">{card.title}</span>
             </div>
+
 
             {/* Main Value Display */}
             <div>
-              <div className="text-2xl sm:text-3xl font-black text-slate-900 tracking-tight">
+              <div className="text-2xl sm:text-3xl font-semibold text-foreground tracking-tight">
                 {card.value}
               </div>
               {card.subValue && (
-                <p className="text-[11px] font-semibold text-slate-400 mt-0.5">
+                <p className="text-xs font-semibold text-muted-foreground mt-0.5">
                   {card.subValue}
                 </p>
               )}
-            </div>
-
-            {/* Bottom Trend Badge */}
-            <div className="flex items-center gap-1.5 text-xs">
-              <span
-                className={`inline-flex items-center gap-0.5 font-bold text-[11px] px-2 py-0.5 rounded-full ${
-                  card.isPositive
-                    ? "bg-emerald-50 text-emerald-700 border border-emerald-200/80"
-                    : "bg-rose-50 text-rose-700 border border-rose-200/80"
-                }`}
-              >
-                <ArrowUpRight className="w-3 h-3" />
-                {card.delta}
-              </span>
-              <span className="text-[11px] font-medium text-slate-400">{card.deltaLabel}</span>
             </div>
           </div>
         );

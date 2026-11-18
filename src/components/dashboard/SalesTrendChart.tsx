@@ -92,7 +92,7 @@ export function SalesTrendChart({ data, totalRevenue }: SalesTrendChartProps) {
     return data;
   }, [viewMode, data, totalRevenue]);
 
-  // Custom BagUI Dark Tooltip
+  // Custom Dark Tooltip
   const CustomTooltip = ({ active, payload, label }: any) => {
     if (active && payload && payload.length) {
       const newLeadsVal = payload.find((p: any) => p.dataKey === "newLeads")?.value || 0;
@@ -100,28 +100,28 @@ export function SalesTrendChart({ data, totalRevenue }: SalesTrendChartProps) {
       const revVal = payload[0]?.payload?.revenue || 0;
 
       return (
-        <div className="bg-slate-950/95 text-white p-3 rounded-xl shadow-xl border border-slate-800 text-xs space-y-1.5 backdrop-blur-md animate-fade-in">
-          <p className="font-extrabold text-slate-300 border-b border-slate-800 pb-1">
+        <div className="bg-popover text-popover-foreground p-3 rounded-xl shadow-xl border border-border text-sm space-y-1.5 animate-fade-in">
+          <p className="font-semibold text-foreground border-b border-border pb-1">
             {label}
           </p>
           <div className="flex items-center justify-between gap-4">
-            <span className="flex items-center gap-1.5 text-slate-400">
-              <span className="w-2 h-2 rounded-full bg-slate-900 border border-white" />
+            <span className="flex items-center gap-1.5 text-muted-foreground">
+              <span className="w-2 h-2 rounded-full bg-primary" />
               New Inquiries:
             </span>
-            <span className="font-black text-white">{newLeadsVal}</span>
+            <span className="font-semibold text-foreground">{newLeadsVal}</span>
           </div>
           <div className="flex items-center justify-between gap-4">
-            <span className="flex items-center gap-1.5 text-slate-400">
-              <span className="w-2 h-2 rounded-full bg-emerald-500" />
+            <span className="flex items-center gap-1.5 text-muted-foreground">
+              <span className="w-2 h-2 rounded-full bg-primary" />
               Won Conversions:
             </span>
-            <span className="font-black text-emerald-400">{closedWonVal}</span>
+            <span className="font-semibold text-success">{closedWonVal}</span>
           </div>
           {revVal > 0 && (
-            <div className="flex items-center justify-between gap-4 pt-1 border-t border-slate-800 text-[11px]">
-              <span className="text-slate-400">Pipeline Value:</span>
-              <span className="font-bold text-amber-400">₹{revVal.toLocaleString("en-IN")}</span>
+            <div className="flex items-center justify-between gap-4 pt-1 border-t border-primary text-xs">
+              <span className="text-muted-foreground">Pipeline Value:</span>
+              <span className="font-semibold text-warning">₹{revVal.toLocaleString("en-IN")}</span>
             </div>
           )}
         </div>
@@ -131,37 +131,37 @@ export function SalesTrendChart({ data, totalRevenue }: SalesTrendChartProps) {
   };
 
   return (
-    <div className="bg-white p-5 rounded-2xl border border-slate-200/90 shadow-2xs space-y-4 flex flex-col justify-between">
-      {/* Chart Top Header & Legend & View Filter (BagUI Layout) */}
+    <div className="bg-card p-5 rounded-2xl border border-border shadow-2xs space-y-4 flex flex-col justify-between">
+      {/* Chart Top Header & Legend & View Filter */}
       <div className="flex flex-wrap items-center justify-between gap-3">
         <div>
-          <h2 className="text-base font-bold text-slate-900">Sales & Inbound Lead Trend</h2>
-          <p className="text-xs text-slate-500 font-medium mt-0.5">
-            Total Pipeline Value : <span className="font-bold text-slate-900">₹{(totalRevenue || 0).toLocaleString("en-IN")}</span>
+          <h2 className="text-base font-semibold text-foreground">Sales & Inbound Lead Trend</h2>
+          <p className="text-sm text-muted-foreground font-medium mt-0.5">
+            Total Pipeline Value : <span className="font-semibold text-foreground">₹{(totalRevenue || 0).toLocaleString("en-IN")}</span>
           </p>
         </div>
 
         <div className="flex flex-wrap items-center gap-4">
           {/* Legend Indicators */}
-          <div className="flex items-center gap-3 text-xs font-semibold text-slate-600">
+          <div className="flex items-center gap-3 text-sm font-semibold text-muted-foreground">
             <span className="flex items-center gap-1.5">
-              <span className="w-2.5 h-2.5 rounded-sm bg-slate-900" /> New Leads
+              <span className="w-2.5 h-2.5 rounded-sm bg-primary" /> New Leads
             </span>
             <span className="flex items-center gap-1.5">
-              <span className="w-2.5 h-2.5 rounded-sm bg-slate-300" /> Won Deals
+              <span className="w-2.5 h-2.5 rounded-sm bg-input" /> Won Deals
             </span>
           </div>
 
           {/* Timeframe Toggle Buttons (Fully Functional) */}
-          <div className="flex bg-slate-100 p-0.5 rounded-xl border border-slate-200 text-xs">
+          <div className="flex bg-muted p-0.5 rounded-xl border border-border text-sm">
             {(["Weekly", "Monthly", "Yearly"] as const).map((m) => (
               <button
                 key={m}
                 onClick={() => setViewMode(m)}
-                className={`px-3 py-1 rounded-lg font-bold transition-all cursor-pointer ${
+                className={`px-3 py-1 rounded-lg font-semibold transition-all cursor-pointer ${
                   viewMode === m
-                    ? "bg-slate-900 text-white shadow-xs"
-                    : "text-slate-600 hover:text-slate-900"
+                    ? "bg-primary text-white shadow-xs"
+                    : "text-muted-foreground hover:text-foreground"
                 }`}
               >
                 {m}
@@ -175,23 +175,23 @@ export function SalesTrendChart({ data, totalRevenue }: SalesTrendChartProps) {
       <div className="w-full h-[280px] sm:h-[320px]">
         <ResponsiveContainer width="100%" height="100%">
           <BarChart data={displayData} margin={{ top: 10, right: 10, left: -15, bottom: 0 }}>
-            <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#F1F5F9" />
+            <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="var(--border)" />
             <XAxis
               dataKey="month"
               axisLine={false}
               tickLine={false}
-              tick={{ fontSize: 11, fill: "#94A3B8", fontWeight: 600 }}
+              tick={{ fontSize: 11, fill: "var(--muted-foreground)", fontWeight: 600 }}
               dy={8}
             />
             <YAxis
               axisLine={false}
               tickLine={false}
-              tick={{ fontSize: 11, fill: "#94A3B8", fontWeight: 600 }}
+              tick={{ fontSize: 11, fill: "var(--muted-foreground)", fontWeight: 600 }}
               dx={-5}
             />
-            <Tooltip content={<CustomTooltip />} cursor={{ fill: "#F8FAFC", opacity: 0.8 }} />
-            <Bar dataKey="newLeads" name="New Leads" fill="#0F172A" radius={[4, 4, 0, 0]} maxBarSize={28} />
-            <Bar dataKey="closedWon" name="Won Deals" fill="#CBD5E1" radius={[4, 4, 0, 0]} maxBarSize={28} />
+            <Tooltip content={<CustomTooltip />} cursor={{ fill: "var(--muted)", opacity: 0.8 }} />
+            <Bar dataKey="newLeads" name="New Leads" fill="var(--primary)" radius={[4, 4, 0, 0]} maxBarSize={28} />
+            <Bar dataKey="closedWon" name="Won Deals" fill="var(--accent)" radius={[4, 4, 0, 0]} maxBarSize={28} />
           </BarChart>
         </ResponsiveContainer>
       </div>

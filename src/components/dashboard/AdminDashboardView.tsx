@@ -58,7 +58,7 @@ export function AdminDashboardView({
 
   return (
     <div className="space-y-6 animate-fade-in">
-      {/* 1. BagUI Header & Breadcrumbs & Welcome */}
+      {/* 1. Header & Breadcrumbs & Welcome */}
       <OverviewHeader
         userName={userName}
         userRole={userRole}
@@ -66,7 +66,7 @@ export function AdminDashboardView({
         totalRevenue={totalRevenue}
       />
 
-      {/* 2. Top 4 BagUI KPI Metric Cards */}
+      {/* 2. Top 4 KPI Metric Cards */}
       <KpiMetricCards
         totalRevenue={totalRevenue}
         totalLeads={totalLeads}
@@ -76,7 +76,7 @@ export function AdminDashboardView({
         activeClientsCount={activeClientsCount}
       />
 
-      {/* 3. 2-Column Responsive Chart Section (65% / 35% BagUI Layout) */}
+      {/* 3. 2-Column Responsive Chart Section (65% / 35% Layout) */}
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-5">
         {/* Left Column (65% width): Sales & Inbound Leads Trend Chart */}
         <div className="lg:col-span-8">

@@ -1,41 +1,16 @@
 "use client";
 
 import React, { useState, useMemo, useEffect, useCallback } from "react";
-import {
-  Search,
-  Filter,
-  Plus,
-  Building2,
-  Phone,
-  Mail,
-  Clock,
-  AlertTriangle,
-  Send,
-  MoreVertical,
-  CheckCircle2,
-  ChevronRight,
-  Briefcase,
-  BookOpen,
-  Gift,
-  ShoppingBag,
-  Layers,
-  ArrowUpDown,
-  RefreshCw,
-  Zap,
-  Download,
-  Loader2,
-  X,
-  Trash2,
-  CheckSquare,
-  Square,
-  Calendar,
-  MessageSquare,
-} from "lucide-react";
+import { Pagination } from "@/components/ui/pagination";
+import { ConfirmDialog } from "@/components/invoices/ConfirmDialog";
+import { useToast } from "@/components/ui/toast";
+import { MagnifyingGlass as Search, Funnel as Filter, Plus, Buildings as Building2, Phone, Envelope as Mail, Clock, Warning as AlertTriangle, PaperPlaneTilt as Send, DotsThreeVertical as MoreVertical, CheckCircle as CheckCircle2, CaretRight as ChevronRight, Briefcase, BookOpen, Gift, ShoppingBag, Stack as Layers, ArrowsDownUp as ArrowUpDown, ArrowsClockwise as RefreshCw, Lightning as Zap, DownloadSimple as Download, SpinnerGap as Loader2, X, Trash as Trash2, CheckSquare, Square, CalendarBlank as Calendar, ChatText as MessageSquare } from "@phosphor-icons/react";
 import { useRouter } from "next/navigation";
 import { useSession } from "next-auth/react";
 import { ILead, BusinessSlug, KanbanStage } from "@/models/Lead";
 import { LeadWorkspaceDrawer } from "./LeadWorkspaceDrawer";
 import { CreateLeadModal } from "./CreateLeadModal";
+import { useDialogBehavior } from "@/hooks/use-dialog";
 
 function FacebookIcon(props: React.SVGProps<SVGSVGElement>) {
   return (
@@ -45,33 +20,66 @@ function FacebookIcon(props: React.SVGProps<SVGSVGElement>) {
   );
 }
 
+/** One page of leads as the server returns it. */
+export interface LeadPageData {
+  leads: Partial<ILead>[];
+  total: number;
+  limit: number;
+  totalPages: number;
+  stageMetrics: Record<string, { count: number; value: number }>;
+}
+
 interface SmartLeadGridProps {
-  initialLeads: Partial<ILead>[];
+  initialPage: LeadPageData;
+}
+
+/** Start of a local day. Relative date filters use whole days so the request does not change every render. */
+function startOfDay(daysAgo = 0): Date {
+  const d = new Date();
+  d.setHours(0, 0, 0, 0);
+  d.setDate(d.getDate() - daysAgo);
+  return d;
 }
 
 const BRAND_CONFIG: Record<
   "all" | BusinessSlug,
   { label: string; bg: string; text: string; border: string; icon: any; logo: string }
 > = {
-  all: { label: "All Businesses", bg: "bg-slate-900", text: "text-white", border: "border-slate-800", icon: Layers, logo: "" },
-  tzar: { label: "Tzar Agency", bg: "bg-[#0d4733]", text: "text-white", border: "border-[#083022]", icon: Briefcase, logo: "/tzar-logo.png" },
-  adshalaa: { label: "Adshalaa EdTech", bg: "bg-[#0d4733]", text: "text-white", border: "border-[#083022]", icon: BookOpen, logo: "/adshalaa-logo.png" },
-  crownleaf: { label: "CrownLeaf Gifting", bg: "bg-[#0d4733]", text: "text-white", border: "border-[#083022]", icon: Gift, logo: "/Crownleaf-logo.png" },
-  titepo: { label: "Titepo Toys", bg: "bg-[#0d4733]", text: "text-white", border: "border-[#083022]", icon: ShoppingBag, logo: "/titepo-logo.png" },
+  all: { label: "All Businesses", bg: "bg-primary", text: "text-white", border: "border-primary", icon: Layers, logo: "" },
+  tzar: { label: "Tzar Agency", bg: "bg-primary", text: "text-white", border: "border-primary", icon: Briefcase, logo: "/tzar-logo.png" },
+  adshalaa: { label: "Adshalaa EdTech", bg: "bg-primary", text: "text-white", border: "border-primary", icon: BookOpen, logo: "/adshalaa-logo.png" },
+  crownleaf: { label: "CrownLeaf Gifting", bg: "bg-primary", text: "text-white", border: "border-primary", icon: Gift, logo: "/Crownleaf-logo.png" },
+  titepo: { label: "Titepo Toys", bg: "bg-primary", text: "text-white", border: "border-primary", icon: ShoppingBag, logo: "/titepo-logo.png" },
 };
 
 const STAGES: { id: KanbanStage; name: string; color: string }[] = [
-  { id: "new-lead", name: "New Lead", color: "bg-blue-100 text-blue-800 border-blue-200" },
-  { id: "contacted", name: "Contacted", color: "bg-purple-100 text-purple-800 border-purple-200" },
-  { id: "discovery-call", name: "Discovery Call", color: "bg-indigo-100 text-indigo-800 border-indigo-200" },
-  { id: "proposal-sent", name: "Proposal Sent", color: "bg-amber-100 text-amber-800 border-amber-200" },
-  { id: "negotiation", name: "Negotiation", color: "bg-cyan-100 text-cyan-800 border-cyan-200" },
-  { id: "closed-won", name: "Closed Won", color: "bg-emerald-100 text-emerald-800 border-emerald-200" },
-  { id: "closed-lost", name: "Closed Lost", color: "bg-rose-100 text-rose-800 border-rose-200" },
+  { id: "new-lead", name: "New Lead", color: "bg-card text-foreground border-input" },
+  { id: "contacted", name: "Contacted", color: "bg-card text-foreground border-input" },
+  { id: "discovery-call", name: "Discovery Call", color: "bg-card text-foreground border-input" },
+  { id: "proposal-sent", name: "Proposal Sent", color: "bg-card text-foreground border-input" },
+  { id: "negotiation", name: "Negotiation", color: "bg-card text-foreground border-input" },
+  { id: "closed-won", name: "Closed Won", color: "bg-card text-foreground border-input" },
+  { id: "closed-lost", name: "Closed Lost", color: "bg-card text-foreground border-input" },
 ];
 
-export function SmartLeadGrid({ initialLeads }: SmartLeadGridProps) {
+/** META_LEAD_AD becomes "Meta lead ad", WEBSITE_BROCHURE becomes "Website brochure". */
+function sourceLabel(source?: string): string {
+  if (!source) return "Unknown";
+  const text = source.replace(/_/g, " ").toLowerCase();
+  return text.charAt(0).toUpperCase() + text.slice(1);
+}
+
+function makeRequestKey(filters: URLSearchParams, page: number, limit: number, reload: number): string {
+  const p = new URLSearchParams(filters);
+  p.set("page", String(page));
+  p.set("limit", String(limit));
+  p.set("r", String(reload));
+  return p.toString();
+}
+
+export function SmartLeadGrid({ initialPage }: SmartLeadGridProps) {
   const router = useRouter();
+  const { notify } = useToast();
   const { data: session } = useSession();
   const userRole = session?.user?.role;
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -89,7 +97,13 @@ export function SmartLeadGrid({ initialLeads }: SmartLeadGridProps) {
     return ["all", ...filtered];
   }, [userRole, allowedBusinesses]);
 
-  const [leads, setLeads] = useState<Partial<ILead>[]>(initialLeads);
+  // The server filters, sorts and pages the leads. This holds the page currently on screen.
+  const [data, setData] = useState<LeadPageData & { key: string }>({ ...initialPage, key: makeRequestKey(new URLSearchParams(), 1, initialPage.limit, 0) });
+  const [failedKey, setFailedKey] = useState<string | null>(null);
+  const [reloadToken, setReloadToken] = useState(0);
+  const leads = data.leads;
+  const setLeads = (update: (prev: Partial<ILead>[]) => Partial<ILead>[]) => setData((d) => ({ ...d, leads: update(d.leads) }));
+  const reload = useCallback(() => setReloadToken((t) => t + 1), []);
   const [selectedBrand, setSelectedBrand] = useState<"all" | BusinessSlug>("all");
 
   useEffect(() => {
@@ -103,7 +117,6 @@ export function SmartLeadGrid({ initialLeads }: SmartLeadGridProps) {
   const [searchQuery, setSearchQuery] = useState<string>("");
   const [selectedLeadForDrawer, setSelectedLeadForDrawer] = useState<Partial<ILead> | null>(null);
   const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
-  const [isLiveSyncing, setIsLiveSyncing] = useState(false);
 
   // Pro-Level Filtering States
   const [dateFilter, setDateFilter] = useState<"all" | "today" | "7days" | "30days" | "custom">("all");
@@ -116,9 +129,11 @@ export function SmartLeadGrid({ initialLeads }: SmartLeadGridProps) {
   // Bulk Selection & Deletion State
   const [selectedLeadIds, setSelectedLeadIds] = useState<string[]>([]);
   const [isDeletingBulk, setIsDeletingBulk] = useState(false);
+  const [bulkDeleteOpen, setBulkDeleteOpen] = useState(false);
 
   // CSV Import Modal State
   const [isCsvModalOpen, setIsCsvModalOpen] = useState(false);
+  const dialogRef = useDialogBehavior(isCsvModalOpen, () => setIsCsvModalOpen(false));
   const [csvBusiness, setCsvBusiness] = useState<BusinessSlug>("tzar");
   const [isUploadingCsv, setIsUploadingCsv] = useState(false);
   const [csvResultMsg, setCsvResultMsg] = useState<string | null>(null);
@@ -189,8 +204,7 @@ export function SmartLeadGrid({ initialLeads }: SmartLeadGridProps) {
 
         if (res.message) {
           setCsvResultMsg(res.message);
-          const updated = await fetch(`/api/v1/leads?business=${selectedBrand}`).then((r) => r.json());
-          if (updated.leads) setLeads(updated.leads);
+          reload();
         } else {
           setCsvResultMsg(`Error: ${res.error || "Failed to import CSV leads"}`);
         }
@@ -210,21 +224,8 @@ export function SmartLeadGrid({ initialLeads }: SmartLeadGridProps) {
   const [isMetaAutoSyncing, setIsMetaAutoSyncing] = useState(false);
 
   const fetchLatestLeadsFromDb = useCallback(async () => {
-    try {
-      setIsLiveSyncing(true);
-      const res = await fetch(`/api/v1/leads?business=${selectedBrand}`);
-      if (res.ok) {
-        const data = await res.json();
-        if (data.leads) {
-          setLeads(data.leads);
-        }
-      }
-    } catch (err) {
-      console.error("Live Polling Error:", err);
-    } finally {
-      setTimeout(() => setIsLiveSyncing(false), 500);
-    }
-  }, [selectedBrand]);
+    reload();
+  }, [reload]);
 
   const triggerMetaAutoSync = useCallback(
     async (force = false, includeArchived = false) => {
@@ -240,7 +241,7 @@ export function SmartLeadGrid({ initialLeads }: SmartLeadGridProps) {
           const skipped = data.summary?.totalSkipped || 0;
 
           if (synced > 0) {
-            setMetaSyncNotice(`✨ ${synced} new Meta Lead Ads automatically ingested!`);
+            setMetaSyncNotice(`${synced} new Meta Lead Ads automatically ingested!`);
             setTimeout(() => setMetaSyncNotice(null), 6000);
             await fetchLatestLeadsFromDb();
           } else if (force) {
@@ -258,12 +259,11 @@ export function SmartLeadGrid({ initialLeads }: SmartLeadGridProps) {
     [selectedBrand, fetchLatestLeadsFromDb]
   );
 
-  // Initial load only. The 25-second background poll (Meta Graph API re-scan + full lead
+  // The first page comes with the page itself. The 25-second background poll (Meta Graph API re-scan +
   // reload) is paused while the CRM is being fixed because it slows the whole site down.
   // The manual Refresh / Sync buttons still work. Set to true to turn the poll back on.
   useEffect(() => {
     const AUTO_FETCH_LEADS_ENABLED = false;
-    fetchLatestLeadsFromDb();
     if (!AUTO_FETCH_LEADS_ENABLED) return;
 
     // Fire background reconciliation check with Meta on tab switch
@@ -277,107 +277,118 @@ export function SmartLeadGrid({ initialLeads }: SmartLeadGridProps) {
     return () => clearInterval(interval);
   }, [selectedBrand, fetchLatestLeadsFromDb, triggerMetaAutoSync]);
 
-  // Pro Multi-Level Filtered Leads
-  const filteredLeads = useMemo(() => {
-    const now = new Date();
+  // ─── Search is sent to the server a moment after typing stops ───
+  const [debouncedSearch, setDebouncedSearch] = useState("");
+  useEffect(() => {
+    const timer = setTimeout(() => setDebouncedSearch(searchQuery.trim()), 300);
+    return () => clearTimeout(timer);
+  }, [searchQuery]);
 
-    return leads.filter((lead) => {
-      // 0. Strict RBAC Business Access Scoping for Non-Admins
-      if (userRole !== "SUPER_ADMIN" && userRole !== "ADMIN") {
-        if (!allowedBusinesses.includes(lead.business || "")) return false;
-      }
+  // ─── Filters become query parameters; the server does the filtering ───
+  const [pageSize, setPageSize] = useState(initialPage.limit);
 
-      // 1. Business Brand Filter
-      if (selectedBrand !== "all" && lead.business !== selectedBrand) return false;
+  const buildFilterParams = useCallback((): URLSearchParams => {
+    const p = new URLSearchParams();
+    if (selectedBrand !== "all") p.set("business", selectedBrand);
+    if (selectedStageFilter !== "all") p.set("stage", selectedStageFilter);
+    if (sourceFilter !== "all") p.set("source", sourceFilter);
+    if (slaFilter !== "all") p.set("sla", slaFilter);
+    if (dateFilter === "today") p.set("from", startOfDay(0).toISOString());
+    else if (dateFilter === "7days") p.set("from", startOfDay(7).toISOString());
+    else if (dateFilter === "30days") p.set("from", startOfDay(30).toISOString());
+    else if (dateFilter === "custom") {
+      if (customStartDate) p.set("from", new Date(`${customStartDate}T00:00:00`).toISOString());
+      if (customEndDate) p.set("to", new Date(`${customEndDate}T23:59:59.999`).toISOString());
+    }
+    if (debouncedSearch) p.set("search", debouncedSearch);
+    return p;
+  }, [selectedBrand, selectedStageFilter, sourceFilter, slaFilter, dateFilter, customStartDate, customEndDate, debouncedSearch]);
 
-      // 2. Stage Status Filter
-      if (selectedStageFilter !== "all" && lead.stageId !== selectedStageFilter) return false;
+  const filterKey = buildFilterParams().toString() + `|${pageSize}`;
+  // The page number is remembered together with the filters it was chosen under, so changing any filter returns to page 1
+  const [pageState, setPageState] = useState({ key: "", page: 1 });
+  const total = data.total;
+  const totalPages = Math.max(1, data.totalPages);
+  const currentPage = Math.min(pageState.key === filterKey ? pageState.page : 1, totalPages);
+  const goToPage = (p: number) => setPageState({ key: filterKey, page: Math.min(Math.max(1, p), totalPages) });
 
-      // 3. Lead Source Filter
-      if (sourceFilter !== "all" && (lead.source || "").toUpperCase() !== sourceFilter.toUpperCase()) return false;
+  const requestKey = makeRequestKey(buildFilterParams(), currentPage, pageSize, reloadToken);
+  const isLoading = data.key !== requestKey && failedKey !== requestKey;
+  const isLiveSyncing = isLoading;
 
-      // 4. SLA Status Filter
-      if (slaFilter === "overdue") {
-        if (!lead.slaDeadline || new Date(lead.slaDeadline) >= now) return false;
-      } else if (slaFilter === "within_sla") {
-        if (!lead.slaDeadline || new Date(lead.slaDeadline) < now) return false;
-      }
+  useEffect(() => {
+    if (data.key === requestKey) return;
+    const controller = new AbortController();
+    fetch(`/api/v1/leads?${requestKey}`, { signal: controller.signal })
+      .then((res) => (res.ok ? res.json() : Promise.reject(new Error(`Request failed (${res.status})`))))
+      .then((d) => {
+        setFailedKey(null);
+        setData({ leads: d.leads, total: d.total, limit: d.limit, totalPages: d.totalPages, stageMetrics: d.stageMetrics, key: requestKey });
+      })
+      .catch((err) => {
+        if (err?.name !== "AbortError") setFailedKey(requestKey);
+      });
+    return () => controller.abort();
+  }, [requestKey, data.key]);
 
-      // 5. Date Range Filter
-      if (dateFilter !== "all") {
-        const leadDate = new Date(lead.createdAt || Date.now());
-        if (dateFilter === "today") {
-          const startOfDay = new Date();
-          startOfDay.setHours(0, 0, 0, 0);
-          if (leadDate < startOfDay) return false;
-        } else if (dateFilter === "7days") {
-          const sevenDaysAgo = new Date();
-          sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7);
-          if (leadDate < sevenDaysAgo) return false;
-        } else if (dateFilter === "30days") {
-          const thirtyDaysAgo = new Date();
-          thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
-          if (leadDate < thirtyDaysAgo) return false;
-        } else if (dateFilter === "custom") {
-          if (customStartDate) {
-            const start = new Date(customStartDate);
-            start.setHours(0, 0, 0, 0);
-            if (leadDate < start) return false;
-          }
-          if (customEndDate) {
-            const end = new Date(customEndDate);
-            end.setHours(23, 59, 59, 999);
-            if (leadDate > end) return false;
-          }
-        }
-      }
-
-      // 6. Global Text Search Filter
-      if (searchQuery.trim()) {
-        const q = searchQuery.toLowerCase();
-        const nameMatch = (lead.fullName || "").toLowerCase().includes(q);
-        const emailMatch = (lead.email || "").toLowerCase().includes(q);
-        const phoneMatch = (lead.phone || "").toLowerCase().includes(q);
-        const customIdMatch = (lead.leadCustomId || "").toLowerCase().includes(q);
-        const companyMatch = (lead.companyName || "").toLowerCase().includes(q);
-        const cityMatch = (lead.city || "").toLowerCase().includes(q);
-        return nameMatch || emailMatch || phoneMatch || customIdMatch || companyMatch || cityMatch;
-      }
-
-      return true;
-    });
-  }, [leads, selectedBrand, selectedStageFilter, sourceFilter, slaFilter, dateFilter, customStartDate, customEndDate, searchQuery]);
+  const pagedLeads = leads;
+  const loadFailed = failedKey === requestKey;
 
   const [isExportMenuOpen, setIsExportMenuOpen] = useState(false);
 
   // Pro Excel Export Handler (.csv / .xlsx compatible with UTF-8 BOM)
-  const handleExportExcel = (mode: "selected" | "filtered" | "all" = "filtered") => {
-    let targetDataset: Partial<ILead>[] = [];
-
-    if (mode === "selected") {
-      const idSet = new Set(selectedLeadIds.map(String));
-      targetDataset = leads.filter((l) => l._id && idSet.has(String(l._id)));
-      if (targetDataset.length === 0) {
-        targetDataset = filteredLeads.filter((l) => l._id && idSet.has(String(l._id)));
+  const fetchLeadsForExport = async (mode: "selected" | "filtered" | "all"): Promise<Partial<ILead>[]> => {
+    const out: Partial<ILead>[] = [];
+    const MAX_ROWS = 10000;
+    const pull = async (params: URLSearchParams) => {
+      let page = 1;
+      for (;;) {
+        params.set("page", String(page));
+        params.set("limit", "200");
+        const res = await fetch(`/api/v1/leads?${params.toString()}`);
+        if (!res.ok) throw new Error("Could not load leads for export");
+        const d = await res.json();
+        out.push(...d.leads);
+        if (page >= d.totalPages || out.length >= MAX_ROWS) break;
+        page += 1;
       }
-      if (targetDataset.length === 0) {
-        alert("No leads currently selected. Please select leads using the checkboxes first.");
-        return;
+    };
+    if (mode === "selected") {
+      for (let i = 0; i < selectedLeadIds.length; i += 100) {
+        await pull(new URLSearchParams({ ids: selectedLeadIds.slice(i, i + 100).join(",") }));
       }
     } else if (mode === "all") {
-      targetDataset = leads;
+      await pull(new URLSearchParams());
     } else {
-      targetDataset = filteredLeads;
+      await pull(buildFilterParams());
+    }
+    return out;
+  };
+
+  // Pro Excel Export Handler (.csv / .xlsx compatible with UTF-8 BOM)
+  const handleExportExcel = async (mode: "selected" | "filtered" | "all" = "filtered") => {
+    setIsExportMenuOpen(false);
+    if (mode === "selected" && selectedLeadIds.length === 0) {
+      notify("info", "No leads are selected. Tick the boxes next to the leads you want first.");
+      return;
+    }
+
+    let targetDataset: Partial<ILead>[] = [];
+    try {
+      targetDataset = await fetchLeadsForExport(mode);
+    } catch (err) {
+      notify("error", err instanceof Error ? err.message : "Could not export leads.");
+      return;
     }
 
     if (targetDataset.length === 0) {
-      alert("No leads found matching current filter criteria to export.");
+      notify("info", "No leads match the current filters.");
       return;
     }
 
     const headers = [
       "Lead ID",
-      "Brand Entity",
+      "Brand",
       "Full Name",
       "Email Address",
       "Phone Number",
@@ -440,7 +451,7 @@ export function SmartLeadGrid({ initialLeads }: SmartLeadGridProps) {
   };
 
   const toggleSelectAll = () => {
-    const visibleIds = filteredLeads.map((l) => l._id?.toString()).filter(Boolean) as string[];
+    const visibleIds = pagedLeads.map((l) => l._id?.toString()).filter(Boolean) as string[];
     const allSelected = visibleIds.length > 0 && visibleIds.every((id) => selectedLeadIds.includes(id));
 
     if (allSelected) {
@@ -452,10 +463,6 @@ export function SmartLeadGrid({ initialLeads }: SmartLeadGridProps) {
 
   const handleBulkDelete = async () => {
     if (selectedLeadIds.length === 0) return;
-    if (!confirm(`Are you sure you want to permanently delete ${selectedLeadIds.length} selected leads? This action cannot be undone.`)) {
-      return;
-    }
-
     setIsDeletingBulk(true);
     try {
       const res = await fetch("/api/v1/leads/bulk", {
@@ -465,37 +472,32 @@ export function SmartLeadGrid({ initialLeads }: SmartLeadGridProps) {
       }).then((r) => r.json());
 
       if (res.deletedCount !== undefined) {
-        setLeads((prev) => prev.filter((l) => !selectedLeadIds.includes(l._id?.toString() || "")));
         setSelectedLeadIds([]);
+        reload();
       } else {
-        alert(`Error: ${res.error || "Failed to bulk delete leads"}`);
+        notify("error", res.error || "Could not delete the selected leads.");
       }
     } catch (err: any) {
       console.error("Bulk Delete error:", err);
-      alert(`Error: ${err.message}`);
+      notify("error", err.message || "Could not delete the selected leads.");
     } finally {
       setIsDeletingBulk(false);
     }
   };
 
-  // Stage Metrics Calculations
-  const stageMetrics = useMemo(() => {
-    const counts: Record<string, { count: number; value: number }> = {};
-    STAGES.forEach((s) => {
-      counts[s.id] = { count: 0, value: 0 };
-    });
+  // Stage counts come from the server so they cover every lead, not just this page
+  const stageMetrics = data.stageMetrics;
 
-    const relevantLeads = selectedBrand === "all" ? leads : leads.filter((l) => l.business === selectedBrand);
-
-    relevantLeads.forEach((l) => {
-      if (counts[l.stageId || "new-lead"]) {
-        counts[l.stageId || "new-lead"].count += 1;
-        counts[l.stageId || "new-lead"].value += l.estimatedBudget || 0;
-      }
-    });
-
-    return counts;
-  }, [leads, selectedBrand]);
+  const openLead = (lead: Partial<ILead>) => {
+    setSelectedLeadForDrawer(lead);
+    if (!lead._id) return;
+    fetch(`/api/v1/leads/${lead._id}`)
+      .then((r) => (r.ok ? r.json() : null))
+      .then((d) => {
+        if (d?.lead) setSelectedLeadForDrawer((cur) => (cur && String(cur._id) === String(lead._id) ? { ...cur, ...d.lead } : cur));
+      })
+      .catch(() => undefined);
+  };
 
   const handleStageChange = async (leadId: string, newStage: KanbanStage) => {
     setLeads((prev) =>
@@ -508,6 +510,7 @@ export function SmartLeadGrid({ initialLeads }: SmartLeadGridProps) {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ stageId: newStage }),
       });
+      reload(); // refresh the stage counts, and drop the row if it no longer matches the stage filter
     } catch (err) {
       console.error("Failed to update lead stage:", err);
     }
@@ -516,39 +519,27 @@ export function SmartLeadGrid({ initialLeads }: SmartLeadGridProps) {
   return (
     <div className="space-y-6 animate-fade-in">
       {/* ─── 1. BRAND SWITCHER BAR (BAGUI SHADCN STYLE) ────────────────── */}
-      <div className="flex flex-wrap items-center justify-between gap-4 pb-3 border-b border-slate-200/90">
+      <div className="flex flex-wrap items-center justify-between gap-4 pb-3 border-b border-border">
         <div>
           <div className="flex items-center gap-2.5">
-            <h1 className="text-2xl sm:text-3xl font-black text-slate-900 tracking-tight">
-              Centralized Sales Pipeline
+            <h1 className="text-2xl sm:text-3xl font-semibold text-foreground tracking-tight">
+              Sales Pipeline
             </h1>
-            <span className="inline-flex items-center gap-1.5 text-[11px] font-bold px-2.5 py-0.5 rounded-full bg-emerald-50 text-emerald-800 border border-emerald-200">
-              <Zap className={`w-3 h-3 text-emerald-600 ${isLiveSyncing ? "animate-spin" : ""}`} />
-              Live Sync Active
-            </span>
           </div>
-          <p className="text-xs sm:text-sm font-semibold text-slate-500 mt-0.5">
-            Unified lead intake and deals across Tzar Group business entities
+          <p className="text-sm sm:text-sm font-semibold text-muted-foreground mt-0.5">
+            Leads and deals across all four brands
           </p>
         </div>
 
         <div className="flex items-center gap-2 flex-wrap">
           {/* 1. Refresh Data Button */}
           <button
-            onClick={() => {
-              setIsLiveSyncing(true);
-              fetch(`/api/v1/leads?business=${selectedBrand}`)
-                .then((r) => r.json())
-                .then((d) => {
-                  if (d.leads) setLeads(d.leads);
-                })
-                .finally(() => setTimeout(() => setIsLiveSyncing(false), 500));
-            }}
+            onClick={reload}
             disabled={isLiveSyncing}
-            className="flex items-center gap-1.5 px-3.5 py-2 text-xs font-bold text-slate-700 bg-white hover:bg-slate-50 border border-slate-200 hover:border-slate-300 rounded-xl transition-all cursor-pointer shadow-2xs disabled:opacity-50"
+            className="flex items-center gap-1.5 px-3.5 py-2 text-sm font-semibold text-foreground bg-card hover:bg-muted border border-border hover:border-input rounded-xl transition-all cursor-pointer shadow-2xs disabled:opacity-50"
             title="Reload lead data from database"
           >
-            <RefreshCw className={`w-3.5 h-3.5 text-slate-500 ${isLiveSyncing ? "animate-spin" : ""}`} />
+            <RefreshCw className={`w-3.5 h-3.5 text-muted-foreground ${isLiveSyncing ? "animate-spin" : ""}`} />
             <span className="hidden sm:inline">Refresh</span>
           </button>
 
@@ -556,10 +547,10 @@ export function SmartLeadGrid({ initialLeads }: SmartLeadGridProps) {
           <button
             onClick={() => triggerMetaAutoSync(true, true)}
             disabled={isMetaAutoSyncing || isLiveSyncing}
-            className="flex items-center gap-1.5 px-3.5 py-2 text-xs font-bold text-emerald-800 bg-emerald-50 hover:bg-emerald-100 border border-emerald-300 rounded-xl transition-all cursor-pointer shadow-2xs disabled:opacity-50"
+            className="flex items-center gap-1.5 px-3.5 py-2 text-sm font-semibold text-foreground bg-card hover:bg-muted border border-border hover:border-input rounded-xl transition-all cursor-pointer shadow-2xs disabled:opacity-50"
             title="Perform active reconciliation scan across Meta Graph API lead forms"
           >
-            <Zap className={`w-3.5 h-3.5 text-emerald-600 ${isMetaAutoSyncing ? "animate-spin" : ""}`} />
+            <Zap className={`w-3.5 h-3.5 text-muted-foreground ${isMetaAutoSyncing ? "animate-spin" : ""}`} />
             <span>{isMetaAutoSyncing ? "Scanning Meta..." : "Sync Meta Leads"}</span>
           </button>
 
@@ -569,16 +560,16 @@ export function SmartLeadGrid({ initialLeads }: SmartLeadGridProps) {
               setCsvResultMsg(null);
               setIsCsvModalOpen(true);
             }}
-            className="flex items-center gap-1.5 px-3.5 py-2 text-xs font-bold text-slate-800 bg-white hover:bg-slate-50 border border-slate-200 hover:border-slate-300 rounded-xl transition-all cursor-pointer shadow-2xs"
+            className="flex items-center gap-1.5 px-3.5 py-2 text-sm font-semibold text-foreground bg-card hover:bg-muted border border-border hover:border-input rounded-xl transition-all cursor-pointer shadow-2xs"
             title="Import Leads via Graph API or CSV"
           >
-            <Download className="w-3.5 h-3.5 text-emerald-600" /> Import Leads
+            <Download className="w-3.5 h-3.5 text-success" /> Import Leads
           </button>
 
           {/* 4. Add New Lead Button */}
           <button
             onClick={() => setIsCreateModalOpen(true)}
-            className="flex items-center gap-1.5 px-4 py-2 text-xs font-bold text-white bg-slate-900 hover:bg-slate-800 rounded-xl shadow-2xs transition-all cursor-pointer"
+            className="flex items-center gap-1.5 px-4 py-2 text-sm font-semibold text-white bg-primary hover:bg-primary-hover rounded-xl shadow-2xs transition-all cursor-pointer"
           >
             <Plus className="w-3.5 h-3.5" /> Add Lead
           </button>
@@ -586,14 +577,14 @@ export function SmartLeadGrid({ initialLeads }: SmartLeadGridProps) {
 
         {/* Real-time Meta Sync Notification Banner */}
         {metaSyncNotice && (
-          <div className="w-full flex items-center justify-between px-4 py-2.5 rounded-xl bg-emerald-500/10 border border-emerald-300 text-xs font-bold text-emerald-900 animate-fade-in">
+          <div className="w-full flex items-center justify-between px-4 py-2.5 rounded-xl bg-success-soft border border-success text-sm font-semibold text-success animate-fade-in">
             <span className="flex items-center gap-2">
-              <Zap className="w-4 h-4 text-emerald-600 animate-pulse" />
+              <Zap className="w-4 h-4 text-success animate-pulse" />
               {metaSyncNotice}
             </span>
             <button
               onClick={() => setMetaSyncNotice(null)}
-              className="text-xs text-emerald-700 hover:text-emerald-900 cursor-pointer font-bold"
+              className="text-sm text-success hover:text-success cursor-pointer font-semibold"
             >
               ✕
             </button>
@@ -602,7 +593,7 @@ export function SmartLeadGrid({ initialLeads }: SmartLeadGridProps) {
 
         {/* Brand Switcher Bar (100% Responsive Grid - All 5 Brands Fit Within Mobile Screen) */}
         <div className="w-full">
-          <div className="grid grid-cols-5 gap-1 p-1 bg-slate-100/90 rounded-2xl border border-slate-200 w-full">
+          <div className="grid grid-cols-5 gap-1 p-1 bg-muted rounded-2xl border border-border w-full">
             {availableBrands.map((bSlug) => {
               const config = BRAND_CONFIG[bSlug as keyof typeof BRAND_CONFIG];
               if (!config) return null;
@@ -614,8 +605,8 @@ export function SmartLeadGrid({ initialLeads }: SmartLeadGridProps) {
                   onClick={() => setSelectedBrand(bSlug as "all" | BusinessSlug)}
                   className={`flex items-center justify-center py-1.5 px-1 rounded-xl transition-all cursor-pointer min-h-[34px] sm:min-h-[38px] ${
                     isSelected
-                      ? "bg-white text-slate-900 shadow-2xs border border-slate-200 ring-2 ring-slate-900/10 font-black"
-                      : "text-slate-600 hover:text-slate-900 hover:bg-slate-200/60"
+                      ? "bg-card text-foreground shadow-2xs border border-border font-semibold"
+                      : "text-muted-foreground hover:text-foreground hover:bg-border"
                   }`}
                   title={config.label}
                 >
@@ -626,7 +617,7 @@ export function SmartLeadGrid({ initialLeads }: SmartLeadGridProps) {
                       className="h-3.5 sm:h-5 w-auto object-contain max-w-[55px] sm:max-w-[85px]"
                     />
                   ) : (
-                    <span className="text-[11px] sm:text-xs font-black">All</span>
+                    <span className="text-xs sm:text-sm font-semibold">All</span>
                   )}
                 </button>
               );
@@ -636,15 +627,15 @@ export function SmartLeadGrid({ initialLeads }: SmartLeadGridProps) {
       </div>
 
       {/* ─── 2A. MOBILE STAGE MATRIX (Fits 100% inside screen, zero cards moving outside) ─── */}
-      <div className="md:hidden bg-white p-3 rounded-2xl border border-slate-200/90 shadow-2xs space-y-2">
+      <div className="md:hidden bg-card p-3 rounded-2xl border border-border shadow-2xs space-y-2">
         <div className="flex items-center justify-between">
-          <span className="text-[10px] font-extrabold uppercase tracking-wider text-slate-400">
+          <span className="text-xs font-semibold text-muted-foreground">
             Pipeline Stages ({leads.length} Leads)
           </span>
           {selectedStageFilter !== "all" && (
             <button
               onClick={() => setSelectedStageFilter("all")}
-              className="text-[10px] font-bold text-rose-600 hover:underline"
+              className="text-xs font-semibold text-destructive hover:underline"
             >
               Reset to All
             </button>
@@ -663,17 +654,17 @@ export function SmartLeadGrid({ initialLeads }: SmartLeadGridProps) {
                 onClick={() => setSelectedStageFilter(isActive ? "all" : s.id)}
                 className={`p-2 rounded-xl text-center border transition-all cursor-pointer ${
                   isActive
-                    ? "bg-slate-900 text-white border-slate-900 shadow-xs"
-                    : "bg-slate-50 hover:bg-slate-100 text-slate-700 border-slate-200/80"
+                    ? "bg-primary text-white border-ring shadow-xs"
+                    : "bg-muted hover:bg-muted text-foreground border-border"
                 }`}
               >
-                <p className="text-[10px] font-bold truncate leading-tight">{s.name}</p>
+                <p className="text-xs font-semibold truncate leading-tight">{s.name}</p>
                 <div className="flex items-center justify-center gap-1 mt-0.5">
-                  <span className={`text-xs font-black ${isActive ? "text-emerald-400" : "text-slate-900"}`}>
+                  <span className={`text-sm font-semibold ${isActive ? "text-success" : "text-foreground"}`}>
                     {metrics.count}
                   </span>
                   {metrics.value > 0 && (
-                    <span className="text-[9px] font-bold text-slate-400 truncate">
+                    <span className="text-xs font-semibold text-muted-foreground truncate">
                       ₹{metrics.value >= 1000 ? `${Math.round(metrics.value / 1000)}k` : metrics.value}
                     </span>
                   )}
@@ -696,19 +687,19 @@ export function SmartLeadGrid({ initialLeads }: SmartLeadGridProps) {
               onClick={() => setSelectedStageFilter(isActive ? "all" : s.id)}
               className={`p-3.5 rounded-2xl text-left border transition-all cursor-pointer ${
                 isActive
-                  ? "bg-slate-900 text-white border-slate-900 shadow-sm ring-2 ring-slate-900/15"
-                  : "bg-white text-slate-800 border-slate-200/90 hover:border-slate-300 shadow-2xs"
+                  ? "bg-primary text-white border-ring shadow-sm"
+                  : "bg-card text-foreground border-border hover:border-input shadow-2xs"
               }`}
             >
               <div className="flex items-center justify-between mb-1.5">
-                <span className={`text-[10px] font-extrabold uppercase tracking-wider ${isActive ? "text-slate-300" : "text-slate-500"}`}>
+                <span className={`text-xs font-semibold ${isActive ? "text-white" : "text-muted-foreground"}`}>
                   {s.name}
                 </span>
-                <span className={`text-xs font-bold px-1.5 py-0.2 rounded-md ${isActive ? "bg-slate-800 text-white" : "bg-slate-100 text-slate-700"}`}>
+                <span className={`text-sm font-bold ${isActive ? "text-white" : "text-foreground"}`}>
                   {metrics.count}
                 </span>
               </div>
-              <p className={`text-sm font-black tracking-tight ${isActive ? "text-emerald-400" : "text-slate-900"}`}>
+              <p className={`text-sm font-semibold tracking-tight ${isActive ? "text-success" : "text-foreground"}`}>
                 ₹{metrics.value.toLocaleString("en-IN")}
               </p>
             </button>
@@ -717,17 +708,17 @@ export function SmartLeadGrid({ initialLeads }: SmartLeadGridProps) {
       </div>
 
       {/* ─── 3. SEARCH & CONTROLS TOOLBAR ───────────────────────────────── */}
-      <div className="bg-white rounded-2xl border border-slate-300 shadow-2xs overflow-hidden">
+      <div className="bg-card rounded-2xl border border-input shadow-2xs overflow-hidden">
         <div className="flex flex-wrap items-center justify-between gap-3 p-4">
           <div className="flex items-center gap-3 flex-1 min-w-[280px]">
             <div className="relative flex-1">
-              <Search className="w-4 h-4 text-slate-400 absolute left-3.5 top-1/2 -translate-y-1/2" />
+              <Search className="w-4 h-4 text-muted-foreground absolute left-3.5 top-1/2 -translate-y-1/2" />
               <input
                 type="text"
                 placeholder="Search by lead name, phone, email, company, custom ID, city..."
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
-                className="w-full pl-9 pr-4 py-2 text-xs font-semibold text-slate-900 bg-slate-50 border border-slate-200 rounded-xl outline-hidden focus:border-(--color-brand-green) focus:bg-white transition-all"
+                className="w-full pl-9 pr-4 py-2 text-sm font-semibold text-foreground bg-muted border border-border rounded-xl outline-hidden focus:border-(--color-brand-green) focus:bg-card transition-all"
               />
             </div>
           </div>
@@ -736,16 +727,16 @@ export function SmartLeadGrid({ initialLeads }: SmartLeadGridProps) {
             {/* Filter Drawer Toggle */}
             <button
               onClick={() => setIsFilterPanelOpen((prev) => !prev)}
-              className={`flex items-center gap-1.5 px-3.5 py-2 text-xs font-bold rounded-xl transition-all cursor-pointer border ${
+              className={`flex items-center gap-1.5 px-3.5 py-2 text-sm font-semibold rounded-xl transition-all cursor-pointer border ${
                 isFilterPanelOpen || dateFilter !== "all" || sourceFilter !== "all" || slaFilter !== "all"
-                  ? "bg-slate-900 text-white border-slate-900 shadow-xs"
-                  : "bg-slate-100 text-slate-800 border-slate-300 hover:bg-slate-200"
+                  ? "bg-primary text-white border-ring shadow-xs"
+                  : "bg-muted text-foreground border-input hover:bg-border"
               }`}
             >
-              <Filter className="w-3.5 h-3.5 text-emerald-400" />
+              <Filter className="w-3.5 h-3.5 text-success" />
               <span>Advanced Filters</span>
               {(dateFilter !== "all" || sourceFilter !== "all" || slaFilter !== "all") && (
-                <span className="w-2 h-2 rounded-full bg-emerald-400 animate-ping" />
+                <span className="w-2 h-2 rounded-full bg-primary animate-ping" />
               )}
             </button>
 
@@ -753,39 +744,39 @@ export function SmartLeadGrid({ initialLeads }: SmartLeadGridProps) {
             <div className="relative">
               <button
                 onClick={() => setIsExportMenuOpen((prev) => !prev)}
-                className="flex items-center gap-1.5 px-3.5 py-2 text-xs font-bold text-emerald-900 bg-emerald-100 hover:bg-emerald-200 border border-emerald-300 rounded-xl transition-all cursor-pointer shadow-2xs"
+                className="flex items-center gap-1.5 px-3.5 py-2 text-sm font-semibold text-foreground bg-card hover:bg-muted border border-border hover:border-input rounded-xl transition-all cursor-pointer shadow-2xs"
                 title="Export leads dataset to Excel / CSV"
               >
-                <Download className="w-3.5 h-3.5 text-emerald-700" /> Export Excel
+                <Download className="w-3.5 h-3.5 text-muted-foreground" /> Export Excel
               </button>
 
               {isExportMenuOpen && (
-                <div className="absolute right-0 mt-2 w-56 bg-white border border-slate-300 rounded-xl shadow-xl z-30 p-1 space-y-1 text-xs animate-fade-in">
+                <div className="absolute right-0 mt-2 w-56 bg-card border border-input rounded-xl shadow-xl z-30 p-1 space-y-1 text-sm animate-fade-in">
                   <button
                     onClick={() => handleExportExcel("selected")}
                     disabled={selectedLeadIds.length === 0}
-                    className="w-full text-left px-3 py-2 rounded-lg font-bold flex items-center justify-between hover:bg-slate-100 disabled:opacity-50 disabled:cursor-not-allowed text-slate-800"
+                    className="w-full text-left px-3 py-2 rounded-lg font-semibold flex items-center justify-between hover:bg-muted disabled:opacity-50 disabled:cursor-not-allowed text-foreground"
                   >
                     <span>Selected Leads</span>
-                    <span className="px-2 py-0.5 rounded bg-emerald-100 text-emerald-800 text-[10px]">
+                    <span className="px-2 py-0.5 rounded bg-success-soft text-success text-xs">
                       {selectedLeadIds.length}
                     </span>
                   </button>
                   <button
                     onClick={() => handleExportExcel("filtered")}
-                    className="w-full text-left px-3 py-2 rounded-lg font-bold flex items-center justify-between hover:bg-slate-100 text-slate-800"
+                    className="w-full text-left px-3 py-2 rounded-lg font-semibold flex items-center justify-between hover:bg-muted text-foreground"
                   >
                     <span>Current Filtered View</span>
-                    <span className="px-2 py-0.5 rounded bg-slate-100 text-slate-700 text-[10px]">
-                      {filteredLeads.length}
+                    <span className="px-2 py-0.5 rounded bg-muted text-foreground text-xs">
+                      {total.toLocaleString("en-IN")}
                     </span>
                   </button>
                   <button
                     onClick={() => handleExportExcel("all")}
-                    className="w-full text-left px-3 py-2 rounded-lg font-bold flex items-center justify-between hover:bg-slate-100 text-slate-800 border-t border-slate-100 pt-2"
+                    className="w-full text-left px-3 py-2 rounded-lg font-semibold flex items-center justify-between hover:bg-muted text-foreground border-t border-border pt-2"
                   >
-                    <span>All Leads Dataset</span>
-                    <span className="px-2 py-0.5 rounded bg-blue-100 text-blue-800 text-[10px]">
+                    <span>All leads</span>
+                    <span className="px-2 py-0.5 rounded bg-info-soft text-info text-xs">
                       {leads.length}
                     </span>
                   </button>
@@ -796,30 +787,30 @@ export function SmartLeadGrid({ initialLeads }: SmartLeadGridProps) {
             {selectedStageFilter !== "all" && (
               <button
                 onClick={() => setSelectedStageFilter("all")}
-                className="px-3 py-1.5 text-xs font-bold text-rose-700 bg-rose-50 border border-rose-200 rounded-xl hover:bg-rose-100 transition-all cursor-pointer"
+                className="px-3 py-1.5 text-sm font-semibold text-destructive bg-destructive-soft border border-border rounded-xl hover:bg-destructive-soft transition-all cursor-pointer"
               >
                 Clear Stage
               </button>
             )}
 
-            <span className="text-xs font-bold text-slate-600 bg-slate-100 px-3 py-1.5 rounded-xl border border-slate-200">
-              Showing {filteredLeads.length} leads
+            <span className="text-sm font-medium text-muted-foreground">
+              {total.toLocaleString("en-IN")} leads
             </span>
           </div>
         </div>
 
         {/* Multi-Level Filter Panel (Collapsible) */}
         {isFilterPanelOpen && (
-          <div className="p-4 bg-slate-50 border-t border-slate-200 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 text-xs font-semibold animate-fade-in">
+          <div className="p-4 bg-muted border-t border-border grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 text-sm font-semibold animate-fade-in">
             {/* Date Range Filter */}
             <div>
-              <label className="block text-[11px] font-bold uppercase text-slate-600 mb-1">
+              <label className="block text-xs font-semibold text-muted-foreground mb-1">
                 Date Range
               </label>
               <select
                 value={dateFilter}
                 onChange={(e) => setDateFilter(e.target.value as any)}
-                className="w-full p-2 border border-slate-300 rounded-xl bg-white outline-none font-bold text-slate-900 cursor-pointer"
+                className="w-full p-2 border border-input rounded-xl bg-card outline-none font-semibold text-foreground cursor-pointer"
               >
                 <option value="all">All Dates (Lifetime)</option>
                 <option value="today">Today</option>
@@ -831,13 +822,13 @@ export function SmartLeadGrid({ initialLeads }: SmartLeadGridProps) {
 
             {/* Lead Source Filter */}
             <div>
-              <label className="block text-[11px] font-bold uppercase text-slate-600 mb-1">
+              <label className="block text-xs font-semibold text-muted-foreground mb-1">
                 Lead Source
               </label>
               <select
                 value={sourceFilter}
                 onChange={(e) => setSourceFilter(e.target.value)}
-                className="w-full p-2 border border-slate-300 rounded-xl bg-white outline-none font-bold text-slate-900 cursor-pointer"
+                className="w-full p-2 border border-input rounded-xl bg-card outline-none font-semibold text-foreground cursor-pointer"
               >
                 <option value="all">All Lead Sources</option>
                 <option value="META_LEAD_AD">Meta Lead Ads</option>
@@ -850,13 +841,13 @@ export function SmartLeadGrid({ initialLeads }: SmartLeadGridProps) {
 
             {/* SLA Status Filter */}
             <div>
-              <label className="block text-[11px] font-bold uppercase text-slate-600 mb-1">
+              <label className="block text-xs font-semibold text-muted-foreground mb-1">
                 SLA Compliance
               </label>
               <select
                 value={slaFilter}
                 onChange={(e) => setSlaFilter(e.target.value)}
-                className="w-full p-2 border border-slate-300 rounded-xl bg-white outline-none font-bold text-slate-900 cursor-pointer"
+                className="w-full p-2 border border-input rounded-xl bg-card outline-none font-semibold text-foreground cursor-pointer"
               >
                 <option value="all">All SLA Statuses</option>
                 <option value="within_sla">Within SLA (Active)</option>
@@ -872,13 +863,13 @@ export function SmartLeadGrid({ initialLeads }: SmartLeadGridProps) {
                     type="date"
                     value={customStartDate}
                     onChange={(e) => setCustomStartDate(e.target.value)}
-                    className="w-1/2 p-1.5 border border-slate-300 rounded-lg bg-white text-[11px]"
+                    className="w-1/2 p-1.5 border border-input rounded-lg bg-card text-xs"
                   />
                   <input
                     type="date"
                     value={customEndDate}
                     onChange={(e) => setCustomEndDate(e.target.value)}
-                    className="w-1/2 p-1.5 border border-slate-300 rounded-lg bg-white text-[11px]"
+                    className="w-1/2 p-1.5 border border-input rounded-lg bg-card text-xs"
                   />
                 </div>
               )}
@@ -890,7 +881,7 @@ export function SmartLeadGrid({ initialLeads }: SmartLeadGridProps) {
                   setCustomStartDate("");
                   setCustomEndDate("");
                 }}
-                className="px-3 py-2 text-xs font-bold text-rose-700 bg-rose-50 border border-rose-200 rounded-xl hover:bg-rose-100 transition-all cursor-pointer whitespace-nowrap"
+                className="px-3 py-2 text-sm font-semibold text-destructive bg-destructive-soft border border-border rounded-xl hover:bg-destructive-soft transition-all cursor-pointer whitespace-nowrap"
               >
                 Reset All Filters
               </button>
@@ -899,69 +890,80 @@ export function SmartLeadGrid({ initialLeads }: SmartLeadGridProps) {
         )}
       </div>
 
-      {/* ─── BULK ACTIONS BAR (Appears when leads are selected) ────────── */}
+      {/* ─── BULK ACTIONS BAR (appears when leads are selected) ─── */}
       {selectedLeadIds.length > 0 && (
-        <div className="bg-slate-900 text-white p-3.5 px-5 rounded-2xl flex items-center justify-between shadow-lg border border-slate-800 animate-fade-in">
-          <div className="flex items-center gap-3">
-            <span className="text-xs font-extrabold bg-emerald-500 text-white px-2.5 py-1 rounded-lg">
-              {selectedLeadIds.length} Selected
-            </span>
-            <p className="text-xs font-medium text-slate-300">
-              Bulk actions for selected leads across entity pipelines
-            </p>
-          </div>
+        <div
+          role="region"
+          aria-label="Actions for selected leads"
+          className="flex flex-wrap items-center justify-between gap-x-6 gap-y-3 rounded-xl border border-border bg-card px-4 py-3 shadow-xs animate-fade-in"
+        >
+          <p className="text-sm text-foreground">
+            <span className="font-semibold">{selectedLeadIds.length}</span> lead{selectedLeadIds.length === 1 ? "" : "s"} selected
+          </p>
 
-          <div className="flex items-center gap-2">
+          <div className="flex flex-wrap items-center gap-2">
             <button
               onClick={toggleSelectAll}
-              className="px-3 py-1.5 text-xs font-bold bg-slate-800 hover:bg-slate-700 text-slate-200 rounded-xl transition-all cursor-pointer"
+              className="inline-flex h-9 items-center whitespace-nowrap rounded-lg border border-input bg-card px-3 text-sm font-medium text-foreground transition-colors hover:bg-muted cursor-pointer"
             >
-              {filteredLeads.length > 0 && filteredLeads.every((l) => selectedLeadIds.includes(l._id?.toString() || ""))
-                ? "Deselect All Visible"
-                : "Select All Visible"}
+              {pagedLeads.length > 0 && pagedLeads.every((l) => selectedLeadIds.includes(l._id?.toString() || ""))
+                ? "Deselect this page"
+                : "Select this page"}
             </button>
 
             <button
               onClick={() => setSelectedLeadIds([])}
-              className="px-3 py-1.5 text-xs font-bold bg-slate-800 hover:bg-slate-700 text-slate-300 rounded-xl transition-all cursor-pointer"
+              className="inline-flex h-9 items-center whitespace-nowrap rounded-lg border border-input bg-card px-3 text-sm font-medium text-foreground transition-colors hover:bg-muted cursor-pointer"
             >
-              Clear Selection
+              Clear selection
             </button>
 
-            {/* Direct Export Selected Button */}
             <button
               onClick={() => handleExportExcel("selected")}
-              className="px-4 py-1.5 text-xs font-bold bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl shadow-xs transition-all flex items-center gap-1.5 cursor-pointer"
-              title="Download Excel / CSV for selected rows"
+              className="inline-flex h-9 items-center gap-2 whitespace-nowrap rounded-lg bg-primary px-3.5 text-sm font-medium text-primary-foreground transition-colors hover:bg-primary-hover cursor-pointer"
+              title="Download the selected leads as an Excel file"
             >
-              <Download className="w-3.5 h-3.5" />
-              Download Excel ({selectedLeadIds.length} Selected)
+              <Download className="w-4 h-4" />
+              Download Excel
             </button>
 
-            {/* Delete Selected Button (Admin Only) */}
             {(userRole === "SUPER_ADMIN" || userRole === "ADMIN") && (
               <button
-                onClick={handleBulkDelete}
+                onClick={() => setBulkDeleteOpen(true)}
                 disabled={isDeletingBulk}
-                className="px-4 py-1.5 text-xs font-bold bg-rose-600 hover:bg-rose-700 text-white rounded-xl shadow-xs transition-all flex items-center gap-1.5 cursor-pointer"
-                title="Permanently delete selected leads (Admin Privilege)"
+                className="inline-flex h-9 items-center gap-2 whitespace-nowrap rounded-lg bg-destructive px-3.5 text-sm font-medium text-white transition-opacity hover:opacity-90 disabled:opacity-60 cursor-pointer"
+                title="Permanently delete the selected leads"
               >
-                {isDeletingBulk ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Trash2 className="w-3.5 h-3.5" />}
-                Delete Selected ({selectedLeadIds.length})
+                {isDeletingBulk ? <Loader2 className="w-4 h-4 animate-spin" /> : <Trash2 className="w-4 h-4" />}
+                Delete
               </button>
             )}
           </div>
         </div>
       )}
 
+      {bulkDeleteOpen && (
+        <ConfirmDialog
+          title={`Delete ${selectedLeadIds.length} lead${selectedLeadIds.length === 1 ? "" : "s"}?`}
+          message="The selected leads and their notes are removed for good. This cannot be undone."
+          confirmLabel="Delete leads"
+          cancelLabel="Keep leads"
+          onConfirm={() => {
+            setBulkDeleteOpen(false);
+            handleBulkDelete();
+          }}
+          onClose={() => setBulkDeleteOpen(false)}
+        />
+      )}
+
       {/* ─── 4A. MOBILE TOUCH-OPTIMIZED LEAD CARDS (Visible on < md screens) ─── */}
       <div className="md:hidden space-y-3">
-        {filteredLeads.length === 0 ? (
-          <div className="p-8 text-center text-xs font-semibold text-slate-500 bg-white rounded-2xl border border-slate-200">
+        {leads.length === 0 ? (
+          <div className="p-8 text-center text-sm font-semibold text-muted-foreground bg-card rounded-2xl border border-border">
             No leads found matching current search or filters.
           </div>
         ) : (
-          filteredLeads.map((lead) => {
+          pagedLeads.map((lead) => {
             const bSlug = (lead.business || "tzar") as BusinessSlug;
             const bConfig = BRAND_CONFIG[bSlug] || BRAND_CONFIG.tzar;
             const currentStageObj = STAGES.find((s) => s.id === lead.stageId) || STAGES[0];
@@ -970,8 +972,8 @@ export function SmartLeadGrid({ initialLeads }: SmartLeadGridProps) {
             return (
               <div
                 key={lead._id?.toString() || lead.leadCustomId}
-                className={`p-4 rounded-2xl bg-white border border-slate-200/90 shadow-2xs space-y-3 transition-all ${
-                  isSelected ? "ring-2 ring-emerald-500 bg-emerald-50/20" : ""
+                className={`p-4 rounded-2xl bg-card border border-border shadow-2xs space-y-3 transition-all ${
+                  isSelected ? "ring-2 ring-ring" : ""
                 }`}
               >
                 {/* Header Row: Checkbox, ID, Brand Logo, Stage Selector */}
@@ -983,25 +985,23 @@ export function SmartLeadGrid({ initialLeads }: SmartLeadGridProps) {
                         e.stopPropagation();
                         toggleSelectLead(lead._id?.toString() || "");
                       }}
-                      className="text-slate-500 hover:text-slate-900 cursor-pointer"
+                      className="text-muted-foreground hover:text-foreground cursor-pointer"
                     >
                       {isSelected ? (
-                        <CheckSquare className="w-4 h-4 text-emerald-600" />
+                        <CheckSquare className="w-4 h-4 text-success" />
                       ) : (
-                        <Square className="w-4 h-4 text-slate-300" />
+                        <Square className="w-4 h-4 text-muted-foreground" />
                       )}
                     </button>
 
-                    <span className="font-mono font-bold text-xs text-slate-900">
+                    <span className="font-mono font-semibold text-sm text-foreground whitespace-nowrap">
                       {lead.leadCustomId}
                     </span>
 
                     {bConfig.logo ? (
                       <img src={bConfig.logo} alt={bConfig.label} className="h-4 w-auto object-contain max-h-4" />
                     ) : (
-                      <span className={`text-[10px] font-bold px-2 py-0.5 rounded ${bConfig.bg} ${bConfig.text}`}>
-                        {bConfig.label}
-                      </span>
+                      <span className="text-sm font-semibold text-foreground">{bConfig.label}</span>
                     )}
                   </div>
 
@@ -1011,7 +1011,7 @@ export function SmartLeadGrid({ initialLeads }: SmartLeadGridProps) {
                     onChange={(e) =>
                       handleStageChange(lead._id!.toString(), e.target.value as KanbanStage)
                     }
-                    className={`text-[10px] font-extrabold px-2 py-1 rounded-lg border outline-none cursor-pointer ${currentStageObj.color}`}
+                    className="h-9 rounded-lg border border-input bg-card px-2 text-sm font-medium text-foreground outline-none cursor-pointer"
                   >
                     {STAGES.map((s) => (
                       <option key={s.id} value={s.id}>
@@ -1027,23 +1027,15 @@ export function SmartLeadGrid({ initialLeads }: SmartLeadGridProps) {
                   className="cursor-pointer space-y-1"
                 >
                   <div className="flex items-center justify-between">
-                    <p className="font-bold text-sm text-slate-900">{lead.fullName}</p>
-                    {lead.source === "META_LEAD_AD" ? (
-                      <span className="inline-flex items-center gap-1 text-[10px] font-extrabold px-1.5 py-0.5 rounded bg-[#1877F2] text-white">
-                        <FacebookIcon className="w-3 h-3 fill-white text-white" /> Meta Ad
-                      </span>
-                    ) : (
-                      <span className="text-[10px] font-bold px-1.5 py-0.5 rounded bg-slate-100 text-slate-600">
-                        {lead.source}
-                      </span>
-                    )}
+                    <p className="font-semibold text-sm text-foreground">{lead.fullName}</p>
+                    <span className="text-xs font-medium text-muted-foreground">{sourceLabel(lead.source)}</span>
                   </div>
 
-                  <p className="text-xs font-semibold text-slate-600 truncate">
+                  <p className="text-sm font-semibold text-muted-foreground truncate">
                     {lead.interestedServices?.[0] || lead.companyName || "General Inquiry"}
                   </p>
 
-                  <div className="flex items-center gap-3 text-[11px] text-slate-400 font-medium">
+                  <div className="flex items-center gap-3 text-xs text-muted-foreground font-medium">
                     <span>{lead.phone}</span>
                     <span>•</span>
                     <span>{lead.createdAt ? new Date(lead.createdAt).toLocaleDateString("en-GB", { day: "2-digit", month: "short" }) : ""}</span>
@@ -1051,10 +1043,10 @@ export function SmartLeadGrid({ initialLeads }: SmartLeadGridProps) {
                 </div>
 
                 {/* Bottom Row: Est Budget & Quick Touch Actions */}
-                <div className="flex items-center justify-between pt-2 border-t border-slate-100">
+                <div className="flex items-center justify-between pt-2 border-t border-border">
                   <div>
-                    <span className="text-[10px] font-bold text-slate-400 uppercase">Est. Value</span>
-                    <p className="text-xs font-black text-slate-900">
+                    <span className="text-xs font-semibold text-muted-foreground ">Est. Value</span>
+                    <p className="text-sm font-semibold text-foreground">
                       {lead.estimatedBudget ? `₹${lead.estimatedBudget.toLocaleString("en-IN")}` : "—"}
                     </p>
                   </div>
@@ -1065,7 +1057,7 @@ export function SmartLeadGrid({ initialLeads }: SmartLeadGridProps) {
                       href={`https://wa.me/${(lead.phone || "").replace(/[^0-9]/g, "")}`}
                       target="_blank"
                       rel="noopener noreferrer"
-                      className="p-2 rounded-xl bg-emerald-50 text-emerald-700 hover:bg-emerald-100 border border-emerald-200/80 transition-colors"
+                      className="p-2 rounded-lg border border-border bg-card text-foreground hover:bg-muted transition-colors"
                       title="Chat on WhatsApp"
                     >
                       <MessageSquare className="w-3.5 h-3.5" />
@@ -1074,7 +1066,7 @@ export function SmartLeadGrid({ initialLeads }: SmartLeadGridProps) {
                     {/* Phone Call Link */}
                     <a
                       href={`tel:${lead.phone}`}
-                      className="p-2 rounded-xl bg-slate-100 text-slate-700 hover:bg-slate-200 transition-colors"
+                      className="p-2 rounded-lg border border-border bg-card text-foreground hover:bg-muted transition-colors"
                       title="Call Lead"
                     >
                       <Phone className="w-3.5 h-3.5" />
@@ -1082,11 +1074,11 @@ export function SmartLeadGrid({ initialLeads }: SmartLeadGridProps) {
 
                     {/* 360 Workspace Drawer Link */}
                     <button
-                      onClick={() => setSelectedLeadForDrawer(lead)}
-                      className="px-3 py-1.5 rounded-xl bg-slate-900 hover:bg-slate-800 text-white text-xs font-bold transition-colors cursor-pointer flex items-center gap-1"
-                      title="Open Workspace Drawer"
+                      onClick={() => openLead(lead)}
+                      className="px-3 py-1.5 rounded-xl bg-primary hover:bg-primary-hover text-white text-sm font-semibold transition-colors cursor-pointer flex items-center gap-1"
+                      title="Open lead details"
                     >
-                      <span>Workspace</span>
+                      <span>Details</span>
                       <ChevronRight className="w-3 h-3" />
                     </button>
                   </div>
@@ -1097,180 +1089,158 @@ export function SmartLeadGrid({ initialLeads }: SmartLeadGridProps) {
         )}
       </div>
 
-      {/* ─── 4B. DESKTOP HIGH-DENSITY SMART DATA GRID (Visible on md+ screens) ─── */}
-      <div className="hidden md:block bg-white rounded-2xl border border-slate-300 shadow-xs overflow-hidden">
-        <div className="overflow-x-auto">
-          <table className="w-full text-left text-xs border-collapse">
+      {loadFailed && (
+        <div role="alert" className="flex items-center justify-between gap-3 rounded-lg border border-destructive bg-destructive-soft px-4 py-3 text-sm font-medium text-destructive">
+          Could not load leads.
+          <button onClick={reload} className="underline cursor-pointer">
+            Try again
+          </button>
+        </div>
+      )}
+
+      {/* ─── 4B. DESKTOP DATA GRID (md and up). Fits the screen; scrolls sideways only on narrow windows. ─── */}
+      <div className={`hidden md:block bg-card rounded-xl border border-border shadow-xs overflow-hidden transition-opacity ${isLoading ? "opacity-60" : ""}`} aria-busy={isLoading}>
+        <div className="max-h-[calc(100vh-15rem)] min-h-[320px] overflow-auto overscroll-contain">
+          <table className="w-full min-w-[860px] text-left text-sm border-collapse">
             <thead>
-              <tr className="bg-slate-100/80 border-b border-slate-300 text-slate-700 font-bold uppercase tracking-wider text-[11px]">
-                <th className="py-3.5 px-4 w-10">
+              <tr className="bg-muted border-b border-border text-muted-foreground font-semibold text-sm">
+                <th className="sticky top-0 z-10 bg-muted py-3 pl-4 pr-2 w-10">
                   <button
                     type="button"
                     onClick={(e) => {
                       e.stopPropagation();
                       toggleSelectAll();
                     }}
-                    className="text-slate-500 hover:text-slate-900 cursor-pointer flex items-center"
-                    title="Select/Deselect All Visible Leads"
+                    className="text-muted-foreground hover:text-foreground cursor-pointer flex items-center"
+                    title="Select or clear every lead on this page"
+                    aria-label="Select or clear every lead on this page"
                   >
-                    {filteredLeads.length > 0 && filteredLeads.every((l) => selectedLeadIds.includes(l._id?.toString() || "")) ? (
-                      <CheckSquare className="w-4 h-4 text-emerald-600" />
+                    {pagedLeads.length > 0 && pagedLeads.every((l) => selectedLeadIds.includes(l._id?.toString() || "")) ? (
+                      <CheckSquare className="w-4 h-4 text-primary" />
                     ) : (
-                      <Square className="w-4 h-4 text-slate-400" />
+                      <Square className="w-4 h-4" />
                     )}
                   </button>
                 </th>
-                <th className="py-3.5 px-4">Lead ID</th>
-                <th className="py-3.5 px-4">Brand Entity</th>
-                <th className="py-3.5 px-4">Submitted Date</th>
-                <th className="py-3.5 px-4">Contact Info</th>
-                <th className="py-3.5 px-4">Interest / Program</th>
-                <th className="py-3.5 px-4">Source</th>
-                <th className="py-3.5 px-4">SLA Status</th>
-                <th className="py-3.5 px-4">Stage Status</th>
-                <th className="py-3.5 px-4">Est. Budget</th>
-                <th className="py-3.5 px-4 text-right">Actions</th>
+                <th className="sticky top-0 z-10 bg-muted py-3 px-3 whitespace-nowrap">Lead</th>
+                <th className="sticky top-0 z-10 bg-muted py-3 px-3 whitespace-nowrap">Brand</th>
+                <th className="sticky top-0 z-10 bg-muted py-3 px-3">Contact</th>
+                <th className="sticky top-0 z-10 bg-muted py-3 px-3">Interest</th>
+                <th className="sticky top-0 z-10 bg-muted py-3 px-3 hidden 2xl:table-cell whitespace-nowrap">Source</th>
+                <th className="sticky top-0 z-10 bg-muted py-3 px-3 whitespace-nowrap">SLA</th>
+                <th className="sticky top-0 z-10 bg-muted py-3 px-3 whitespace-nowrap">Stage</th>
+                <th className="sticky top-0 z-10 bg-muted py-3 px-3 hidden 2xl:table-cell whitespace-nowrap">Budget</th>
+                <th className="sticky top-0 z-10 bg-muted py-3 pl-3 pr-4 text-right whitespace-nowrap">
+                  <span className="sr-only">Actions</span>
+                </th>
               </tr>
             </thead>
-            <tbody className="divide-y divide-slate-200">
-              {filteredLeads.length === 0 ? (
+            <tbody className="divide-y divide-border">
+              {pagedLeads.length === 0 ? (
                 <tr>
-                  <td colSpan={11} className="py-12 text-center text-slate-500 font-semibold">
-                    No leads found matching current search or filters.
+                  <td colSpan={8} className="py-12 text-center text-muted-foreground font-medium">
+                    No leads match the current search or filters.
                   </td>
                 </tr>
               ) : (
-                filteredLeads.map((lead) => {
+                pagedLeads.map((lead) => {
                   const bSlug = (lead.business || "tzar") as BusinessSlug;
                   const bConfig = BRAND_CONFIG[bSlug] || BRAND_CONFIG.tzar;
-                  const BIcon = bConfig.icon;
                   const isOverdue = lead.slaDeadline ? new Date(lead.slaDeadline) < new Date() : false;
                   const currentStageObj = STAGES.find((s) => s.id === lead.stageId) || STAGES[0];
                   const isSelected = selectedLeadIds.includes(lead._id?.toString() || "");
+                  const submitted = lead.createdAt ? new Date(lead.createdAt) : null;
+
+                  let interest = lead.interestedServices?.[0];
+                  if (!interest || interest === "General Inquiry" || interest === "Meta Lead Ad Form") {
+                    if (lead.business === "titepo") {
+                      interest = lead.titepoData?.eventType
+                        ? `${lead.titepoData.eventType} (${lead.titepoData.kidsCount || "Return Gifts"})`
+                        : "Return gifts and favours";
+                    } else if (lead.business === "tzar") {
+                      interest = lead.tzarData?.serviceNeeded || (lead.companyName ? `${lead.companyName} - Web development` : "Web development and marketing");
+                    } else if (lead.business === "adshalaa") {
+                      interest = lead.adshalaaData?.courseName || lead.adshalaaData?.programName || "Digital marketing course";
+                    } else if (lead.business === "crownleaf") {
+                      interest = lead.crownleafData?.giftingOccasion || "Corporate gifting hampers";
+                    } else {
+                      interest = "Sales enquiry";
+                    }
+                  }
 
                   return (
                     <tr
                       key={lead._id?.toString() || lead.leadCustomId}
-                      className={`hover:bg-slate-50/80 transition-colors cursor-pointer group ${
-                        isSelected ? "bg-emerald-50/50" : ""
-                      }`}
+                      className={`transition-colors cursor-pointer group ${isSelected ? "bg-muted" : "hover:bg-muted"}`}
                       onClick={() => router.push(`/pipeline/${lead._id}`)}
                     >
-                      {/* Checkbox Cell */}
-                      <td className="py-3.5 px-4 w-10" onClick={(e) => e.stopPropagation()}>
+                      <td className="py-3 pl-4 pr-2 w-10" onClick={(e) => e.stopPropagation()}>
                         <button
                           type="button"
                           onClick={() => toggleSelectLead(lead._id?.toString() || "")}
-                          className="text-slate-500 hover:text-slate-900 cursor-pointer flex items-center"
+                          className="text-muted-foreground hover:text-foreground cursor-pointer flex items-center"
+                          aria-label={isSelected ? "Deselect lead" : "Select lead"}
                         >
-                          {isSelected ? (
-                            <CheckSquare className="w-4 h-4 text-emerald-600" />
-                          ) : (
-                            <Square className="w-4 h-4 text-slate-300" />
-                          )}
+                          {isSelected ? <CheckSquare className="w-4 h-4 text-primary" /> : <Square className="w-4 h-4" />}
                         </button>
                       </td>
-                      {/* Lead Custom ID */}
-                      <td className="py-3.5 px-4 font-mono font-bold text-slate-900">
-                        {lead.leadCustomId}
+
+                      {/* Lead ID and when it came in */}
+                      <td className="py-3 px-3 whitespace-nowrap">
+                        <p className="font-mono font-semibold text-foreground">{lead.leadCustomId}</p>
+                        <p className="text-sm text-muted-foreground">
+                          {submitted
+                            ? `${submitted.toLocaleDateString("en-GB", { day: "2-digit", month: "short", year: "numeric" })}, ${submitted.toLocaleTimeString("en-IN", { hour: "2-digit", minute: "2-digit" })}`
+                            : "N/A"}
+                        </p>
                       </td>
 
-                      {/* Brand Entity Badge with Image Logo */}
-                      <td className="py-3.5 px-4">
+                      <td className="py-3 px-3">
                         {bConfig.logo ? (
-                          <img src={bConfig.logo} alt={bConfig.label} className="h-4 w-auto object-contain max-h-4" />
+                          <img src={bConfig.logo} alt={bConfig.label} className="h-5 w-auto max-w-[88px] object-contain" />
                         ) : (
-                          <span className={`inline-flex items-center gap-1.5 text-[11px] font-bold px-2.5 py-1 rounded-xl ${bConfig.bg} ${bConfig.text}`}>
-                            <BIcon className="w-3.5 h-3.5" />
-                            <span>{bConfig.label}</span>
-                          </span>
+                          <span className="font-medium text-foreground whitespace-nowrap">{bConfig.label}</span>
                         )}
                       </td>
 
-                      {/* Facebook Lead Submitted Date */}
-                      <td className="py-3.5 px-4 font-medium text-slate-700 text-[11px] whitespace-nowrap">
-                        <div className="flex items-center gap-1 font-bold text-slate-800">
-                          <Calendar className="w-3.5 h-3.5 text-slate-400" />
-                          {lead.createdAt ? new Date(lead.createdAt).toLocaleDateString("en-GB", { day: "2-digit", month: "short", year: "numeric" }) : "N/A"}
-                        </div>
-                        <span className="text-[10px] text-slate-400 font-mono">
-                          {lead.createdAt ? new Date(lead.createdAt).toLocaleTimeString("en-US", { hour: "2-digit", minute: "2-digit" }) : ""}
-                        </span>
-                      </td>
-
-                      {/* Contact Info */}
-                      <td className="py-3.5 px-4 space-y-0.5">
-                        <p className="font-bold text-slate-900 group-hover:text-(--color-brand-green) transition-colors">
+                      <td className="py-3 px-3 max-w-[200px]">
+                        <p className="font-semibold text-foreground truncate" title={lead.fullName}>
                           {lead.fullName}
                         </p>
-                        <div className="flex items-center gap-2 text-[11px] text-slate-500 font-medium">
-                          <span>{lead.phone}</span>
-                          <span>•</span>
-                          <span className="truncate max-w-[140px]">{lead.email}</span>
-                        </div>
+                        <p className="text-sm text-muted-foreground truncate" title={`${lead.phone || ""} ${lead.email || ""}`}>
+                          {[lead.phone, lead.email].filter(Boolean).join("  ·  ")}
+                        </p>
                       </td>
 
-                      {/* Interest / Course / Program */}
-                      <td className="py-3.5 px-4 font-medium text-slate-800">
-                        {(() => {
-                          let label = lead.interestedServices?.[0];
-                          if (!label || label === "General Inquiry" || label === "Meta Lead Ad Form") {
-                            if (lead.business === "titepo") {
-                              label = lead.titepoData?.eventType
-                                ? `${lead.titepoData.eventType} (${lead.titepoData.kidsCount || "Return Gifts"})`
-                                : "Titepo Return Gifts & Favors";
-                            } else if (lead.business === "tzar") {
-                              label = lead.tzarData?.serviceNeeded || (lead.companyName ? `${lead.companyName} - WebDev` : "WebDev & Marketing");
-                            } else if (lead.business === "adshalaa") {
-                              label = lead.adshalaaData?.courseName || lead.adshalaaData?.programName || "Digital Marketing Mastery";
-                            } else if (lead.business === "crownleaf") {
-                              label = lead.crownleafData?.giftingOccasion || "Corporate Gifting Hampers";
-                            } else {
-                              label = "Inbound Sales Inquiry";
-                            }
-                          }
-                          return (
-                            <span className="truncate max-w-[200px] inline-block font-semibold text-xs text-slate-900" title={label}>
-                              {label}
-                            </span>
-                          );
-                        })()}
+                      <td className="py-3 px-3 max-w-[190px]">
+                        <p className="font-medium text-foreground truncate" title={interest}>
+                          {interest}
+                        </p>
+                        <p className="text-sm text-muted-foreground truncate 2xl:hidden">
+                          {[sourceLabel(lead.source), lead.estimatedBudget ? `₹${lead.estimatedBudget.toLocaleString("en-IN")}` : ""].filter(Boolean).join("  ·  ")}
+                        </p>
                       </td>
 
-                      {/* Source */}
-                      <td className="py-3.5 px-4">
-                        {lead.source === "META_LEAD_AD" ? (
-                          <span className="inline-flex items-center gap-1.5 text-[11px] font-extrabold px-2.5 py-1 rounded-lg bg-[#1877F2] text-white shadow-2xs border border-blue-700">
-                            <FacebookIcon className="w-3.5 h-3.5 fill-white text-white" /> META_LEAD_AD
-                          </span>
-                        ) : (
-                          <span className="text-[11px] font-bold px-2 py-0.5 rounded-md bg-slate-100 text-slate-700 border border-slate-200">
-                            {lead.source}
-                          </span>
-                        )}
-                      </td>
+                      <td className="py-3 px-3 hidden 2xl:table-cell whitespace-nowrap text-foreground">{sourceLabel(lead.source)}</td>
 
-                      {/* SLA Status */}
-                      <td className="py-3.5 px-4">
+                      <td className="py-3 px-3 whitespace-nowrap">
                         {isOverdue ? (
-                          <span className="inline-flex items-center gap-1 text-[10px] font-extrabold px-2 py-0.5 rounded-full bg-rose-100 text-rose-800">
-                            <AlertTriangle className="w-3 h-3" /> Overdue
+                          <span className="inline-flex items-center gap-1.5 font-semibold text-destructive">
+                            <AlertTriangle className="w-4 h-4" /> Overdue
                           </span>
                         ) : (
-                          <span className="inline-flex items-center gap-1 text-[10px] font-bold px-2 py-0.5 rounded-full bg-emerald-100 text-emerald-800">
-                            <Clock className="w-3 h-3" /> Active SLA
+                          <span className="inline-flex items-center gap-1.5 font-medium text-muted-foreground">
+                            <Clock className="w-4 h-4" /> Within SLA
                           </span>
                         )}
                       </td>
 
-                      {/* Stage Selector */}
-                      <td className="py-3.5 px-4" onClick={(e) => e.stopPropagation()}>
+                      <td className="py-3 px-3" onClick={(e) => e.stopPropagation()}>
                         <select
                           value={lead.stageId || "new-lead"}
-                          onChange={(e) =>
-                            handleStageChange(lead._id!.toString(), e.target.value as KanbanStage)
-                          }
-                          className={`text-[11px] font-extrabold px-2.5 py-1 rounded-xl border outline-hidden transition-all cursor-pointer ${currentStageObj.color}`}
+                          onChange={(e) => handleStageChange(lead._id!.toString(), e.target.value as KanbanStage)}
+                          aria-label={`Stage for ${lead.fullName}`}
+                          className="h-9 w-full min-w-[130px] rounded-lg border border-input bg-card px-2.5 text-sm font-medium text-foreground outline-none cursor-pointer hover:border-ring focus-visible:border-ring"
                         >
                           {STAGES.map((s) => (
                             <option key={s.id} value={s.id}>
@@ -1280,28 +1250,27 @@ export function SmartLeadGrid({ initialLeads }: SmartLeadGridProps) {
                         </select>
                       </td>
 
-                      {/* Est Budget */}
-                      <td className="py-3.5 px-4 font-extrabold text-slate-900">
-                        {lead.estimatedBudget ? `₹${lead.estimatedBudget.toLocaleString()}` : "—"}
+                      <td className="py-3 px-3 hidden 2xl:table-cell whitespace-nowrap font-medium text-foreground">
+                        {lead.estimatedBudget ? `₹${lead.estimatedBudget.toLocaleString("en-IN")}` : "—"}
                       </td>
 
-                      {/* Actions */}
-                      <td className="py-3.5 px-4 text-right" onClick={(e) => e.stopPropagation()}>
+                      <td className="py-3 pl-3 pr-4 text-right" onClick={(e) => e.stopPropagation()}>
                         <div className="flex items-center justify-end gap-1.5">
                           <a
                             href={`https://wa.me/${(lead.phone || "").replace(/[^0-9]/g, "")}`}
                             target="_blank"
                             rel="noreferrer"
-                            className="p-1.5 rounded-lg bg-emerald-50 text-emerald-700 hover:bg-emerald-100 transition-colors"
-                            title="WhatsApp Chat"
+                            className="p-2 rounded-lg border border-border bg-card text-foreground hover:bg-muted transition-colors"
+                            title="Chat on WhatsApp"
+                            aria-label="Chat on WhatsApp"
                           >
-                            <Send className="w-3.5 h-3.5" />
+                            <Send className="w-4 h-4" />
                           </a>
-
                           <button
-                            onClick={() => setSelectedLeadForDrawer(lead)}
-                            className="p-1.5 rounded-lg bg-slate-100 text-slate-700 hover:bg-slate-200 transition-colors cursor-pointer"
-                            title="Open Workspace Drawer"
+                            onClick={() => openLead(lead)}
+                            className="p-2 rounded-lg border border-border bg-card text-foreground hover:bg-muted transition-colors cursor-pointer"
+                            title="Open lead details"
+                            aria-label="Open lead details"
                           >
                             <ChevronRight className="w-4 h-4" />
                           </button>
@@ -1315,6 +1284,18 @@ export function SmartLeadGrid({ initialLeads }: SmartLeadGridProps) {
           </table>
         </div>
       </div>
+
+      {total > 0 && (
+        <Pagination
+          page={currentPage}
+          totalPages={totalPages}
+          total={total}
+          pageSize={pageSize}
+          onPageChange={goToPage}
+          onPageSizeChange={setPageSize}
+          label="leads"
+        />
+      )}
 
       {/* ─── 5. SLIDE-OVER LEAD WORKSPACE DRAWER ─────────────────────────── */}
       <LeadWorkspaceDrawer
@@ -1330,8 +1311,8 @@ export function SmartLeadGrid({ initialLeads }: SmartLeadGridProps) {
           );
         }}
         onDeleteLead={(deletedId) => {
-          setLeads((prev) => prev.filter((l) => l._id?.toString() !== deletedId));
           setSelectedLeadForDrawer(null);
+          reload();
         }}
       />
 
@@ -1340,43 +1321,38 @@ export function SmartLeadGrid({ initialLeads }: SmartLeadGridProps) {
         isOpen={isCreateModalOpen}
         onClose={() => setIsCreateModalOpen(false)}
         onLeadCreated={(newLead) => {
-          if (newLead) {
-            setLeads((prev) => [newLead, ...prev.filter((l) => l._id?.toString() !== newLead._id?.toString())]);
-          }
-          fetch(`/api/v1/leads?business=${selectedBrand}`)
-            .then((res) => res.json())
-            .then((data) => data.leads && setLeads(data.leads));
+          reload();
         }}
       />
 
       {/* ─── CSV LEAD IMPORT MODAL ────────────────────────────────────── */}
       {isCsvModalOpen && (
-        <div className="fixed inset-0 z-50 bg-slate-900/60 backdrop-blur-xs flex items-center justify-center p-4">
-          <div className="bg-white rounded-3xl p-6 max-w-md w-full border border-slate-300 shadow-2xl space-y-5 animate-fade-in">
-            <div className="flex items-center justify-between pb-3 border-b border-slate-200">
+        <div className="fixed inset-0 z-50 bg-foreground/50 backdrop-blur-xs flex items-center justify-center p-4">
+          <div ref={dialogRef} role="dialog" aria-modal="true" aria-label="Import leads" tabIndex={-1} className="bg-card rounded-3xl p-6 max-w-md w-full border border-input shadow-2xl space-y-5 animate-fade-in">
+            <div className="flex items-center justify-between pb-3 border-b border-border">
               <div className="flex items-center gap-2">
-                <Download className="w-5 h-5 text-emerald-600" />
-                <h3 className="text-base font-bold text-slate-900">
+                <Download className="w-5 h-5 text-success" />
+                <h3 className="text-base font-semibold text-foreground">
                   Import Meta Lead Ads CSV
                 </h3>
               </div>
               <button
                 onClick={() => setIsCsvModalOpen(false)}
-                className="p-1.5 text-slate-400 hover:text-slate-600 rounded-xl cursor-pointer"
+                className="p-1.5 text-muted-foreground hover:text-muted-foreground rounded-xl cursor-pointer"
               >
                 <X className="w-5 h-5" />
               </button>
             </div>
 
-            <div className="space-y-4 text-xs">
+            <div className="space-y-4 text-sm">
               <div>
-                <label className="block font-bold text-slate-700 mb-1">
-                  Target Business Entity <span className="text-rose-500">*</span>
+                <label className="block font-semibold text-foreground mb-1">
+                  Target Business Entity <span className="text-destructive">*</span>
                 </label>
                 <select
                   value={csvBusiness}
                   onChange={(e) => setCsvBusiness(e.target.value as BusinessSlug)}
-                  className="w-full px-3.5 py-2.5 border border-slate-300 rounded-xl font-bold text-slate-900 outline-none bg-slate-50 cursor-pointer"
+                  className="w-full px-3.5 py-2.5 border border-input rounded-xl font-semibold text-foreground outline-none bg-muted cursor-pointer"
                 >
                   <option value="tzar">Tzar Agency (Digital Marketing & WebDev)</option>
                   <option value="adshalaa">Adshalaa EdTech (Course Registrations)</option>
@@ -1386,18 +1362,18 @@ export function SmartLeadGrid({ initialLeads }: SmartLeadGridProps) {
               </div>
 
               <div className="space-y-2">
-                <label className="block font-bold text-slate-700">
+                <label className="block font-semibold text-foreground">
                   Select Downloaded Facebook CSV File
                 </label>
-                <label className="flex items-center justify-center p-4 border-2 border-dashed border-emerald-300 rounded-2xl bg-emerald-50/50 hover:bg-emerald-100/50 transition-colors cursor-pointer text-center">
-                  <span className="text-xs font-bold text-emerald-800 flex items-center gap-2">
+                <label className="flex items-center justify-center p-4 border-2 border-dashed border-success rounded-2xl bg-success-soft hover:bg-success-soft transition-colors cursor-pointer text-center">
+                  <span className="text-sm font-semibold text-success flex items-center gap-2">
                     {isUploadingCsv ? (
                       <>
-                        <Loader2 className="w-4 h-4 animate-spin text-emerald-600" /> Importing CSV Leads...
+                        <Loader2 className="w-4 h-4 animate-spin text-success" /> Importing CSV Leads...
                       </>
                     ) : (
                       <>
-                        <Download className="w-4 h-4 text-emerald-600" /> Choose Facebook Leads .csv File
+                        <Download className="w-4 h-4 text-success" /> Choose Facebook Leads .csv File
                       </>
                     )}
                   </span>
@@ -1413,10 +1389,10 @@ export function SmartLeadGrid({ initialLeads }: SmartLeadGridProps) {
 
               {csvResultMsg && (
                 <div
-                  className={`p-3.5 rounded-xl border text-xs font-bold ${
+                  className={`p-3.5 rounded-xl border text-sm font-semibold ${
                     csvResultMsg.startsWith("Error")
-                      ? "bg-rose-50 border-rose-200 text-rose-800"
-                      : "bg-emerald-50 border-emerald-200 text-emerald-800"
+                      ? "bg-destructive-soft border-border text-destructive"
+                      : "bg-success-soft border-border text-success"
                   }`}
                 >
                   {csvResultMsg}
@@ -1427,7 +1403,7 @@ export function SmartLeadGrid({ initialLeads }: SmartLeadGridProps) {
                 <button
                   type="button"
                   onClick={() => setIsCsvModalOpen(false)}
-                  className="px-5 py-2 text-xs font-bold text-slate-700 bg-slate-100 hover:bg-slate-200 rounded-xl cursor-pointer"
+                  className="px-5 py-2 text-sm font-semibold text-foreground bg-muted hover:bg-border rounded-xl cursor-pointer"
                 >
                   Close
                 </button>

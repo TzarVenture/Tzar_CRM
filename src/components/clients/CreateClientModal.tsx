@@ -2,12 +2,17 @@
 
 import React, { useState } from "react";
 import axios from "axios";
-import { X, Building2, UserCheck, Plus, Loader2 } from "lucide-react";
+import { Plus, SpinnerGap } from "@phosphor-icons/react";
 import { BusinessSlug } from "@/models/Lead";
+import { Dialog, DialogBody, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Field, Select } from "@/components/ui/form-field";
 
 interface CreateClientModalProps {
   isOpen: boolean;
   onClose: () => void;
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   onClientCreated: (newClient?: any) => void;
 }
 
@@ -24,8 +29,6 @@ export function CreateClientModal({ isOpen, onClose, onClientCreated }: CreateCl
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  if (!isOpen) return null;
-
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setIsSubmitting(true);
@@ -35,11 +38,7 @@ export function CreateClientModal({ isOpen, onClose, onClientCreated }: CreateCl
       const res = await axios.post("/api/v1/clients", {
         companyName,
         business,
-        primaryContact: {
-          name: contactName,
-          email,
-          phone,
-        },
+        primaryContact: { name: contactName, email, phone },
         monthlyRetainer: Number(contractValue) || 0,
         healthScore,
         activeServices: [activeServices],
@@ -47,175 +46,81 @@ export function CreateClientModal({ isOpen, onClose, onClientCreated }: CreateCl
 
       onClientCreated(res.data?.client);
       onClose();
-    } catch (err: any) {
+    } catch (err) {
       console.error("Failed to create client account:", err);
-      setError(err.response?.data?.error || "Failed to create client account.");
+      const message = (err as { response?: { data?: { error?: string } } }).response?.data?.error;
+      setError(message || "Could not create the client. Check the details and try again.");
     } finally {
       setIsSubmitting(false);
     }
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 modal-overlay animate-fade-in">
-      <div className="relative w-full max-w-lg bg-white rounded-3xl border border-slate-300 shadow-2xl overflow-hidden">
-        {/* Header */}
-        <div className="flex items-center justify-between px-7 py-5 border-b border-slate-200 bg-slate-50/60">
-          <div className="flex items-center gap-3">
-            <div className="p-2.5 rounded-2xl bg-blue-100 text-blue-700">
-              <Building2 className="w-5 h-5" />
-            </div>
-            <div>
-              <h2 className="text-lg font-bold text-slate-900">Add New Client Account</h2>
-              <p className="text-xs font-semibold text-slate-500">
-                Manually record paying account & active retainer scope
+    <Dialog open={isOpen} onOpenChange={(open) => !open && onClose()}>
+      <DialogContent scrollable={false}>
+        <form onSubmit={handleSubmit} className="flex min-h-0 flex-1 flex-col">
+          <DialogHeader className="border-b border-border px-6 py-5">
+            <DialogTitle>Add a client</DialogTitle>
+            <DialogDescription>Create a client account directly, without converting a lead.</DialogDescription>
+          </DialogHeader>
+
+          <DialogBody className="space-y-4">
+            {error && (
+              <p role="alert" className="rounded-lg border border-destructive bg-destructive-soft px-3.5 py-3 text-sm font-medium text-destructive">
+                {error}
               </p>
-            </div>
-          </div>
+            )}
 
-          <button
-            onClick={onClose}
-            className="p-2 rounded-xl text-slate-400 hover:bg-slate-200 hover:text-slate-800 transition-colors cursor-pointer"
-          >
-            <X className="w-5 h-5" />
-          </button>
-        </div>
+            <Field label="Company" htmlFor="client-company" required>
+              <Input id="client-company" required value={companyName} onChange={(e) => setCompanyName(e.target.value)} autoComplete="off" />
+            </Field>
 
-        <form onSubmit={handleSubmit} className="p-7 space-y-4">
-          {error && (
-            <div className="p-3.5 rounded-xl bg-rose-50 border border-rose-200 text-xs font-bold text-rose-700">
-              {error}
-            </div>
-          )}
-
-          <div>
-            <label className="block text-xs font-bold text-slate-700 mb-1">Company / Organization Name *</label>
-            <input
-              type="text"
-              required
-              value={companyName}
-              onChange={(e) => setCompanyName(e.target.value)}
-              placeholder="e.g. SkillGro Corp / CrownLeaf Retail"
-              className="w-full px-3.5 py-2.5 text-xs font-semibold rounded-xl border border-slate-300 outline-none focus:border-slate-800"
-            />
-          </div>
-
-          <div className="grid grid-cols-2 gap-3">
-            <div>
-              <label className="block text-xs font-bold text-slate-700 mb-1">Business Unit</label>
-              <select
-                value={business}
-                onChange={(e) => setBusiness(e.target.value as BusinessSlug)}
-                className="w-full px-3.5 py-2.5 text-xs font-semibold rounded-xl border border-slate-300 outline-none cursor-pointer"
-              >
-                <option value="tzar">Tzar Agency</option>
-                <option value="adshalaa">Adshalaa EdTech</option>
-                <option value="crownleaf">CrownLeaf Gifting</option>
-                <option value="titepo">Titepo Toys</option>
-              </select>
+            <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+              <Field label="Brand" htmlFor="client-brand">
+                <Select id="client-brand" value={business} onChange={(e) => setBusiness(e.target.value as BusinessSlug)}>
+                  <option value="tzar">Tzar Digital Agency</option>
+                  <option value="adshalaa">Adshalaa</option>
+                  <option value="crownleaf">Crownleaf</option>
+                  <option value="titepo">Titepo</option>
+                </Select>
+              </Field>
+              <Field label="Contact name" htmlFor="client-contact" required>
+                <Input id="client-contact" required value={contactName} onChange={(e) => setContactName(e.target.value)} />
+              </Field>
+              <Field label="Email" htmlFor="client-email" required>
+                <Input id="client-email" type="email" required value={email} onChange={(e) => setEmail(e.target.value)} />
+              </Field>
+              <Field label="Phone" htmlFor="client-phone" required>
+                <Input id="client-phone" type="tel" required value={phone} onChange={(e) => setPhone(e.target.value)} placeholder="+91 98765 43210" />
+              </Field>
+              <Field label="Monthly retainer (₹)" htmlFor="client-retainer">
+                <Input id="client-retainer" type="number" min={0} value={contractValue} onChange={(e) => setContractValue(Number(e.target.value))} />
+              </Field>
+              <Field label="Account health" htmlFor="client-health">
+                <Select id="client-health" value={healthScore} onChange={(e) => setHealthScore(e.target.value as typeof healthScore)}>
+                  <option value="HEALTHY">Healthy</option>
+                  <option value="AT_RISK">At risk</option>
+                  <option value="CRITICAL">Critical</option>
+                </Select>
+              </Field>
             </div>
 
-            <div>
-              <label className="block text-xs font-bold text-slate-700 mb-1">Primary Contact Name *</label>
-              <input
-                type="text"
-                required
-                value={contactName}
-                onChange={(e) => setContactName(e.target.value)}
-                placeholder="e.g. Vikram Sharma"
-                className="w-full px-3.5 py-2.5 text-xs font-semibold rounded-xl border border-slate-300 outline-none focus:border-slate-800"
-              />
-            </div>
-          </div>
+            <Field label="Services" htmlFor="client-services" hint="What you deliver for this client, for example SEO, Meta ads or a site redesign.">
+              <Input id="client-services" value={activeServices} onChange={(e) => setActiveServices(e.target.value)} />
+            </Field>
+          </DialogBody>
 
-          <div className="grid grid-cols-2 gap-3">
-            <div>
-              <label className="block text-xs font-bold text-slate-700 mb-1">Email Address *</label>
-              <input
-                type="email"
-                required
-                value={email}
-                onChange={(e) => setEmail(e.target.value)}
-                placeholder="vikram@company.com"
-                className="w-full px-3.5 py-2.5 text-xs font-semibold rounded-xl border border-slate-300 outline-none"
-              />
-            </div>
-
-            <div>
-              <label className="block text-xs font-bold text-slate-700 mb-1">Phone Number *</label>
-              <input
-                type="text"
-                required
-                value={phone}
-                onChange={(e) => setPhone(e.target.value)}
-                placeholder="+91 98765 11111"
-                className="w-full px-3.5 py-2.5 text-xs font-semibold rounded-xl border border-slate-300 outline-none"
-              />
-            </div>
-          </div>
-
-          <div className="grid grid-cols-2 gap-3">
-            <div>
-              <label className="block text-xs font-bold text-slate-700 mb-1">Monthly Retainer (₹)</label>
-              <input
-                type="number"
-                value={contractValue}
-                onChange={(e) => setContractValue(Number(e.target.value))}
-                className="w-full px-3.5 py-2.5 text-xs font-semibold rounded-xl border border-slate-300 outline-none"
-              />
-            </div>
-
-            <div>
-              <label className="block text-xs font-bold text-slate-700 mb-1">Account Health Status</label>
-              <select
-                value={healthScore}
-                onChange={(e) => setHealthScore(e.target.value as any)}
-                className="w-full px-3.5 py-2.5 text-xs font-semibold rounded-xl border border-slate-300 outline-none cursor-pointer"
-              >
-                <option value="HEALTHY">🟢 Healthy (Active)</option>
-                <option value="AT_RISK">🟡 At Risk</option>
-                <option value="CRITICAL">🔴 Critical Risk</option>
-              </select>
-            </div>
-          </div>
-
-          <div>
-            <label className="block text-xs font-bold text-slate-700 mb-1">Active Deliverable Scope</label>
-            <input
-              type="text"
-              value={activeServices}
-              onChange={(e) => setActiveServices(e.target.value)}
-              placeholder="SEO, Meta Ads Campaign Management, UI Revamp"
-              className="w-full px-3.5 py-2.5 text-xs font-semibold rounded-xl border border-slate-300 outline-none"
-            />
-          </div>
-
-          {/* Footer */}
-          <div className="flex items-center justify-end gap-3 pt-3 border-t border-slate-200">
-            <button
-              type="button"
-              onClick={onClose}
-              className="px-5 py-2.5 text-xs font-bold text-slate-600 hover:bg-slate-200 rounded-xl transition-colors cursor-pointer"
-            >
+          <DialogFooter className="border-t border-border px-6 py-4">
+            <Button type="button" variant="outline" onClick={onClose}>
               Cancel
-            </button>
-            <button
-              type="submit"
-              disabled={isSubmitting}
-              className="flex items-center gap-2 px-6 py-2.5 text-xs font-bold text-white rounded-xl shadow-md transition-all cursor-pointer bg-blue-700 hover:bg-blue-800 disabled:opacity-60"
-            >
-              {isSubmitting ? (
-                <>
-                  <Loader2 className="w-4 h-4 animate-spin" /> Creating Account...
-                </>
-              ) : (
-                <>
-                  <Plus className="w-4 h-4" /> Create Client Account
-                </>
-              )}
-            </button>
-          </div>
+            </Button>
+            <Button type="submit" disabled={isSubmitting}>
+              {isSubmitting ? <SpinnerGap size={18} className="animate-spin" /> : <Plus size={18} />}
+              {isSubmitting ? "Saving" : "Add client"}
+            </Button>
+          </DialogFooter>
         </form>
-      </div>
-    </div>
+      </DialogContent>
+    </Dialog>
   );
 }

@@ -1,17 +1,7 @@
 "use client";
 
 import React, { useState, useRef, useEffect } from "react";
-import {
-  Calendar as CalendarIcon,
-  Download,
-  ChevronDown,
-  Sparkles,
-  ShieldCheck,
-  Check,
-  ChevronLeft,
-  ChevronRight,
-  X,
-} from "lucide-react";
+import { CalendarBlank as CalendarIcon, DownloadSimple as Download, CaretDown as ChevronDown, Sparkle as Sparkles, ShieldCheck, Check, CaretLeft as ChevronLeft, CaretRight as ChevronRight, X } from "@phosphor-icons/react";
 import { format, subDays, startOfMonth, endOfMonth, isSameDay } from "date-fns";
 
 interface OverviewHeaderProps {
@@ -87,16 +77,12 @@ export function OverviewHeader({
       {/* Main Welcome Heading */}
       <div>
         <div className="flex items-center gap-2">
-          <h1 className="text-2xl sm:text-3xl font-black text-slate-900 tracking-tight">
+          <h1 className="text-2xl sm:text-3xl font-semibold text-foreground tracking-tight">
             Welcome back, {userName.split(" ")[0]}
           </h1>
-          <span className="inline-flex items-center gap-1.5 text-[11px] font-bold px-2.5 py-0.5 rounded-full bg-emerald-50 text-emerald-800 border border-emerald-200">
-            <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
-            Live Sync
-          </span>
         </div>
-        <p className="text-xs sm:text-sm font-semibold text-slate-500 mt-0.5">
-          Real-time pipeline analytics, lead acquisition velocity, and team performance
+        <p className="text-sm sm:text-sm font-semibold text-muted-foreground mt-0.5">
+          New leads, deals won and conversion across all four brands
         </p>
       </div>
 
@@ -109,14 +95,14 @@ export function OverviewHeader({
               setIsDropdownOpen(!isDropdownOpen);
               setIsCalendarOpen(false);
             }}
-            className="flex items-center gap-1.5 px-3 py-2 bg-white border border-slate-200 hover:border-slate-300 rounded-xl text-slate-700 font-bold text-xs shadow-2xs transition-all cursor-pointer"
+            className="flex items-center gap-1.5 px-3 py-2 bg-card border border-border hover:border-input rounded-xl text-foreground font-semibold text-sm shadow-2xs transition-all cursor-pointer"
           >
             <span>{period}</span>
-            <ChevronDown className="w-3.5 h-3.5 text-slate-400" />
+            <ChevronDown className="w-3.5 h-3.5 text-muted-foreground" />
           </button>
 
           {isDropdownOpen && (
-            <div className="absolute right-0 mt-1.5 w-32 bg-white border border-slate-200 rounded-xl shadow-lg z-20 py-1 overflow-hidden animate-fade-in">
+            <div className="absolute right-0 mt-1.5 w-32 bg-card border border-border rounded-xl shadow-lg z-20 py-1 overflow-hidden animate-fade-in">
               {(["Daily", "Weekly", "Monthly", "Yearly"] as const).map((p) => (
                 <button
                   key={p}
@@ -124,8 +110,8 @@ export function OverviewHeader({
                     setPeriod(p);
                     setIsDropdownOpen(false);
                   }}
-                  className={`w-full text-left px-3 py-1.5 text-xs font-semibold hover:bg-slate-50 cursor-pointer ${
-                    period === p ? "text-emerald-700 font-bold bg-emerald-50/50" : "text-slate-700"
+                  className={`w-full text-left px-3 py-1.5 text-sm font-semibold hover:bg-muted cursor-pointer ${
+                    period === p ? "text-success font-semibold bg-success-soft" : "text-foreground"
                   }`}
                 >
                   {p}
@@ -142,21 +128,21 @@ export function OverviewHeader({
               setIsCalendarOpen(!isCalendarOpen);
               setIsDropdownOpen(false);
             }}
-            className="flex items-center gap-2 px-3.5 py-2 bg-white hover:bg-slate-50 border border-slate-200 hover:border-slate-300 rounded-xl text-slate-700 font-bold text-xs shadow-2xs transition-all cursor-pointer"
+            className="flex items-center gap-2 px-3.5 py-2 bg-card hover:bg-muted border border-border hover:border-input rounded-xl text-foreground font-semibold text-sm shadow-2xs transition-all cursor-pointer"
           >
-            <CalendarIcon className="w-3.5 h-3.5 text-slate-500" />
+            <CalendarIcon className="w-3.5 h-3.5 text-muted-foreground" />
             <span>{format(selectedDate, "d MMM yyyy")}</span>
-            <ChevronDown className="w-3 h-3 text-slate-400 ml-0.5" />
+            <ChevronDown className="w-3 h-3 text-muted-foreground ml-0.5" />
           </button>
 
           {/* Calendar Picker Modal / Popup */}
           {isCalendarOpen && (
-            <div className="absolute right-0 mt-2 w-72 bg-white border border-slate-200 rounded-2xl shadow-2xl z-30 p-4 space-y-3 animate-fade-in">
-              <div className="flex items-center justify-between border-b border-slate-100 pb-2.5">
-                <span className="text-xs font-bold text-slate-900">Select Reporting Date</span>
+            <div className="absolute right-0 mt-2 w-72 bg-card border border-border rounded-2xl shadow-2xl z-30 p-4 space-y-3 animate-fade-in">
+              <div className="flex items-center justify-between border-b border-border pb-2.5">
+                <span className="text-sm font-semibold text-foreground">Select Reporting Date</span>
                 <button
                   onClick={() => setIsCalendarOpen(false)}
-                  className="p-1 rounded-lg text-slate-400 hover:text-slate-700 hover:bg-slate-100"
+                  className="p-1 rounded-lg text-muted-foreground hover:text-foreground hover:bg-muted"
                 >
                   <X className="w-3.5 h-3.5" />
                 </button>
@@ -164,7 +150,7 @@ export function OverviewHeader({
 
               {/* Quick Presets */}
               <div className="space-y-1">
-                <span className="text-[10px] font-extrabold text-slate-400 uppercase tracking-wider">
+                <span className="text-xs font-semibold text-muted-foreground ">
                   Quick Presets
                 </span>
                 <div className="grid grid-cols-2 gap-1.5 pt-1">
@@ -178,10 +164,10 @@ export function OverviewHeader({
                           setActivePreset(preset.label);
                           setIsCalendarOpen(false);
                         }}
-                        className={`px-2.5 py-1.5 rounded-lg text-xs font-bold text-left transition-colors flex items-center justify-between cursor-pointer ${
+                        className={`px-2.5 py-1.5 rounded-lg text-sm font-semibold text-left transition-colors flex items-center justify-between cursor-pointer ${
                           isSelected
-                            ? "bg-slate-900 text-white"
-                            : "bg-slate-50 text-slate-700 hover:bg-slate-100 border border-slate-100"
+                            ? "bg-primary text-white"
+                            : "bg-muted text-foreground hover:bg-muted border border-border"
                         }`}
                       >
                         <span className="truncate">{preset.label}</span>
@@ -193,8 +179,8 @@ export function OverviewHeader({
               </div>
 
               {/* Custom Date Input */}
-              <div className="space-y-1 pt-1 border-t border-slate-100">
-                <span className="text-[10px] font-extrabold text-slate-400 uppercase tracking-wider">
+              <div className="space-y-1 pt-1 border-t border-border">
+                <span className="text-xs font-semibold text-muted-foreground ">
                   Custom Date
                 </span>
                 <input
@@ -207,14 +193,14 @@ export function OverviewHeader({
                       setActivePreset("Custom");
                     }
                   }}
-                  className="w-full px-3 py-1.5 text-xs font-semibold rounded-xl border border-slate-200 bg-slate-50 focus:bg-white focus:border-slate-900 outline-none"
+                  className="w-full px-3 py-1.5 text-sm font-semibold rounded-xl border border-border bg-muted focus:bg-card focus:border-ring outline-none"
                 />
               </div>
 
               <div className="pt-2 flex justify-end">
                 <button
                   onClick={() => setIsCalendarOpen(false)}
-                  className="px-3.5 py-1.5 bg-slate-900 text-white font-bold text-xs rounded-xl hover:bg-slate-800 transition-all cursor-pointer"
+                  className="px-3.5 py-1.5 bg-primary text-white font-semibold text-sm rounded-xl hover:bg-primary-hover transition-all cursor-pointer"
                 >
                   Apply Date
                 </button>
@@ -226,7 +212,7 @@ export function OverviewHeader({
         {/* Export CSV Button */}
         <button
           onClick={handleExportSummary}
-          className="flex items-center gap-1.5 px-4 py-2 bg-slate-900 hover:bg-slate-800 text-white font-bold text-xs rounded-xl shadow-2xs transition-all cursor-pointer"
+          className="flex items-center gap-1.5 px-4 py-2 bg-primary hover:bg-primary-hover text-white font-semibold text-sm rounded-xl shadow-2xs transition-all cursor-pointer"
         >
           <Download className="w-3.5 h-3.5" />
           <span>Export CSV</span>
