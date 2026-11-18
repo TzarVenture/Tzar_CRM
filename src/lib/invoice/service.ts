@@ -6,16 +6,19 @@ import InvoiceSettings, { InvoiceSettingsData } from "@/models/InvoiceSettings";
 import InvoiceCustomer from "@/models/InvoiceCustomer";
 import InvoiceCatalogItem from "@/models/InvoiceCatalogItem";
 import { computeInvoice } from "@/lib/invoice/calc";
+import { checkGstin, gstinProblemMessage } from "@/lib/gst/gstin";
 import {
   SELLER,
   DEFAULT_BANK,
-  GSTIN_REGEX,
   DEFAULT_INVOICE_TERMS,
   getFinancialYear,
   formatInvoiceNumber,
+  invoiceCounterKey,
 } from "@/lib/invoice/config";
 
 const ISO_DATE = /^\d{4}-\d{2}-\d{2}$/;
+
+const shortText = z.string().trim().max(200).optional().default("");
 
 /** Invoices are created by the owner only. */
 export async function requireInvoiceAdmin() {
@@ -28,6 +31,7 @@ export async function requireInvoiceAdmin() {
 export const InvoiceInputSchema = z
   .object({
     brand: z.enum(["tzar", "adshalaa", "crownleaf", "titepo"]),
+    documentType: z.enum(["TAX_INVOICE", "PROFORMA"]).optional().default("TAX_INVOICE"),
     invoiceDate: z.string().regex(ISO_DATE, "Invoice date is required"),
     dueDate: z.string().regex(ISO_DATE).or(z.literal("")).optional(),
     customer: z.object({
@@ -40,6 +44,31 @@ export const InvoiceInputSchema = z
       stateCode: z.string().regex(/^\d{2}$/, "Customer state is required"),
       pincode: z.string().trim().optional().default(""),
     }),
+    shipTo: z
+      .object({
+        name: shortText,
+        gstin: z.string().trim().toUpperCase().max(15).optional().default(""),
+        address: z.string().trim().max(500).optional().default(""),
+        city: shortText,
+        stateCode: z.string().regex(/^\d{2}$/).or(z.literal("")).optional().default(""),
+        pincode: shortText,
+      })
+      .optional(),
+    references: z
+      .object({
+        paymentTerms: shortText,
+        referenceNo: shortText,
+        otherReferences: shortText,
+        buyerOrderNo: shortText,
+        buyerOrderDate: shortText,
+        deliveryNote: shortText,
+        deliveryNoteDate: shortText,
+        dispatchDocNo: shortText,
+        dispatchedThrough: shortText,
+        destination: shortText,
+        termsOfDelivery: shortText,
+      })
+      .optional(),
     placeOfSupplyCode: z.string().regex(/^\d{2}$/).optional(),
     items: z
       .array(
@@ -61,10 +90,16 @@ export const InvoiceInputSchema = z
     action: z.enum(["draft", "issue"]).optional().default("draft"),
   })
   .superRefine((data, ctx) => {
+    const shipGstin = data.shipTo?.gstin;
+    const shipProblem = shipGstin ? checkGstin(shipGstin) : null;
+    if (shipProblem) {
+      ctx.addIssue({ code: "custom", path: ["shipTo", "gstin"], message: gstinProblemMessage(shipProblem, "Ship-to GSTIN") });
+    }
     const gstin = data.customer.gstin;
     if (!gstin) return;
-    if (!GSTIN_REGEX.test(gstin)) {
-      ctx.addIssue({ code: "custom", path: ["customer", "gstin"], message: "GSTIN format is invalid" });
+    const problem = checkGstin(gstin);
+    if (problem) {
+      ctx.addIssue({ code: "custom", path: ["customer", "gstin"], message: gstinProblemMessage(problem, "Customer GSTIN") });
     } else if (gstin.slice(0, 2) !== data.customer.stateCode) {
       ctx.addIssue({
         code: "custom",
@@ -98,10 +133,14 @@ export function buildInvoiceFields(input: InvoiceInput) {
 
   return {
     brand: input.brand,
+    documentType: input.documentType,
     financialYear: getFinancialYear(input.invoiceDate),
     invoiceDate: utcDate(input.invoiceDate),
     dueDate: input.dueDate ? utcDate(input.dueDate) : undefined,
     customer: input.customer,
+    // Kept only when a separate consignee was actually entered
+    shipTo: input.shipTo?.name ? input.shipTo : undefined,
+    references: input.references,
     placeOfSupplyCode,
     items: computed.items,
     pricesIncludeTax: input.pricesIncludeTax,
@@ -153,9 +192,10 @@ export async function issueInvoice(invoice: IInvoice): Promise<IInvoice> {
   if (invoice.status !== "DRAFT") throw new Error("Only a draft can be issued");
 
   const settings = await getInvoiceSettings();
-  const seq = await nextSequence(`${invoice.brand}:${invoice.financialYear}`);
+  const documentType = invoice.documentType || "TAX_INVOICE";
+  const seq = await nextSequence(invoiceCounterKey(invoice.brand, invoice.financialYear, documentType));
 
-  invoice.invoiceNumber = formatInvoiceNumber(invoice.brand, invoice.financialYear, seq);
+  invoice.invoiceNumber = formatInvoiceNumber(invoice.brand, invoice.financialYear, seq, documentType);
   invoice.status = "ISSUED";
   invoice.issuedAt = new Date();
   invoice.bank = settings.bank;

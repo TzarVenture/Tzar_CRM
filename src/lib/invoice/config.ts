@@ -73,7 +73,7 @@ export const BRAND_CONFIG: Record<InvoiceBrand, BrandInvoiceConfig> = {
     name: "Adshalaa Edutech",
     tagline: "Online & Offline Professional Courses",
     website: "www.adshalaa.com",
-    byline: "By Tzar Digital",
+    byline: "By Tzar Digital Agency",
     prefix: "AD",
     logoFile: "adshalaa-logo.png",
     logoWidth: 288,
@@ -87,7 +87,7 @@ export const BRAND_CONFIG: Record<InvoiceBrand, BrandInvoiceConfig> = {
     name: "Crownleaf Luxury Gifting",
     tagline: "Luxury & Corporate Gifting",
     website: "www.crownleaf.co",
-    byline: "By Tzar Digital",
+    byline: "By Tzar Digital Agency",
     defaultTerms: GOODS_TERMS,
     prefix: "CL",
     logoFile: "invoice-logo-crownleaf.png",
@@ -102,7 +102,7 @@ export const BRAND_CONFIG: Record<InvoiceBrand, BrandInvoiceConfig> = {
     name: "Titepo",
     tagline: "Kids Toys & Return Gifts",
     website: "www.titepo.com",
-    byline: "By Tzar Digital",
+    byline: "By Tzar Digital Agency",
     defaultTerms: GOODS_TERMS,
     prefix: "TP",
     logoFile: "titepo-logo.png",
@@ -171,9 +171,35 @@ export function getFinancialYear(isoDate: string): string {
   return `${String(start).slice(-2)}-${String(start + 1).slice(-2)}`;
 }
 
-/** e.g. TZ/26-27/0001. Stays within the 16-character GST limit. */
-export function formatInvoiceNumber(brand: InvoiceBrand, fy: string, seq: number): string {
-  return `${BRAND_CONFIG[brand].prefix}/${fy}/${String(seq).padStart(4, "0")}`;
+export type InvoiceDocumentType = "TAX_INVOICE" | "PROFORMA";
+
+export const DOCUMENT_TYPE_LABELS: Record<InvoiceDocumentType, string> = {
+  TAX_INVOICE: "Tax Invoice",
+  PROFORMA: "Proforma Invoice",
+};
+
+/**
+ * e.g. TZ/26-27/0001, or TZ/PI/26-27/0001 for a proforma. Proformas are quotes,
+ * not tax documents, so they run on their own series and never use up a tax
+ * invoice number. Both stay within the 16-character GST limit.
+ */
+export function formatInvoiceNumber(
+  brand: InvoiceBrand,
+  fy: string,
+  seq: number,
+  documentType: InvoiceDocumentType = "TAX_INVOICE"
+): string {
+  const series = documentType === "PROFORMA" ? "/PI" : "";
+  return `${BRAND_CONFIG[brand].prefix}${series}/${fy}/${String(seq).padStart(4, "0")}`;
+}
+
+/** Counter key for a number series, one per brand, document type and year. */
+export function invoiceCounterKey(
+  brand: InvoiceBrand,
+  fy: string,
+  documentType: InvoiceDocumentType = "TAX_INVOICE"
+): string {
+  return documentType === "PROFORMA" ? `${brand}:PI:${fy}` : `${brand}:${fy}`;
 }
 
 const MONTHS = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];

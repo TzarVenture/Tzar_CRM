@@ -37,7 +37,7 @@ export async function GET(req: Request) {
 
     await dbConnect();
     const invoices = await Invoice.find(filter)
-      .select("invoiceNumber brand status invoiceDate dueDate customer.name totals.grandTotal createdAt")
+      .select("invoiceNumber brand documentType status invoiceDate dueDate customer.name totals.grandTotal createdAt")
       .sort({ createdAt: -1 })
       .limit(300)
       .lean();

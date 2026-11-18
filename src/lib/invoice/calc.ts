@@ -146,6 +146,44 @@ export function computeInvoice(input: {
   };
 }
 
+export interface HsnSummaryRow {
+  hsnSac: string;
+  gstRate: number;
+  taxableValue: number;
+  cgst: number;
+  sgst: number;
+  igst: number;
+  taxAmount: number;
+}
+
+/**
+ * HSN/SAC-wise tax summary printed at the foot of the invoice and reported in
+ * GSTR-1. Lines sharing an HSN code and GST rate are added together.
+ */
+export function summarizeByHsn(items: ComputedInvoiceItem[]): HsnSummaryRow[] {
+  const rows = new Map<string, HsnSummaryRow>();
+  for (const item of items) {
+    const hsnSac = (item.hsnSac || "").trim();
+    const key = `${hsnSac}|${item.gstRate}`;
+    const row = rows.get(key) || {
+      hsnSac,
+      gstRate: item.gstRate,
+      taxableValue: 0,
+      cgst: 0,
+      sgst: 0,
+      igst: 0,
+      taxAmount: 0,
+    };
+    row.taxableValue = round2(row.taxableValue + item.taxableValue);
+    row.cgst = round2(row.cgst + item.cgst);
+    row.sgst = round2(row.sgst + item.sgst);
+    row.igst = round2(row.igst + item.igst);
+    row.taxAmount = round2(row.taxAmount + item.taxAmount);
+    rows.set(key, row);
+  }
+  return [...rows.values()];
+}
+
 const ONES = [
   "", "One", "Two", "Three", "Four", "Five", "Six", "Seven", "Eight", "Nine", "Ten",
   "Eleven", "Twelve", "Thirteen", "Fourteen", "Fifteen", "Sixteen", "Seventeen",

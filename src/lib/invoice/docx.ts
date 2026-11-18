@@ -18,7 +18,13 @@ import {
 } from "docx";
 import type { InvoiceData } from "@/models/Invoice";
 import { formatINR } from "@/lib/invoice/calc";
-import { SELLER, BRAND_CONFIG, stateName, formatInvoiceDate } from "@/lib/invoice/config";
+import {
+  SELLER,
+  BRAND_CONFIG,
+  DOCUMENT_TYPE_LABELS,
+  stateName,
+  formatInvoiceDate,
+} from "@/lib/invoice/config";
 
 // A4 with 0.6in margins, in twips (1/20 pt)
 const MARGIN = 864;
@@ -156,7 +162,7 @@ export async function renderInvoiceDocx(invoice: InvoiceData): Promise<Buffer> {
           ),
           cell(
             [
-              para("TAX INVOICE", AlignmentType.RIGHT, { bold: true, color: accent, size: 40 }),
+              para(DOCUMENT_TYPE_LABELS[invoice.documentType || "TAX_INVOICE"].toUpperCase(), AlignmentType.RIGHT, { bold: true, color: accent, size: 40 }),
               para([run("Invoice No.  ", { color: MUTED }), run(numberText, { bold: true })], AlignmentType.RIGHT),
               para(
                 [run("Invoice Date  ", { color: MUTED }), run(formatInvoiceDate(invoice.invoiceDate), { bold: true })],

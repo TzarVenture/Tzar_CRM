@@ -1,5 +1,5 @@
 import mongoose, { Schema, Document, Model } from "mongoose";
-import type { InvoiceBrand } from "@/lib/invoice/config";
+import type { InvoiceBrand, InvoiceDocumentType } from "@/lib/invoice/config";
 import type { ComputedInvoiceItem, InvoiceTotals } from "@/lib/invoice/calc";
 
 export type InvoiceStatus = "DRAFT" | "ISSUED" | "CANCELLED";
@@ -15,6 +15,31 @@ export interface InvoiceCustomerDetails {
   pincode?: string;
 }
 
+/** Consignee, when the goods go somewhere other than the billing address. */
+export interface InvoiceShipTo {
+  name?: string;
+  gstin?: string;
+  address?: string;
+  city?: string;
+  stateCode?: string;
+  pincode?: string;
+}
+
+/** Optional order and dispatch references printed in the invoice header grid. */
+export interface InvoiceReferences {
+  paymentTerms?: string;
+  referenceNo?: string;
+  otherReferences?: string;
+  buyerOrderNo?: string;
+  buyerOrderDate?: string;
+  deliveryNote?: string;
+  deliveryNoteDate?: string;
+  dispatchDocNo?: string;
+  dispatchedThrough?: string;
+  destination?: string;
+  termsOfDelivery?: string;
+}
+
 export interface InvoiceBankDetails {
   accountName?: string;
   bankName?: string;
@@ -27,11 +52,15 @@ export interface InvoiceBankDetails {
 export interface InvoiceData {
   invoiceNumber?: string;
   brand: InvoiceBrand;
+  // Missing on invoices saved before proformas existed; treat as TAX_INVOICE
+  documentType?: InvoiceDocumentType;
   status: InvoiceStatus;
   financialYear: string;
   invoiceDate: Date;
   dueDate?: Date;
   customer: InvoiceCustomerDetails;
+  shipTo?: InvoiceShipTo;
+  references?: InvoiceReferences;
   // State where the goods/services are delivered; decides CGST+SGST vs IGST
   placeOfSupplyCode: string;
   items: ComputedInvoiceItem[];
@@ -67,6 +96,7 @@ const InvoiceSchema: Schema<IInvoice> = new Schema(
       required: true,
       index: true,
     },
+    documentType: { type: String, enum: ["TAX_INVOICE", "PROFORMA"], default: "TAX_INVOICE" },
     status: {
       type: String,
       enum: ["DRAFT", "ISSUED", "CANCELLED"],
@@ -86,6 +116,27 @@ const InvoiceSchema: Schema<IInvoice> = new Schema(
       city: String,
       stateCode: { type: String, required: true },
       pincode: String,
+    },
+    shipTo: {
+      name: String,
+      gstin: { type: String, uppercase: true, trim: true },
+      address: String,
+      city: String,
+      stateCode: String,
+      pincode: String,
+    },
+    references: {
+      paymentTerms: String,
+      referenceNo: String,
+      otherReferences: String,
+      buyerOrderNo: String,
+      buyerOrderDate: String,
+      deliveryNote: String,
+      deliveryNoteDate: String,
+      dispatchDocNo: String,
+      dispatchedThrough: String,
+      destination: String,
+      termsOfDelivery: String,
     },
     placeOfSupplyCode: { type: String, required: true },
     items: [

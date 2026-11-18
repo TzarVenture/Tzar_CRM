@@ -47,8 +47,8 @@ export function InvoiceSettingsModal({ settings, onClose, onSaved }: InvoiceSett
               <Landmark className="w-5 h-5" />
             </div>
             <div>
-              <h2 className="text-lg font-bold text-slate-900">Invoice Settings</h2>
-              <p className="text-xs font-semibold text-slate-500">
+              <h2 className="text-lg font-semibold text-slate-900">Invoice Settings</h2>
+              <p className="text-sm font-medium text-slate-500">
                 Printed on every new invoice. Issued invoices keep the details they were issued with.
               </p>
             </div>
@@ -56,7 +56,7 @@ export function InvoiceSettingsModal({ settings, onClose, onSaved }: InvoiceSett
           <button
             onClick={onClose}
             aria-label="Close"
-            className="p-2 rounded-xl text-slate-400 hover:bg-slate-200 hover:text-slate-800 transition-colors cursor-pointer"
+            className="p-2 rounded-xl text-slate-500 hover:bg-slate-200 hover:text-slate-800 transition-colors cursor-pointer"
           >
             <X className="w-5 h-5" />
           </button>
@@ -64,13 +64,13 @@ export function InvoiceSettingsModal({ settings, onClose, onSaved }: InvoiceSett
 
         <form onSubmit={handleSubmit} className="p-6 space-y-5">
           {error && (
-            <div className="p-3 rounded-xl bg-rose-50 border border-rose-200 text-xs font-bold text-rose-700">
+            <div className="p-3 rounded-xl bg-rose-50 border border-rose-200 text-sm font-semibold text-rose-700">
               {error}
             </div>
           )}
 
-          <div className="p-3.5 rounded-xl bg-slate-50 border border-slate-200 text-xs font-semibold text-slate-600">
-            <span className="font-bold text-slate-900">{SELLER.tradeName}</span> (Proprietor: {SELLER.legalName})
+          <div className="p-3.5 rounded-xl bg-slate-50 border border-slate-200 text-sm font-medium text-slate-600">
+            <span className="font-semibold text-slate-900">{SELLER.tradeName}</span> (Proprietor: {SELLER.legalName})
             <br />
             GSTIN {SELLER.gstin} · {SELLER.addressLines.join(", ")}
             <br />
@@ -108,7 +108,7 @@ export function InvoiceSettingsModal({ settings, onClose, onSaved }: InvoiceSett
           </div>
 
           <div>
-            <p className="text-[11px] font-extrabold tracking-wider text-slate-400 uppercase mb-2">
+            <p className="text-xs font-semibold tracking-wider text-slate-500 uppercase mb-2">
               Bank Details
             </p>
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
@@ -167,14 +167,14 @@ export function InvoiceSettingsModal({ settings, onClose, onSaved }: InvoiceSett
             <button
               type="button"
               onClick={onClose}
-              className="px-5 py-2.5 text-xs font-bold text-slate-600 hover:bg-slate-200 rounded-xl transition-colors cursor-pointer"
+              className="px-5 py-2.5 text-sm font-semibold text-slate-600 hover:bg-slate-200 rounded-xl transition-colors cursor-pointer"
             >
               Cancel
             </button>
             <button
               type="submit"
               disabled={isSaving}
-              className="flex items-center gap-2 px-6 py-2.5 text-xs font-bold text-white rounded-xl bg-slate-900 hover:bg-slate-800 disabled:opacity-60 cursor-pointer"
+              className="flex items-center gap-2 px-6 py-2.5 text-sm font-semibold text-white rounded-xl bg-slate-900 hover:bg-slate-800 disabled:opacity-60 cursor-pointer"
             >
               {isSaving ? <Loader2 className="w-4 h-4 animate-spin" /> : <Save className="w-4 h-4" />}
               Save Settings

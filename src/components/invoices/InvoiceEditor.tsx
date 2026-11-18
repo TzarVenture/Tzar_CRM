@@ -13,12 +13,16 @@ import {
   GST_RATES,
   UNITS,
   InvoiceBrand,
+  InvoiceDocumentType,
+  DOCUMENT_TYPE_LABELS,
   toIsoDate,
 } from "@/lib/invoice/config";
 import {
   InvoiceRecord,
   InvoiceSettingsForm,
   InvoiceCustomerForm,
+  InvoiceShipToForm,
+  InvoiceReferencesForm,
   SavedCustomer,
   CatalogItem,
   inputClass,
@@ -80,12 +84,49 @@ const DUE_PRESETS = [
 ];
 
 const invalidClass = "peer user-invalid:border-rose-500 user-invalid:bg-rose-50";
-const fieldErrorClass = "hidden peer-user-invalid:block mt-1 text-[11px] font-semibold text-rose-600";
+const fieldErrorClass = "hidden peer-user-invalid:block mt-1 text-xs font-medium text-rose-600";
 
 function todayIso(): string {
   const now = new Date();
   return new Date(now.getTime() - now.getTimezoneOffset() * 60000).toISOString().slice(0, 10);
 }
+
+const EMPTY_SHIP_TO: InvoiceShipToForm = {
+  name: "",
+  gstin: "",
+  address: "",
+  city: "",
+  stateCode: "",
+  pincode: "",
+};
+
+const EMPTY_REFERENCES: InvoiceReferencesForm = {
+  paymentTerms: "",
+  referenceNo: "",
+  otherReferences: "",
+  buyerOrderNo: "",
+  buyerOrderDate: "",
+  deliveryNote: "",
+  deliveryNoteDate: "",
+  dispatchDocNo: "",
+  dispatchedThrough: "",
+  destination: "",
+  termsOfDelivery: "",
+};
+
+const REFERENCE_FIELDS: { key: keyof InvoiceReferencesForm; label: string }[] = [
+  { key: "paymentTerms", label: "Mode / Terms of Payment" },
+  { key: "buyerOrderNo", label: "Buyer's Order No." },
+  { key: "buyerOrderDate", label: "Buyer's Order Date" },
+  { key: "referenceNo", label: "Reference No. & Date" },
+  { key: "otherReferences", label: "Other References" },
+  { key: "deliveryNote", label: "Delivery Note" },
+  { key: "deliveryNoteDate", label: "Delivery Note Date" },
+  { key: "dispatchDocNo", label: "Dispatch Doc No." },
+  { key: "dispatchedThrough", label: "Dispatched Through" },
+  { key: "destination", label: "Destination" },
+  { key: "termsOfDelivery", label: "Terms of Delivery" },
+];
 
 const EMPTY_CUSTOMER: InvoiceCustomerForm = {
   name: "",
@@ -108,6 +149,7 @@ export function InvoiceEditor({
   onSaved,
 }: InvoiceEditorProps) {
   const [brand, setBrand] = useState<InvoiceBrand>(source?.brand || "tzar");
+  const [documentType, setDocumentType] = useState<InvoiceDocumentType>(source?.documentType || "TAX_INVOICE");
   // A duplicate is a new invoice, so it gets today's date rather than the old one
   const [invoiceDate, setInvoiceDate] = useState(
     mode === "edit" && source ? toIsoDate(source.invoiceDate) : todayIso()
@@ -116,6 +158,11 @@ export function InvoiceEditor({
   const [customer, setCustomer] = useState<InvoiceCustomerForm>({
     ...EMPTY_CUSTOMER,
     ...(source?.customer || {}),
+  });
+  const [shipTo, setShipTo] = useState<InvoiceShipToForm>({ ...EMPTY_SHIP_TO, ...(source?.shipTo || {}) });
+  const [references, setReferences] = useState<InvoiceReferencesForm>({
+    ...EMPTY_REFERENCES,
+    ...(source?.references || {}),
   });
   // Empty means "same as the customer state"; set only when delivery is in a different state
   const [placeOfSupplyOverride, setPlaceOfSupplyOverride] = useState(
@@ -153,13 +200,13 @@ export function InvoiceEditor({
     if (!invoiceDate) return;
     let active = true;
     axios
-      .get("/api/v1/invoices/next-number", { params: { brand, date: invoiceDate } })
+      .get("/api/v1/invoices/next-number", { params: { brand, date: invoiceDate, type: documentType } })
       .then((res) => active && setNextNumber(res.data.number || ""))
       .catch(() => active && setNextNumber(""));
     return () => {
       active = false;
     };
-  }, [brand, invoiceDate]);
+  }, [brand, invoiceDate, documentType]);
 
   const [saving, setSaving] = useState<"draft" | "issue" | null>(null);
   const [confirmIssue, setConfirmIssue] = useState(false);
@@ -242,9 +289,12 @@ export function InvoiceEditor({
   const buildPayload = (action: "draft" | "issue") => ({
     action,
     brand,
+    documentType,
     invoiceDate,
     dueDate,
     customer,
+    shipTo,
+    references,
     placeOfSupplyCode,
     pricesIncludeTax,
     notes,
@@ -318,14 +368,14 @@ export function InvoiceEditor({
       {/* Header */}
       <div className="flex items-center justify-between gap-3 px-4 md:px-8 py-3.5 bg-white border-b border-slate-200">
         <div>
-          <h2 className="text-lg font-bold text-slate-900">
+          <h2 className="text-lg font-semibold text-slate-900">
             {mode === "edit" ? "Edit Draft Invoice" : "New Invoice"}
           </h2>
-          <p className="text-xs font-semibold text-slate-500">
+          <p className="text-sm font-medium text-slate-500">
             Issued under {SELLER.tradeName} · GSTIN {SELLER.gstin}
           </p>
           {nextNumber && (
-            <p className="mt-1 inline-flex items-center gap-1.5 px-2 py-0.5 rounded-full bg-emerald-50 border border-emerald-200 text-[11px] font-bold text-emerald-800">
+            <p className="mt-1 inline-flex items-center gap-1.5 px-2 py-0.5 rounded-full bg-emerald-50 border border-emerald-200 text-xs font-semibold text-emerald-800">
               Next number: {nextNumber}
             </p>
           )}
@@ -333,7 +383,7 @@ export function InvoiceEditor({
         <button
           onClick={onClose}
           aria-label="Close"
-          className="p-2 rounded-xl text-slate-400 hover:bg-slate-200 hover:text-slate-800 transition-colors cursor-pointer"
+          className="p-2 rounded-xl text-slate-500 hover:bg-slate-200 hover:text-slate-800 transition-colors cursor-pointer"
         >
           <X className="w-5 h-5" />
         </button>
@@ -352,7 +402,7 @@ export function InvoiceEditor({
                       key={slug}
                       type="button"
                       onClick={() => changeBrand(slug)}
-                      className={`px-4 py-2 text-xs font-bold rounded-xl border transition-colors cursor-pointer ${
+                      className={`px-4 py-2 text-sm font-semibold rounded-xl border transition-colors cursor-pointer ${
                         brand === slug
                           ? "bg-slate-900 text-white border-slate-900"
                           : "bg-white text-slate-600 border-slate-300 hover:bg-slate-100"
@@ -362,6 +412,32 @@ export function InvoiceEditor({
                     </button>
                   ))}
                 </div>
+              </div>
+              <div>
+                <label className={labelClass}>Document Type</label>
+                <div className="flex flex-wrap gap-2">
+                  {(Object.keys(DOCUMENT_TYPE_LABELS) as InvoiceDocumentType[]).map((type) => (
+                    <button
+                      key={type}
+                      type="button"
+                      onClick={() => setDocumentType(type)}
+                      aria-pressed={documentType === type}
+                      className={`px-4 py-2 text-sm font-semibold rounded-xl border transition-colors cursor-pointer ${
+                        documentType === type
+                          ? "bg-slate-900 text-white border-slate-900"
+                          : "bg-white text-slate-600 border-slate-300 hover:bg-slate-100"
+                      }`}
+                    >
+                      {DOCUMENT_TYPE_LABELS[type]}
+                    </button>
+                  ))}
+                </div>
+                {documentType === "PROFORMA" && (
+                  <p className="mt-1.5 text-xs font-medium text-slate-500">
+                    A proforma is a quote sent before the sale. It gets its own PI number and is not counted
+                    as a sale or in GST.
+                  </p>
+                )}
               </div>
               <div className="grid grid-cols-2 gap-3 max-w-md">
                 <div>
@@ -385,7 +461,7 @@ export function InvoiceEditor({
                 </div>
               </div>
               <div className="flex flex-wrap items-center gap-1.5">
-                <span className="text-[11px] font-bold text-slate-500 mr-1">Payment due:</span>
+                <span className="text-xs font-semibold text-slate-500 mr-1">Payment due:</span>
                 {DUE_PRESETS.map((preset) => {
                   const value = addDays(invoiceDate || todayIso(), preset.days);
                   return (
@@ -394,7 +470,7 @@ export function InvoiceEditor({
                       type="button"
                       onClick={() => setDueDate(value)}
                       aria-pressed={dueDate === value}
-                      className={`px-2.5 py-1 text-[11px] font-bold rounded-full border transition-colors cursor-pointer ${
+                      className={`px-2.5 py-1 text-xs font-semibold rounded-full border transition-colors cursor-pointer ${
                         dueDate === value
                           ? "bg-slate-900 text-white border-slate-900"
                           : "bg-white text-slate-600 border-slate-300 hover:bg-slate-100"
@@ -409,7 +485,7 @@ export function InvoiceEditor({
 
             {/* Customer */}
             <section className="bg-white rounded-2xl border border-slate-200 p-5 space-y-3">
-              <h3 className="text-sm font-bold text-slate-900">Bill To</h3>
+              <h3 className="text-base font-semibold text-slate-900">Bill To</h3>
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                 <div>
                   <label className={labelClass}>Customer / Company Name *</label>
@@ -519,7 +595,7 @@ export function InvoiceEditor({
                     ))}
                   </select>
                 </div>
-                <p className="pb-2 text-[11px] font-semibold text-slate-500">
+                <p className="pb-2 text-xs font-medium text-slate-500">
                   {computed.isInterState
                     ? "Supply is outside Maharashtra, so IGST applies."
                     : "Supply is within Maharashtra, so CGST + SGST apply."}
@@ -527,11 +603,124 @@ export function InvoiceEditor({
               </div>
             </section>
 
+            {/* Optional sections stay folded away until needed */}
+            <details className="group bg-white rounded-2xl border border-slate-200" open={!!shipTo.name}>
+              <summary className="flex items-center justify-between gap-3 px-5 py-4 cursor-pointer list-none">
+                <span>
+                  <span className="block text-base font-semibold text-slate-900">Ship To (Consignee)</span>
+                  <span className="block text-xs font-medium text-slate-500">
+                    Only if the goods are delivered to a different name or address. Otherwise the bill-to
+                    details are printed.
+                  </span>
+                </span>
+                <span className="text-sm font-semibold text-slate-500 group-open:hidden">Add</span>
+                <span className="text-sm font-semibold text-slate-500 hidden group-open:inline">Hide</span>
+              </summary>
+              <div className="px-5 pb-5 grid grid-cols-1 sm:grid-cols-2 gap-3">
+                <div>
+                  <label className={labelClass}>Consignee Name</label>
+                  <input
+                    className={inputClass}
+                    value={shipTo.name}
+                    onChange={(e) => setShipTo({ ...shipTo, name: e.target.value })}
+                  />
+                </div>
+                <div>
+                  <label className={labelClass}>GSTIN</label>
+                  <input
+                    className={`${inputClass} ${invalidClass}`}
+                    value={shipTo.gstin}
+                    maxLength={15}
+                    pattern="[0-9]{2}[A-Z]{5}[0-9]{4}[A-Z][1-9A-Z]Z[0-9A-Z]"
+                    onChange={(e) => setShipTo({ ...shipTo, gstin: e.target.value.toUpperCase().replace(/\s/g, "") })}
+                  />
+                  <p className={fieldErrorClass}>
+                    Error: a GSTIN has 15 characters in the format 27ABCDE1234F1Z5.
+                  </p>
+                </div>
+                <div className="sm:col-span-2">
+                  <label className={labelClass}>Delivery Address</label>
+                  <input
+                    className={inputClass}
+                    value={shipTo.address}
+                    onChange={(e) => setShipTo({ ...shipTo, address: e.target.value })}
+                  />
+                </div>
+                <div>
+                  <label className={labelClass}>City</label>
+                  <input
+                    className={inputClass}
+                    value={shipTo.city}
+                    onChange={(e) => setShipTo({ ...shipTo, city: e.target.value })}
+                  />
+                </div>
+                <div className="grid grid-cols-2 gap-3">
+                  <div>
+                    <label className={labelClass}>State</label>
+                    <select
+                      className={`${inputClass} cursor-pointer`}
+                      value={shipTo.stateCode}
+                      onChange={(e) => {
+                        setShipTo({ ...shipTo, stateCode: e.target.value });
+                        // Goods are taxed by where they are delivered
+                        setPlaceOfSupplyOverride(e.target.value === customer.stateCode ? "" : e.target.value);
+                      }}
+                    >
+                      <option value="">Select state</option>
+                      {INDIAN_STATES.map((s) => (
+                        <option key={s.code} value={s.code}>
+                          {s.name}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+                  <div>
+                    <label className={labelClass}>PIN Code</label>
+                    <input
+                      className={inputClass}
+                      value={shipTo.pincode}
+                      maxLength={6}
+                      onChange={(e) => setShipTo({ ...shipTo, pincode: e.target.value })}
+                    />
+                  </div>
+                </div>
+              </div>
+            </details>
+
+            <details
+              className="group bg-white rounded-2xl border border-slate-200"
+              open={Object.values(references).some(Boolean)}
+            >
+              <summary className="flex items-center justify-between gap-3 px-5 py-4 cursor-pointer list-none">
+                <span>
+                  <span className="block text-base font-semibold text-slate-900">Order & Dispatch Details</span>
+                  <span className="block text-xs font-medium text-slate-500">
+                    Optional. Payment terms, buyer&apos;s order number, delivery note and transport details.
+                  </span>
+                </span>
+                <span className="text-sm font-semibold text-slate-500 group-open:hidden">Add</span>
+                <span className="text-sm font-semibold text-slate-500 hidden group-open:inline">Hide</span>
+              </summary>
+              <div className="px-5 pb-5 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
+                {REFERENCE_FIELDS.map((field) => (
+                  <div key={field.key}>
+                    <label className={labelClass}>{field.label}</label>
+                    <input
+                      className={inputClass}
+                      value={references[field.key]}
+                      maxLength={200}
+                      onChange={(e) => setReferences({ ...references, [field.key]: e.target.value })}
+                    />
+                  </div>
+                ))}
+              </div>
+            </details>
+
             {/* Items */}
             <section className="bg-white rounded-2xl border border-slate-200 p-5 space-y-3">
               <div className="flex flex-wrap items-center justify-between gap-2">
-                <h3 className="text-sm font-bold text-slate-900">Items</h3>
-                <label className="flex items-center gap-2 text-xs font-semibold text-slate-700 cursor-pointer">
+                <h3 className="text-base font-semibold text-slate-900">Items</h3>
+                <label className="flex items-center gap-2 text-sm font-medium text-slate-700 cursor-pointer">
                   <input
                     type="checkbox"
                     checked={pricesIncludeTax}
@@ -551,7 +740,7 @@ export function InvoiceEditor({
               {items.map((row, index) => (
                 <div key={row.key} className="rounded-xl border border-slate-200 bg-slate-50/60 p-3 space-y-2">
                   <div className="flex items-start gap-2">
-                    <span className="mt-2 w-5 text-xs font-bold text-slate-400">{index + 1}</span>
+                    <span className="mt-2 w-5 text-sm font-semibold text-slate-500">{index + 1}</span>
                     <div className="flex-1 grid grid-cols-1 sm:grid-cols-2 gap-2">
                       <input
                         list="invoice-catalog"
@@ -576,7 +765,7 @@ export function InvoiceEditor({
                       onClick={() => setItems((rows) => rows.filter((r) => r.key !== row.key))}
                       disabled={items.length === 1}
                       aria-label="Remove item"
-                      className="mt-1 p-2 rounded-lg text-slate-400 hover:text-rose-600 hover:bg-rose-50 disabled:opacity-30 disabled:hover:bg-transparent cursor-pointer"
+                      className="mt-1 p-2 rounded-lg text-slate-500 hover:text-rose-600 hover:bg-rose-50 disabled:opacity-30 disabled:hover:bg-transparent cursor-pointer"
                     >
                       <Trash2 className="w-4 h-4" />
                     </button>
@@ -584,7 +773,7 @@ export function InvoiceEditor({
 
                   <div className="pl-7 grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-7 gap-2 items-end">
                     <div>
-                      <label className="block text-[10px] font-bold text-slate-500 mb-0.5">HSN / SAC</label>
+                      <label className="block text-xs font-semibold text-slate-500 mb-0.5">HSN / SAC</label>
                       <input
                         className={inputClass}
                         value={row.hsnSac}
@@ -592,7 +781,7 @@ export function InvoiceEditor({
                       />
                     </div>
                     <div>
-                      <label className="block text-[10px] font-bold text-slate-500 mb-0.5">Qty</label>
+                      <label className="block text-xs font-semibold text-slate-500 mb-0.5">Qty</label>
                       <input
                         type="number"
                         min="0"
@@ -603,7 +792,7 @@ export function InvoiceEditor({
                       />
                     </div>
                     <div>
-                      <label className="block text-[10px] font-bold text-slate-500 mb-0.5">Unit</label>
+                      <label className="block text-xs font-semibold text-slate-500 mb-0.5">Unit</label>
                       <select
                         className={`${inputClass} cursor-pointer`}
                         value={row.unit}
@@ -618,7 +807,7 @@ export function InvoiceEditor({
                       </select>
                     </div>
                     <div>
-                      <label className="block text-[10px] font-bold text-slate-500 mb-0.5">Rate (₹)</label>
+                      <label className="block text-xs font-semibold text-slate-500 mb-0.5">Rate (₹)</label>
                       <input
                         type="number"
                         min="0"
@@ -630,7 +819,7 @@ export function InvoiceEditor({
                       />
                     </div>
                     <div>
-                      <label className="block text-[10px] font-bold text-slate-500 mb-0.5">Discount %</label>
+                      <label className="block text-xs font-semibold text-slate-500 mb-0.5">Discount %</label>
                       <input
                         type="number"
                         min="0"
@@ -643,7 +832,7 @@ export function InvoiceEditor({
                       />
                     </div>
                     <div>
-                      <label className="block text-[10px] font-bold text-slate-500 mb-0.5">GST %</label>
+                      <label className="block text-xs font-semibold text-slate-500 mb-0.5">GST %</label>
                       <select
                         className={`${inputClass} cursor-pointer`}
                         value={row.gstRate}
@@ -657,8 +846,8 @@ export function InvoiceEditor({
                       </select>
                     </div>
                     <div className="text-right">
-                      <p className="text-[10px] font-bold text-slate-500 mb-0.5">Amount</p>
-                      <p className="py-2 text-sm font-bold text-slate-900">
+                      <p className="text-xs font-semibold text-slate-500 mb-0.5">Amount</p>
+                      <p className="py-2 text-base font-semibold text-slate-900">
                         ₹{formatINR(computed.items[index]?.lineTotal || 0)}
                       </p>
                     </div>
@@ -669,7 +858,7 @@ export function InvoiceEditor({
               <button
                 type="button"
                 onClick={() => setItems((rows) => [...rows, blankRow(brand)])}
-                className="flex items-center gap-1.5 px-3.5 py-2 text-xs font-bold text-slate-700 rounded-xl border border-dashed border-slate-400 hover:bg-slate-100 cursor-pointer"
+                className="flex items-center gap-1.5 px-3.5 py-2 text-sm font-semibold text-slate-700 rounded-xl border border-dashed border-slate-400 hover:bg-slate-100 cursor-pointer"
               >
                 <Plus className="w-4 h-4" /> Add another item
               </button>
@@ -691,8 +880,8 @@ export function InvoiceEditor({
           {/* Summary */}
           <aside ref={summaryRef} className="lg:sticky lg:top-0 h-fit space-y-4 pb-20 lg:pb-0">
             <section className="bg-white rounded-2xl border border-slate-200 p-5 space-y-2.5">
-              <h3 className="text-sm font-bold text-slate-900">Summary</h3>
-              <div className="space-y-1.5 text-xs font-semibold text-slate-600">
+              <h3 className="text-base font-semibold text-slate-900">Summary</h3>
+              <div className="space-y-1.5 text-sm font-medium text-slate-600">
                 {t.discount > 0 && (
                   <div className="flex justify-between">
                     <span>Discount given</span>
@@ -731,21 +920,21 @@ export function InvoiceEditor({
                 )}
               </div>
               <div className="flex justify-between items-baseline pt-3 border-t border-slate-200">
-                <span className="text-sm font-bold text-slate-900">Total</span>
-                <span className="text-2xl font-black text-slate-900">₹{formatINR(t.grandTotal)}</span>
+                <span className="text-base font-semibold text-slate-900">Total</span>
+                <span className="text-2xl font-bold text-slate-900">₹{formatINR(t.grandTotal)}</span>
               </div>
-              <p className="text-[11px] font-semibold text-slate-500">{computed.amountInWords}</p>
+              <p className="text-xs font-medium text-slate-500">{computed.amountInWords}</p>
             </section>
 
             {error && (
-              <div role="alert" className="p-3 rounded-xl bg-rose-50 border border-rose-200 text-xs font-bold text-rose-700">
+              <div role="alert" className="p-3 rounded-xl bg-rose-50 border border-rose-200 text-sm font-semibold text-rose-700">
                 {error}
               </div>
             )}
 
             {confirmIssue ? (
               <section className="bg-amber-50 rounded-2xl border border-amber-300 p-4 space-y-3">
-                <p className="text-xs font-bold text-amber-900">
+                <p className="text-sm font-semibold text-amber-900">
                   Issuing gives this invoice the next {BRAND_CONFIG[brand].prefix} number and locks it. It
                   can&apos;t be edited or deleted afterwards, only cancelled.
                 </p>
@@ -754,7 +943,7 @@ export function InvoiceEditor({
                     type="button"
                     onClick={() => save("issue")}
                     disabled={!!saving}
-                    className="flex-1 flex items-center justify-center gap-2 px-4 py-2.5 text-xs font-bold text-white rounded-xl bg-emerald-700 hover:bg-emerald-800 disabled:opacity-60 cursor-pointer"
+                    className="flex-1 flex items-center justify-center gap-2 px-4 py-2.5 text-sm font-semibold text-white rounded-xl bg-emerald-700 hover:bg-emerald-800 disabled:opacity-60 cursor-pointer"
                   >
                     {saving === "issue" ? <Loader2 className="w-4 h-4 animate-spin" /> : <FileCheck2 className="w-4 h-4" />}
                     Yes, issue invoice
@@ -763,7 +952,7 @@ export function InvoiceEditor({
                     type="button"
                     onClick={() => setConfirmIssue(false)}
                     disabled={!!saving}
-                    className="px-4 py-2.5 text-xs font-bold text-slate-700 rounded-xl border border-slate-300 bg-white hover:bg-slate-100 cursor-pointer"
+                    className="px-4 py-2.5 text-sm font-semibold text-slate-700 rounded-xl border border-slate-300 bg-white hover:bg-slate-100 cursor-pointer"
                   >
                     Back
                   </button>
@@ -775,7 +964,7 @@ export function InvoiceEditor({
                   type="button"
                   onClick={() => setConfirmIssue(true)}
                   disabled={!!saving}
-                  className="w-full flex items-center justify-center gap-2 px-4 py-3 text-xs font-bold text-white rounded-xl bg-emerald-700 hover:bg-emerald-800 disabled:opacity-60 cursor-pointer"
+                  className="w-full flex items-center justify-center gap-2 px-4 py-3 text-sm font-semibold text-white rounded-xl bg-emerald-700 hover:bg-emerald-800 disabled:opacity-60 cursor-pointer"
                 >
                   <FileCheck2 className="w-4 h-4" /> Save & Issue Invoice
                 </button>
@@ -783,7 +972,7 @@ export function InvoiceEditor({
                   type="button"
                   onClick={() => save("draft")}
                   disabled={!!saving}
-                  className="w-full flex items-center justify-center gap-2 px-4 py-3 text-xs font-bold text-slate-800 rounded-xl border border-slate-300 bg-white hover:bg-slate-100 disabled:opacity-60 cursor-pointer"
+                  className="w-full flex items-center justify-center gap-2 px-4 py-3 text-sm font-semibold text-slate-800 rounded-xl border border-slate-300 bg-white hover:bg-slate-100 disabled:opacity-60 cursor-pointer"
                 >
                   {saving === "draft" ? <Loader2 className="w-4 h-4 animate-spin" /> : <Save className="w-4 h-4" />}
                   Save as Draft
@@ -792,7 +981,7 @@ export function InvoiceEditor({
                   type="button"
                   onClick={preview}
                   disabled={previewing || !!saving}
-                  className="w-full flex items-center justify-center gap-2 px-4 py-3 text-xs font-bold text-slate-700 rounded-xl hover:bg-slate-200 disabled:opacity-60 cursor-pointer"
+                  className="w-full flex items-center justify-center gap-2 px-4 py-3 text-sm font-semibold text-slate-700 rounded-xl hover:bg-slate-200 disabled:opacity-60 cursor-pointer"
                 >
                   {previewing ? <Loader2 className="w-4 h-4 animate-spin" /> : <Eye className="w-4 h-4" />}
                   Preview PDF (nothing is saved)
@@ -806,13 +995,13 @@ export function InvoiceEditor({
       {/* Phones: the summary sits below the form, so keep the total and next step in reach */}
       <div className="lg:hidden flex items-center justify-between gap-3 px-4 py-3 bg-white border-t border-slate-200 shadow-[0_-2px_10px_rgba(0,0,0,0.05)]">
         <div>
-          <p className="text-[10px] font-bold text-slate-500 uppercase tracking-wider">Total</p>
-          <p className="text-lg font-black text-slate-900 leading-tight">₹{formatINR(t.grandTotal)}</p>
+          <p className="text-xs font-semibold text-slate-500 uppercase tracking-wider">Total</p>
+          <p className="text-lg font-bold text-slate-900 leading-tight">₹{formatINR(t.grandTotal)}</p>
         </div>
         <button
           type="button"
           onClick={() => summaryRef.current?.scrollIntoView({ behavior: "smooth", block: "start" })}
-          className="px-5 py-2.5 text-xs font-bold text-white rounded-xl bg-emerald-700 hover:bg-emerald-800 cursor-pointer"
+          className="px-5 py-2.5 text-sm font-semibold text-white rounded-xl bg-emerald-700 hover:bg-emerald-800 cursor-pointer"
         >
           Review & save
         </button>

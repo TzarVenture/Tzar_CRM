@@ -5,8 +5,10 @@ import { requireInvoiceAdmin } from "@/lib/invoice/service";
 import {
   INVOICE_BRANDS,
   InvoiceBrand,
+  InvoiceDocumentType,
   getFinancialYear,
   formatInvoiceNumber,
+  invoiceCounterKey,
 } from "@/lib/invoice/config";
 
 // GET: The number the next issued invoice would get for a brand and date.
@@ -24,12 +26,15 @@ export async function GET(req: Request) {
       return NextResponse.json({ error: "Invalid brand or date" }, { status: 400 });
     }
 
+    const documentType: InvoiceDocumentType =
+      searchParams.get("type") === "PROFORMA" ? "PROFORMA" : "TAX_INVOICE";
+
     await dbConnect();
     const fy = getFinancialYear(date);
-    const counter = await InvoiceCounter.findOne({ key: `${brand}:${fy}` }).lean();
+    const counter = await InvoiceCounter.findOne({ key: invoiceCounterKey(brand, fy, documentType) }).lean();
 
     return NextResponse.json(
-      { number: formatInvoiceNumber(brand, fy, (counter?.seq || 0) + 1) },
+      { number: formatInvoiceNumber(brand, fy, (counter?.seq || 0) + 1, documentType) },
       { status: 200 }
     );
   } catch (error) {
