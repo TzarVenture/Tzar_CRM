@@ -322,6 +322,11 @@ LeadSchema.index({ "metaAdDetails.leadgenId": 1 }, { sparse: true });
 // Clear cached model in dev mode to ensure updated schema & enums apply
 delete (mongoose.models as any).Lead;
 
+// Indexes for the pipeline list: filter by brand, stage and SLA, newest first
+LeadSchema.index({ status: 1, business: 1, createdAt: -1 });
+LeadSchema.index({ status: 1, stageId: 1, createdAt: -1 });
+LeadSchema.index({ status: 1, slaDeadline: 1 });
+
 const Lead: Model<ILead> = mongoose.models.Lead || mongoose.model<ILead>("Lead", LeadSchema);
 
 export default Lead;

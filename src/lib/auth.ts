@@ -5,16 +5,16 @@ import bcrypt from "bcryptjs";
 import dbConnect from "@/lib/db";
 import User from "@/models/User";
 import type { UserRole } from "@/models/User";
+import { getAuthSecret } from "@/lib/auth-secret";
+import { effectivePermissions } from "@/lib/permissions";
+import { getRoleOverrides } from "@/lib/role-permissions";
 
 /**
  * NextAuth v5 configuration.
  * Exports: auth, handlers, signIn, signOut
  */
 export const { auth, handlers, signIn, signOut } = NextAuth({
-  secret:
-    process.env.AUTH_SECRET ||
-    process.env.NEXTAUTH_SECRET ||
-    "tzar_crm_super_secret_auth_key_2026_dev_mode_secret",
+  secret: getAuthSecret(),
   session: { strategy: "jwt" },
 
   pages: {
@@ -79,6 +79,7 @@ export const { auth, handlers, signIn, signOut } = NextAuth({
           role: user.role,
           avatarUrl: user.avatarUrl ?? null,
           allowedBusinesses: cleanAllowedBusinesses,
+          permissions: effectivePermissions(user, await getRoleOverrides()),
         };
       },
     }),
@@ -87,7 +88,21 @@ export const { auth, handlers, signIn, signOut } = NextAuth({
   callbacks: {
     // Enrich JWT with custom fields on sign-in
     async jwt({ token, user }) {
+      // On every later request, re-read role and permissions so the owner's changes apply
+      // straight away and a deactivated account is signed out.
+      if (!user && token.id) {
+        try {
+          await dbConnect();
+          const fresh = await User.findById(token.id).select("role permissions isActive");
+          if (!fresh || !fresh.isActive) return null;
+          token.role = fresh.role;
+          token.permissions = effectivePermissions(fresh, await getRoleOverrides());
+        } catch (err) {
+          console.error("Could not refresh session permissions:", err);
+        }
+      }
       if (user) {
+        token.permissions = (user as { permissions?: string[] }).permissions ?? [];
         token.id = user.id;
         token.role = (user as { role: UserRole }).role;
         token.avatarUrl = (user as { avatarUrl: string | null }).avatarUrl;
@@ -105,6 +120,7 @@ export const { auth, handlers, signIn, signOut } = NextAuth({
         session.user.id = token.id as string;
         session.user.role = token.role as UserRole;
         session.user.avatarUrl = token.avatarUrl as string | null;
+        session.user.permissions = (token.permissions as string[] | undefined) ?? [];
         const tokenAllowed = token.allowedBusinesses as string[] | undefined;
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
         (session.user as any).allowedBusinesses = tokenAllowed

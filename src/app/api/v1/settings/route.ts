@@ -14,12 +14,11 @@ export async function GET() {
     return NextResponse.json(
       {
         settings: {
-          tzarIngestKey: process.env.TZAR_INGEST_API_KEY || "tzar_live_ingest_key_998877665544332211",
-          whatsappVerifyToken: process.env.WHATSAPP_VERIFY_TOKEN || "tzar_whatsapp_webhook_verify_token_2026",
-          metaVerifyToken: process.env.META_VERIFY_TOKEN || "tzar_meta_webhook_verify_token_2026",
-          awsRegion: process.env.AWS_REGION || "ap-south-1",
-          s3BucketName: process.env.AWS_S3_BUCKET_NAME || "tzar-crm-file-assets",
-          slaDeadlineHours: 24,
+          tzarIngestKey: process.env.TZAR_INGEST_API_KEY,
+          whatsappVerifyToken: process.env.WHATSAPP_VERIFY_TOKEN,
+          metaVerifyToken: process.env.META_VERIFY_TOKEN,
+          metaAppSecretConfigured: Boolean(process.env.META_APP_SECRET),
+          appUrl: process.env.NEXT_PUBLIC_APP_URL || "",
         },
       },
       { status: 200 }

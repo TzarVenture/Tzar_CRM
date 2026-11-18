@@ -4,20 +4,15 @@ import bcrypt from "bcryptjs";
 import dbConnect from "@/lib/db";
 import User from "@/models/User";
 import { auth } from "@/lib/auth";
+import { EDITABLE_ROLES, cleanPermissions, roleDefaults } from "@/lib/permissions";
+import { getRoleOverrides } from "@/lib/role-permissions";
 
 const AddTeamMemberSchema = z.object({
   name: z.string().min(1, "Name is required"),
   email: z.string().email("Valid email required"),
-  password: z.string().min(6, "Password must be at least 6 characters"),
-  role: z.enum([
-    "SUPER_ADMIN",
-    "ADMIN",
-    "SALES_MANAGER",
-    "BDE",
-    "MEDIA_BUYER",
-    "ACCOUNT_MANAGER",
-    "CLIENT",
-  ]),
+  password: z.string().min(10, "Password must be at least 10 characters"),
+  role: z.enum(["SALES_MANAGER", "BDE", "ACCOUNTANT"]),
+  permissions: z.array(z.string()).optional(),
   phone: z.string().optional(),
   allowedBusinesses: z.array(z.string()).optional(),
 });
@@ -25,7 +20,7 @@ const AddTeamMemberSchema = z.object({
 export async function GET() {
   try {
     const session = await auth();
-    if (!session || (session.user?.role !== "SUPER_ADMIN" && session.user?.role !== "ADMIN")) {
+    if (!session || session.user?.role !== "SUPER_ADMIN") {
       return NextResponse.json(
         { error: "Forbidden: Admin only" },
         { status: 403 }
@@ -37,7 +32,10 @@ export async function GET() {
       .select("-passwordHash")
       .sort({ createdAt: -1 });
 
-    return NextResponse.json({ team }, { status: 200 });
+    const overrides = await getRoleOverrides();
+    const defaults = Object.fromEntries(EDITABLE_ROLES.map((r) => [r, roleDefaults(r, overrides)]));
+
+    return NextResponse.json({ team, roleDefaults: defaults }, { status: 200 });
   } catch (error) {
     console.error("GET Team Error:", error);
     return NextResponse.json({ error: "Failed to fetch team" }, { status: 500 });
@@ -47,9 +45,9 @@ export async function GET() {
 export async function POST(req: Request) {
   try {
     const session = await auth();
-    if (!session || (session.user?.role !== "SUPER_ADMIN" && session.user?.role !== "ADMIN")) {
+    if (!session || session.user?.role !== "SUPER_ADMIN") {
       return NextResponse.json(
-        { error: "Unauthorized: Admin only" },
+        { error: "Only the Super Admin can add team members" },
         { status: 403 }
       );
     }
@@ -81,7 +79,8 @@ export async function POST(req: Request) {
       email: email.toLowerCase(),
       passwordHash,
       role,
-      phone,
+      phone: phone || undefined,
+      permissions: parseResult.data.permissions ? cleanPermissions(parseResult.data.permissions) : undefined,
       allowedBusinesses: (parseResult.data.allowedBusinesses || ["tzar", "titepo", "adshalaa", "crownleaf"]) as any,
       isActive: true,
     });

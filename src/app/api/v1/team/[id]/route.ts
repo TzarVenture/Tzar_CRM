@@ -4,22 +4,14 @@ import bcrypt from "bcryptjs";
 import dbConnect from "@/lib/db";
 import User from "@/models/User";
 import { auth } from "@/lib/auth";
+import { cleanPermissions } from "@/lib/permissions";
 
 const UpdateTeamMemberSchema = z.object({
   name: z.string().min(1).optional(),
   email: z.string().email().optional(),
-  password: z.string().min(6).optional(),
-  role: z
-    .enum([
-      "SUPER_ADMIN",
-      "ADMIN",
-      "SALES_MANAGER",
-      "BDE",
-      "MEDIA_BUYER",
-      "ACCOUNT_MANAGER",
-      "CLIENT",
-    ])
-    .optional(),
+  password: z.string().min(10, "Password must be at least 10 characters").optional(),
+  role: z.enum(["SALES_MANAGER", "BDE", "ACCOUNTANT", "ADMIN", "MEDIA_BUYER", "ACCOUNT_MANAGER"]).optional(),
+  permissions: z.array(z.string()).nullable().optional(),
   phone: z.string().optional(),
   isActive: z.boolean().optional(),
   allowedBusinesses: z.array(z.string()).optional(),
@@ -32,9 +24,9 @@ export async function PATCH(
 ) {
   try {
     const session = await auth();
-    if (!session || (session.user?.role !== "SUPER_ADMIN" && session.user?.role !== "ADMIN")) {
+    if (!session || session.user?.role !== "SUPER_ADMIN") {
       return NextResponse.json(
-        { error: "Unauthorized: Admin only" },
+        { error: "Only the Super Admin can edit team members" },
         { status: 403 }
       );
     }
@@ -58,10 +50,25 @@ export async function PATCH(
     }
 
     const data = parseResult.data;
+
+    // The Super Admin account cannot be demoted, deactivated or have its access narrowed, by anyone
+    if (user.role === "SUPER_ADMIN") {
+      if (
+        data.role !== undefined ||
+        data.isActive === false ||
+        data.permissions !== undefined
+      ) {
+        return NextResponse.json(
+          { error: "The Super Admin's role, status and access cannot be changed" },
+          { status: 400 }
+        );
+      }
+    }
     if (data.name) user.name = data.name;
     if (data.email) user.email = data.email.toLowerCase();
     if (data.role) user.role = data.role as any;
-    if (data.phone !== undefined) user.phone = data.phone;
+    if (data.phone !== undefined) user.phone = data.phone || undefined;
+    if (data.permissions !== undefined) user.permissions = data.permissions === null ? undefined : cleanPermissions(data.permissions);
     if (data.isActive !== undefined) user.isActive = data.isActive;
     if (data.allowedBusinesses !== undefined) user.allowedBusinesses = data.allowedBusinesses as any;
     if (data.password) {

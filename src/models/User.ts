@@ -7,6 +7,7 @@ export type UserRole =
   | "BDE"
   | "MEDIA_BUYER"
   | "ACCOUNT_MANAGER"
+  | "ACCOUNTANT"
   | "CLIENT";
 
 export interface IUser extends Document {
@@ -18,6 +19,8 @@ export interface IUser extends Document {
   avatarUrl?: string;
   assignedPipelineIds: mongoose.Types.ObjectId[];
   allowedBusinesses?: Array<"tzar" | "titepo" | "adshalaa" | "crownleaf">;
+  /** Page permissions chosen by the owner. When missing, the role defaults apply. */
+  permissions?: string[];
   googleOAuthTokens?: {
     accessToken?: string;
     refreshToken?: string;
@@ -48,6 +51,7 @@ const UserSchema: Schema<IUser> = new Schema(
         "BDE",
         "MEDIA_BUYER",
         "ACCOUNT_MANAGER",
+        "ACCOUNTANT",
         "CLIENT",
       ],
       default: "BDE",
@@ -57,6 +61,7 @@ const UserSchema: Schema<IUser> = new Schema(
     phone: { type: String, trim: true },
     avatarUrl: { type: String },
     assignedPipelineIds: [{ type: Schema.Types.ObjectId, ref: "Pipeline" }],
+    permissions: { type: [String], default: undefined },
     allowedBusinesses: {
       type: [String],
       default: ["tzar", "titepo", "adshalaa", "crownleaf"],
